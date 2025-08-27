@@ -1,4 +1,4 @@
-import { colors } from "@/constants/colors";
+import { colors } from "@/constants/colors_temp";
 import { Picker } from "@react-native-picker/picker";
 import React from "react";
 import { Button, StyleSheet, Text, View } from "react-native";

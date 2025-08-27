@@ -1,4 +1,4 @@
-import { colors } from "@/constants/colors";
+import { colors } from "@/constants/colors_temp";
 import { timezones } from "@/constants/timezones";
 import { Picker } from "@react-native-picker/picker";
 import { DateTime } from "luxon";
