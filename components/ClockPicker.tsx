@@ -3,7 +3,10 @@ import { timezones } from "@/constants/timezones";
 import { Picker } from "@react-native-picker/picker";
 import { DateTime } from "luxon";
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
+import tw from "twrnc";
+
+const { width } = Dimensions.get("window");
 
 interface Props {
   zone1: string;
@@ -31,31 +34,62 @@ export default function ClockPicker({
     return () => clearInterval(timer);
   }, [zone1, zone2]);
 
-  return (
-    <View>
-      <Text style={styles.label}>Zone 1</Text>
-      <Picker
-        selectedValue={zone1}
-        onValueChange={setZone1}
-        style={styles.picker}
-      >
-        {timezones.map((tz) => (
-          <Picker.Item label={tz} value={tz} key={tz} />
-        ))}
-      </Picker>
-      <Text style={styles.time1}>{time1}</Text>
+  const pickerWidth = width * 0.35; // 35% of screen width
+  const pickerHeight = 50; // fixed height
 
-      <Text style={styles.label}>Zone 2</Text>
-      <Picker
-        selectedValue={zone2}
-        onValueChange={setZone2}
-        style={styles.picker}
-      >
-        {timezones.map((tz) => (
-          <Picker.Item label={tz} value={tz} key={tz} />
-        ))}
-      </Picker>
-      <Text style={styles.time2}>{time2}</Text>
+  return (
+    <View className="py-5 gap-4 flex flex-row justify-center items-center">
+      <View className="flex flex-col justify-center items-center">
+        <Text className="text-xl text-white text-center uppercase">Zone 1</Text>
+        <Picker
+          selectedValue={zone1}
+          onValueChange={setZone1}
+          style={[
+            tw`m-2 rounded-md`,
+            {
+              width: pickerWidth,
+              height: pickerHeight,
+              backgroundColor: "white",
+              color: "black",
+              fontSize: "25px",
+              textAlign: "center",
+            },
+          ]}
+        >
+          {timezones.map((tz) => (
+            <Picker.Item label={tz} value={tz} key={tz} />
+          ))}
+        </Picker>
+        <Text className="text-green-400 text-5xl sm:text-[150px] py-2">
+          {time1}
+        </Text>
+      </View>
+
+      <View className="flex flex-col justify-center items-center">
+        <Text className="text-xl text-white text-center uppercase">Zone 2</Text>
+        <Picker
+          selectedValue={zone2}
+          onValueChange={setZone2}
+          style={[
+            tw`m-2 rounded-md`,
+            {
+              width: pickerWidth,
+              height: pickerHeight,
+              backgroundColor: "white",
+              color: "black",
+              fontSize: "25px",
+              textAlign: "center",
+            },
+          ]}
+        >
+          {timezones.map((tz) => (
+            <Picker.Item label={tz} value={tz} key={tz} />
+          ))}
+        </Picker>
+        <Text className="text-red-400 text-5xl sm:text-[150px] py-2">
+          {time2}
+        </Text>
+      </View>
     </View>
   );
 }

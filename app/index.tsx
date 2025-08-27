@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
 } from "react-native";
+import tw from "twrnc";
 
 import { DateTime } from "luxon";
 
@@ -137,15 +138,18 @@ export default function HomeScreen() {
     setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id));
 
   return (
+    // Main Wrapper for the Background Tailwindcss styles
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "black" }}
+      className="flex-1 bg-white dark:bg-black justify-start w-screen h-screen py-12 sm:py-0"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text className="text-white text-3xl text-center">
+      {/* Main Container */}
+      <ScrollView scrollEnabled={true} contentContainerStyle={tw`p-5`}>
+        <Text className="text-white text-3xl text-center uppercase">
           Live Broadcast Clock
         </Text>
 
+        {/* Main Clock and Selector */}
         <ClockPicker
           zone1={zone1}
           zone2={zone2}
