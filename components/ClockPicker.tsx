@@ -38,7 +38,7 @@ export default function ClockPicker({
   const pickerHeight = 50; // fixed height
 
   return (
-    <View className="py-5 gap-4 flex flex-row justify-center items-center">
+    <View className="py-5 gap-4 flex flex-row justify-center items-center border-2 border-gray-600 bg-gray-800 rounded-xl my-2">
       <View className="flex flex-col justify-center items-center">
         <Text className="text-xl text-white text-center uppercase">Zone 1</Text>
         <Picker
