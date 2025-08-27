@@ -142,7 +142,9 @@ export default function HomeScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.header}>Live Broadcast Clock</Text>
+        <Text className="text-white text-3xl text-center">
+          Live Broadcast Clock
+        </Text>
 
         <ClockPicker
           zone1={zone1}
