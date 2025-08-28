@@ -1,7 +1,9 @@
+// The Target block is the box that has the countdown and target/deduct time pickers
+
 import { colors } from "@/constants/colors";
 import { Picker } from "@react-native-picker/picker";
 import React from "react";
-import { Button, StyleSheet, Text, View } from "react-native";
+import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 export interface TargetBlockType {
@@ -15,6 +17,7 @@ export interface TargetBlockType {
   isTargetPickerVisible: boolean;
   isDeductPickerVisible: boolean;
   isCollapsed: boolean;
+  name: string;
 }
 
 interface Props {
@@ -46,7 +49,17 @@ export default function TargetBlock({
     <View style={styles.targetBlock}>
       {/* Header row with collapse and close */}
       <View style={styles.headerRow}>
-        <Text style={styles.label}>Target #{block.id}</Text>
+        <TextInput
+          style={styles.nameInput}
+          placeholder={`Target #${block.id}`}
+          placeholderTextColor={colors.header}
+          value={block.name ?? ""}
+          onChangeText={(text) =>
+            setTargetBlocks((blocks) =>
+              blocks.map((b) => (b.id === block.id ? { ...b, name: text } : b))
+            )
+          }
+        />
         <View style={styles.headerButtons}>
           <Button
             title={block.isCollapsed ? "▼" : "▲"}
@@ -146,7 +159,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerButtons: { flexDirection: "row", gap: 5 },
-  label: { fontSize: 16, color: colors.header },
+  nameInput: {
+    fontSize: 16,
+    color: colors.header,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    minWidth: 120,
+    flex: 1,
+    marginRight: 10,
+  },
   labelSmall: { fontSize: 14, color: colors.header, marginTop: 5 },
   row: { flexDirection: "row", marginVertical: 5, alignItems: "center" },
   countdown: {

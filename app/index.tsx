@@ -1,17 +1,17 @@
 import ClockPicker from "@/components/ClockPicker";
 import TargetBlock, { TargetBlockType } from "@/components/TargetBlock";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DateTime } from "luxon";
 import React, { useEffect, useState } from "react";
 import {
   Button,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
+  View,
 } from "react-native";
 import tw from "twrnc";
-
-import { DateTime } from "luxon";
 
 export default function HomeScreen() {
   const [zone1, setZone1] = useState("Europe/Berlin");
@@ -29,8 +29,41 @@ export default function HomeScreen() {
       isTargetPickerVisible: false,
       isDeductPickerVisible: false,
       isCollapsed: false,
+      name: "Target #1",
     },
   ]);
+
+  // 🔹 Load saved values on startup
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const storedZone1 = await AsyncStorage.getItem("zone1");
+        const storedZone2 = await AsyncStorage.getItem("zone2");
+        const storedTargets = await AsyncStorage.getItem("targetBlocks");
+
+        if (storedZone1) setZone1(storedZone1);
+        if (storedZone2) setZone2(storedZone2);
+        if (storedTargets) setTargetBlocks(JSON.parse(storedTargets));
+      } catch (error) {
+        console.log("Error loading data:", error);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // 🔹 Save values whenever they change
+  useEffect(() => {
+    AsyncStorage.setItem("zone1", zone1);
+  }, [zone1]);
+
+  useEffect(() => {
+    AsyncStorage.setItem("zone2", zone2);
+  }, [zone2]);
+
+  useEffect(() => {
+    AsyncStorage.setItem("targetBlocks", JSON.stringify(targetBlocks));
+  }, [targetBlocks]);
 
   // Countdown updater
   useEffect(() => {
@@ -81,6 +114,7 @@ export default function HomeScreen() {
       )
     );
   };
+
   const toggleDeductPicker = (id: number, show: boolean) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
@@ -88,6 +122,7 @@ export default function HomeScreen() {
       )
     );
   };
+
   const handleTargetConfirm = (id: number, date: Date) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
@@ -102,6 +137,7 @@ export default function HomeScreen() {
       )
     );
   };
+
   const handleDeductConfirm = (id: number, date: Date) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
@@ -116,6 +152,7 @@ export default function HomeScreen() {
       )
     );
   };
+
   const addTargetBlock = () => {
     const newId = targetBlocks.length + 1;
     setTargetBlocks((blocks) => [
@@ -131,25 +168,51 @@ export default function HomeScreen() {
         isTargetPickerVisible: false,
         isDeductPickerVisible: false,
         isCollapsed: false,
+        name: `Target #${newId}`,
       },
     ]);
   };
+
   const removeBlock = (id: number) =>
     setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id));
 
+  // 🔹 Reset all data
+  const resetAll = async () => {
+    try {
+      await AsyncStorage.clear();
+
+      setZone1("Europe/Berlin");
+      setZone2("Asia/Colombo");
+      setTargetBlocks([
+        {
+          id: 1,
+          targetHour: new Date().getHours(),
+          targetMinute: new Date().getMinutes(),
+          deductHour: 0,
+          deductMinute: 0,
+          targetZone: "zone1",
+          countdown: "00:00",
+          isTargetPickerVisible: false,
+          isDeductPickerVisible: false,
+          isCollapsed: false,
+          name: "Target #1",
+        },
+      ]);
+    } catch (error) {
+      console.log("Error resetting data:", error);
+    }
+  };
+
   return (
-    // Main Wrapper for the Background Tailwindcss styles
     <KeyboardAvoidingView
       className="flex-1 bg-white dark:bg-black justify-start w-screen h-screen py-12 sm:py-0"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {/* Main Container */}
       <ScrollView scrollEnabled={true} contentContainerStyle={tw`p-5`}>
         <Text className="text-white text-3xl text-center uppercase">
           Live Broadcast Clock
         </Text>
 
-        {/* Main Clock and Selector */}
         <ClockPicker
           zone1={zone1}
           zone2={zone2}
@@ -172,19 +235,14 @@ export default function HomeScreen() {
           />
         ))}
 
-        <Button title="Add Target" onPress={addTargetBlock} />
+        <View style={tw`mt-4`}>
+          <Button title="Add Target" onPress={addTargetBlock} />
+        </View>
+
+        <View style={tw`mt-4`}>
+          <Button title="RESET ALL" color="red" onPress={resetAll} />
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 20, justifyContent: "center" },
-  header: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-    color: "white",
-  },
-});
