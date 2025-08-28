@@ -1,9 +1,8 @@
-import { colors } from "@/constants/colors";
 import { timezones } from "@/constants/timezones";
 import { Picker } from "@react-native-picker/picker";
 import { DateTime } from "luxon";
 import React, { useEffect, useState } from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Text, View } from "react-native";
 import tw from "twrnc";
 
 const { width } = Dimensions.get("window");
@@ -93,20 +92,3 @@ export default function ClockPicker({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  label: { fontSize: 16, marginTop: 10, color: colors.header },
-  time1: {
-    fontSize: 60,
-    marginVertical: 10,
-    textAlign: "center",
-    color: colors.zone1,
-  },
-  time2: {
-    fontSize: 60,
-    marginVertical: 10,
-    textAlign: "center",
-    color: colors.zone2,
-  },
-  picker: { marginVertical: 5, backgroundColor: "white" },
-});
