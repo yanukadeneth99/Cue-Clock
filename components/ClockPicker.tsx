@@ -12,6 +12,7 @@ interface Props {
   zone2: string;
   setZone1: (zone: string) => void;
   setZone2: (zone: string) => void;
+  fullScreen?: boolean;
 }
 
 export default function ClockPicker({
@@ -19,6 +20,7 @@ export default function ClockPicker({
   zone2,
   setZone1,
   setZone2,
+  fullScreen,
 }: Props) {
   const [time1, setTime1] = useState("");
   const [time2, setTime2] = useState("");
@@ -29,15 +31,24 @@ export default function ClockPicker({
       setTime1(now.setZone(zone1).toFormat("HH:mm:ss"));
       setTime2(now.setZone(zone2).toFormat("HH:mm:ss"));
     }, 1000);
-
     return () => clearInterval(timer);
   }, [zone1, zone2]);
 
-  const pickerWidth = width * 0.35; // 35% of screen width
-  const pickerHeight = 50; // fixed height
+  // Full Screen Return
+  if (fullScreen) {
+    return (
+      <View className="flex-col sm:flex-row justify-center items-center w-full my-4">
+        <Text className="text-green-400 text-8xl mx-4">{time1}</Text>
+        <Text className="text-red-400 text-8xl mx-4">{time2}</Text>
+      </View>
+    );
+  }
+
+  const pickerWidth = width * 0.35;
+  const pickerHeight = 50;
 
   return (
-    <View className="py-5 gap-4 flex flex-row justify-center items-center border-2 border-gray-600 bg-gray-800 rounded-xl my-2">
+    <View className="py-5 w-full gap-4 flex flex-row justify-center items-center border-2 border-gray-600 bg-gray-800 rounded-xl my-2">
       <View className="flex flex-col justify-center items-center">
         <Text className="text-xl text-white text-center uppercase">Zone 1</Text>
         <Picker
@@ -59,7 +70,7 @@ export default function ClockPicker({
             <Picker.Item label={tz} value={tz} key={tz} />
           ))}
         </Picker>
-        <Text className="text-green-400 text-5xl sm:text-[150px] py-2">
+        <Text className="text-green-400 text-[38px] sm:text-[150px] py-2">
           {time1}
         </Text>
       </View>
@@ -85,7 +96,7 @@ export default function ClockPicker({
             <Picker.Item label={tz} value={tz} key={tz} />
           ))}
         </Picker>
-        <Text className="text-red-400 text-5xl sm:text-[150px] py-2">
+        <Text className="text-red-400 text-[38px] sm:text-[150px] py-2">
           {time2}
         </Text>
       </View>

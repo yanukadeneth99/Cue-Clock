@@ -16,6 +16,7 @@ import tw from "twrnc";
 export default function HomeScreen() {
   const [zone1, setZone1] = useState("Europe/Berlin");
   const [zone2, setZone2] = useState("Asia/Colombo");
+  const [fullScreen, setFullScreen] = useState(false);
 
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     {
@@ -33,7 +34,7 @@ export default function HomeScreen() {
     },
   ]);
 
-  // 🔹 Load saved values on startup
+  // Load saved values
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -48,19 +49,16 @@ export default function HomeScreen() {
         console.log("Error loading data:", error);
       }
     };
-
     loadData();
   }, []);
 
-  // 🔹 Save values whenever they change
+  // Save changes
   useEffect(() => {
     AsyncStorage.setItem("zone1", zone1);
   }, [zone1]);
-
   useEffect(() => {
     AsyncStorage.setItem("zone2", zone2);
   }, [zone2]);
-
   useEffect(() => {
     AsyncStorage.setItem("targetBlocks", JSON.stringify(targetBlocks));
   }, [targetBlocks]);
@@ -96,9 +94,7 @@ export default function HomeScreen() {
 
           return {
             ...block,
-            countdown: `${String(totalMinutes).padStart(2, "0")}:${String(
-              seconds
-            ).padStart(2, "0")}`,
+            countdown: `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`,
           };
         })
       );
@@ -107,6 +103,10 @@ export default function HomeScreen() {
     return () => clearInterval(timer);
   }, [zone1, zone2]);
 
+  // Minimal/full screen toggle
+  const toggleFullScreen = () => setFullScreen((prev) => !prev);
+
+  // Other handlers
   const toggleTargetPicker = (id: number, show: boolean) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
@@ -176,11 +176,9 @@ export default function HomeScreen() {
   const removeBlock = (id: number) =>
     setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id));
 
-  // 🔹 Reset all data
   const resetAll = async () => {
     try {
       await AsyncStorage.clear();
-
       setZone1("Europe/Berlin");
       setZone2("Asia/Colombo");
       setTargetBlocks([
@@ -205,21 +203,29 @@ export default function HomeScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white dark:bg-black justify-start w-screen h-screen py-12 sm:py-0"
+      className="flex-1 bg-black justify-start w-screen h-screen py-12 sm:py-0"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScrollView scrollEnabled={true} contentContainerStyle={tw`p-5`}>
-        <Text className="text-white text-3xl text-center uppercase">
-          Live Broadcast Clock
-        </Text>
+      <ScrollView
+        scrollEnabled={!fullScreen}
+        contentContainerStyle={tw`p-5 items-center`}
+      >
+        {!fullScreen && (
+          <Text className="text-white text-3xl text-center uppercase mb-4">
+            Live Broadcast Clock
+          </Text>
+        )}
 
+        {/* Clock */}
         <ClockPicker
           zone1={zone1}
           zone2={zone2}
           setZone1={setZone1}
           setZone2={setZone2}
+          fullScreen={fullScreen}
         />
 
+        {/* Target blocks */}
         {targetBlocks.map((block) => (
           <TargetBlock
             key={block.id}
@@ -232,15 +238,28 @@ export default function HomeScreen() {
             zone1={zone1}
             zone2={zone2}
             removeBlock={removeBlock}
+            fullScreen={fullScreen}
           />
         ))}
 
-        <View style={tw`mt-4`}>
-          <Button title="Add Target" onPress={addTargetBlock} />
-        </View>
+        {!fullScreen && (
+          <>
+            <View className="mt-4 w-full md:w-1/2">
+              <Button title="Add Target" onPress={addTargetBlock} />
+            </View>
 
-        <View style={tw`mt-4`}>
-          <Button title="RESET ALL" color="red" onPress={resetAll} />
+            <View className="mt-4 w-full md:w-1/2">
+              <Button title="RESET ALL" color="red" onPress={resetAll} />
+            </View>
+          </>
+        )}
+
+        <View className="mt-4 w-full md:w-1/2">
+          <Button
+            title={fullScreen ? "Exit Full Screen" : "Full Screen"}
+            onPress={toggleFullScreen}
+            color="gray"
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

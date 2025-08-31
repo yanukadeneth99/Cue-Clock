@@ -7,7 +7,9 @@ This is a basic application that has the following two features
 
 ## TODO
 
-- [] Finish the Main Application Development
-- [] Update the design with animations
-- [] Implement a Full screen mode with only the important data
-- [] Host on Google Play and on a Domain
+- [x] Finish the Main Application Core Development
+- [x] Implement a Full screen mode with only the important data
+- [ ] Implement Proper Designs with Themes
+- [ ] Create a logo, favicon and splash screen
+- [ ] Add Animations
+- [ ] Host on Google Play and on a Domain

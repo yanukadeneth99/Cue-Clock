@@ -39,19 +39,34 @@ interface Props {
   zone1: string;
   zone2: string;
   removeBlock: (id: number) => void;
+  fullScreen?: boolean;
 }
 
 export default function TargetBlock({
   block,
+  fullScreen,
+  setTargetBlocks,
+  removeBlock,
   toggleTargetPicker,
   toggleDeductPicker,
-  handleTargetConfirm,
   handleDeductConfirm,
-  setTargetBlocks,
-  zone1,
-  zone2,
-  removeBlock,
+  handleTargetConfirm,
 }: Props) {
+  // Full Screen Return
+  if (fullScreen) {
+    return (
+      <View className="w-full flex flex-row items-center md:my-4 sm:w-1/2 justify-center sm:justify-center">
+        <Text className="text-white text-xl font-bold text-center sm:basis-1/2 basis-1/4">
+          {block.name.length > 12
+            ? block.name.substring(0, 12) + "..."
+            : block.name}
+        </Text>
+        <Text className="text-yellow-400 text-7xl font-bold py-4 text-center sm:basis-1/2 basis-3/4">
+          {block.countdown}
+        </Text>
+      </View>
+    );
+  }
   const pad = (n: number) => String(n).padStart(2, "0");
 
   const pickerWidth = width * 0.5; // 35% of screen width
