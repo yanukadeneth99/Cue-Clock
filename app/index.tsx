@@ -1,67 +1,79 @@
 import ClockPicker from "@/components/ClockPicker";
 import TargetBlock, { TargetBlockType } from "@/components/TargetBlock";
+import { colors } from "@/constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DateTime } from "luxon";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Button,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
-import tw from "twrnc";
+
+function createDefaultBlock(id: number): TargetBlockType {
+  return {
+    id,
+    targetHour: new Date().getHours(),
+    targetMinute: new Date().getMinutes(),
+    deductHour: 0,
+    deductMinute: 0,
+    targetZone: "zone1",
+    countdown: "00:00",
+    isTargetPickerVisible: false,
+    isDeductPickerVisible: false,
+    isCollapsed: false,
+    name: `Target #${id}`,
+  };
+}
 
 export default function HomeScreen() {
   const [zone1, setZone1] = useState("Europe/Berlin");
   const [zone2, setZone2] = useState("Asia/Colombo");
   const [fullScreen, setFullScreen] = useState(false);
-
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
-    {
-      id: 1,
-      targetHour: new Date().getHours(),
-      targetMinute: new Date().getMinutes(),
-      deductHour: 0,
-      deductMinute: 0,
-      targetZone: "zone1",
-      countdown: "00:00",
-      isTargetPickerVisible: false,
-      isDeductPickerVisible: false,
-      isCollapsed: false,
-      name: "Target #1",
-    },
+    createDefaultBlock(1),
   ]);
+  const nextIdRef = useRef(2);
+  const isLoadedRef = useRef(false);
 
   // Load saved values
   useEffect(() => {
     const loadData = async () => {
       try {
-        const storedZone1 = await AsyncStorage.getItem("zone1");
-        const storedZone2 = await AsyncStorage.getItem("zone2");
-        const storedTargets = await AsyncStorage.getItem("targetBlocks");
+        const [storedZone1, storedZone2, storedTargets] = await AsyncStorage.multiGet([
+          "zone1",
+          "zone2",
+          "targetBlocks",
+        ]);
 
-        if (storedZone1) setZone1(storedZone1);
-        if (storedZone2) setZone2(storedZone2);
-        if (storedTargets) setTargetBlocks(JSON.parse(storedTargets));
+        if (storedZone1[1]) setZone1(storedZone1[1]);
+        if (storedZone2[1]) setZone2(storedZone2[1]);
+        if (storedTargets[1]) {
+          const parsed: TargetBlockType[] = JSON.parse(storedTargets[1]);
+          setTargetBlocks(parsed);
+          const maxId = parsed.reduce((max, b) => Math.max(max, b.id), 0);
+          nextIdRef.current = maxId + 1;
+        }
       } catch (error) {
         console.log("Error loading data:", error);
       }
+      isLoadedRef.current = true;
     };
     loadData();
   }, []);
 
-  // Save changes
+  // Save changes (batched)
   useEffect(() => {
-    AsyncStorage.setItem("zone1", zone1);
-  }, [zone1]);
-  useEffect(() => {
-    AsyncStorage.setItem("zone2", zone2);
-  }, [zone2]);
-  useEffect(() => {
-    AsyncStorage.setItem("targetBlocks", JSON.stringify(targetBlocks));
-  }, [targetBlocks]);
+    if (!isLoadedRef.current) return;
+    AsyncStorage.multiSet([
+      ["zone1", zone1],
+      ["zone2", zone2],
+      ["targetBlocks", JSON.stringify(targetBlocks)],
+    ]);
+  }, [zone1, zone2, targetBlocks]);
 
   // Countdown updater
   useEffect(() => {
@@ -91,11 +103,10 @@ export default function HomeScreen() {
             (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
           );
           const seconds = Math.floor(diff.seconds ?? 0);
+          const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
-          return {
-            ...block,
-            countdown: `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`,
-          };
+          if (block.countdown === newCountdown) return block;
+          return { ...block, countdown: newCountdown };
         })
       );
     }, 1000);
@@ -103,27 +114,28 @@ export default function HomeScreen() {
     return () => clearInterval(timer);
   }, [zone1, zone2]);
 
-  // Minimal/full screen toggle
-  const toggleFullScreen = () => setFullScreen((prev) => !prev);
+  const toggleFullScreen = useCallback(
+    () => setFullScreen((prev) => !prev),
+    []
+  );
 
-  // Other handlers
-  const toggleTargetPicker = (id: number, show: boolean) => {
+  const toggleTargetPicker = useCallback((id: number, show: boolean) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id ? { ...b, isTargetPickerVisible: show } : b
       )
     );
-  };
+  }, []);
 
-  const toggleDeductPicker = (id: number, show: boolean) => {
+  const toggleDeductPicker = useCallback((id: number, show: boolean) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id ? { ...b, isDeductPickerVisible: show } : b
       )
     );
-  };
+  }, []);
 
-  const handleTargetConfirm = (id: number, date: Date) => {
+  const handleTargetConfirm = useCallback((id: number, date: Date) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
@@ -136,9 +148,9 @@ export default function HomeScreen() {
           : b
       )
     );
-  };
+  }, []);
 
-  const handleDeductConfirm = (id: number, date: Date) => {
+  const handleDeductConfirm = useCallback((id: number, date: Date) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
@@ -151,72 +163,51 @@ export default function HomeScreen() {
           : b
       )
     );
-  };
+  }, []);
 
-  const addTargetBlock = () => {
-    const newId = targetBlocks.length + 1;
-    setTargetBlocks((blocks) => [
-      ...blocks,
-      {
-        id: newId,
-        targetHour: 0,
-        targetMinute: 0,
-        deductHour: 0,
-        deductMinute: 0,
-        targetZone: "zone1",
-        countdown: "00:00",
-        isTargetPickerVisible: false,
-        isDeductPickerVisible: false,
-        isCollapsed: false,
-        name: `Target #${newId}`,
-      },
-    ]);
-  };
+  const addTargetBlock = useCallback(() => {
+    const newId = nextIdRef.current++;
+    setTargetBlocks((blocks) => [...blocks, createDefaultBlock(newId)]);
+  }, []);
 
-  const removeBlock = (id: number) =>
-    setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id));
+  const removeBlock = useCallback(
+    (id: number) =>
+      setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id)),
+    []
+  );
 
-  const resetAll = async () => {
+  const resetAll = useCallback(async () => {
     try {
       await AsyncStorage.clear();
       setZone1("Europe/Berlin");
       setZone2("Asia/Colombo");
-      setTargetBlocks([
-        {
-          id: 1,
-          targetHour: new Date().getHours(),
-          targetMinute: new Date().getMinutes(),
-          deductHour: 0,
-          deductMinute: 0,
-          targetZone: "zone1",
-          countdown: "00:00",
-          isTargetPickerVisible: false,
-          isDeductPickerVisible: false,
-          isCollapsed: false,
-          name: "Target #1",
-        },
-      ]);
+      nextIdRef.current = 2;
+      setTargetBlocks([createDefaultBlock(1)]);
     } catch (error) {
       console.log("Error resetting data:", error);
     }
-  };
+  }, []);
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-black justify-start w-screen h-screen py-12 sm:py-0"
+      className="flex-1 justify-start w-screen h-screen"
+      style={{ backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
         scrollEnabled={!fullScreen}
-        contentContainerStyle={tw`p-5 items-center`}
+        contentContainerStyle={{
+          padding: 16,
+          alignItems: "center",
+          paddingTop: Platform.OS === "web" ? 16 : 48,
+        }}
       >
         {!fullScreen && (
-          <Text className="text-white text-3xl text-center uppercase mb-4">
-            Live Broadcast Clock
+          <Text className="text-broadcast-header text-2xl sm:text-3xl text-center tracking-widest uppercase mb-4 font-light">
+            Broadcast Clock
           </Text>
         )}
 
-        {/* Clock */}
         <ClockPicker
           zone1={zone1}
           zone2={zone2}
@@ -225,7 +216,6 @@ export default function HomeScreen() {
           fullScreen={fullScreen}
         />
 
-        {/* Target blocks */}
         {targetBlocks.map((block) => (
           <TargetBlock
             key={block.id}
@@ -243,23 +233,39 @@ export default function HomeScreen() {
         ))}
 
         {!fullScreen && (
-          <>
-            <View className="mt-4 w-full md:w-1/2">
-              <Button title="Add Target" onPress={addTargetBlock} />
-            </View>
+          <View className="w-full sm:w-2/3 mt-4 gap-3">
+            <Pressable
+              onPress={addTargetBlock}
+              className="bg-broadcast-surface border border-broadcast-surface-border rounded-xl py-3 items-center"
+            >
+              <Text className="text-broadcast-accent text-base font-medium">
+                + Add Target
+              </Text>
+            </Pressable>
 
-            <View className="mt-4 w-full md:w-1/2">
-              <Button title="RESET ALL" color="red" onPress={resetAll} />
-            </View>
-          </>
+            <Pressable
+              onPress={resetAll}
+              className="bg-broadcast-surface border border-broadcast-surface-border rounded-xl py-3 items-center"
+            >
+              <Text className="text-broadcast-danger text-base font-medium">
+                Reset All
+              </Text>
+            </Pressable>
+          </View>
         )}
 
-        <View className="mt-4 w-full md:w-1/2">
-          <Button
-            title={fullScreen ? "Exit Full Screen" : "Full Screen"}
+        <View className="w-full sm:w-2/3 mt-3 mb-6">
+          <Pressable
             onPress={toggleFullScreen}
-            color="gray"
-          />
+            className="border border-broadcast-surface-border rounded-xl py-3 items-center"
+            style={{
+              backgroundColor: fullScreen ? colors.surface : "transparent",
+            }}
+          >
+            <Text className="text-broadcast-muted text-sm font-medium">
+              {fullScreen ? "Exit Full Screen" : "Full Screen"}
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

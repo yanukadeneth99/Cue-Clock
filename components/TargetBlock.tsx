@@ -1,19 +1,14 @@
-// The Target block is the box that has the countdown and target/deduct time pickers
-
 import { colors } from "@/constants/colors";
 import { Picker } from "@react-native-picker/picker";
 import React from "react";
 import {
-  Button,
-  Dimensions,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import tw from "twrnc";
-const { width } = Dimensions.get("window");
 
 export interface TargetBlockType {
   id: number;
@@ -42,6 +37,8 @@ interface Props {
   fullScreen?: boolean;
 }
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
 export default function TargetBlock({
   block,
   fullScreen,
@@ -52,35 +49,33 @@ export default function TargetBlock({
   handleDeductConfirm,
   handleTargetConfirm,
 }: Props) {
-  // Full Screen Return
   if (fullScreen) {
     return (
-      <View className="w-full flex flex-row items-center md:my-4 sm:w-1/2 justify-center sm:justify-center">
-        <Text className="text-white text-xl font-bold text-center sm:basis-1/2 basis-1/4">
+      <View className="w-full flex flex-row items-center my-2 sm:w-1/2 justify-center">
+        <Text className="text-broadcast-muted text-base font-medium text-center basis-1/4 sm:basis-1/3">
           {block.name.length > 12
             ? block.name.substring(0, 12) + "..."
             : block.name}
         </Text>
-        <Text className="text-yellow-400 text-7xl font-bold py-4 text-center sm:basis-1/2 basis-3/4">
+        <Text
+          className="text-broadcast-countdown text-6xl sm:text-7xl font-bold py-3 text-center basis-3/4 sm:basis-2/3"
+          style={{ fontVariant: ["tabular-nums"] }}
+        >
           {block.countdown}
         </Text>
       </View>
     );
   }
-  const pad = (n: number) => String(n).padStart(2, "0");
-
-  const pickerWidth = width * 0.5; // 35% of screen width
-  const pickerHeight = 50; // fixed height
 
   return (
-    <View className="flex-1 p-6 my-2 justify-center items-center w-full border-2 sm:border-0 border-gray-700 bg-gray-800 sm:bg-black rounded-xl">
-      <View className="sm:w-2/3 w-full sm:border-2 sm:border-gray-700 sm:bg-gray-800 sm:rounded-xl sm:p-6">
-        {/* Header row with collapse and close */}
-        <View className="w-full flex flex-row justify-center items-center mb-2">
+    <View className="w-full sm:w-2/3 my-2">
+      <View className="bg-broadcast-surface border border-broadcast-surface-border rounded-2xl p-5">
+        {/* Header: name, collapse, delete */}
+        <View className="flex-row items-center mb-3">
           <TextInput
             style={styles.nameInput}
             placeholder={`Target #${block.id}`}
-            placeholderTextColor={colors.header}
+            placeholderTextColor={colors.muted}
             value={block.name ?? ""}
             onChangeText={(text) =>
               setTargetBlocks((blocks) =>
@@ -90,9 +85,8 @@ export default function TargetBlock({
               )
             }
           />
-          <View style={styles.headerButtons}>
-            <Button
-              title={block.isCollapsed ? "▼" : "▲"}
+          <View className="flex-row gap-2">
+            <Pressable
               onPress={() =>
                 setTargetBlocks((blocks) =>
                   blocks.map((b) =>
@@ -102,42 +96,65 @@ export default function TargetBlock({
                   )
                 )
               }
-            />
-            <Button title="X" onPress={() => removeBlock(block.id)} />
+              className="w-9 h-9 rounded-lg bg-broadcast-bg items-center justify-center"
+            >
+              <Text className="text-broadcast-muted text-base">
+                {block.isCollapsed ? "\u25BC" : "\u25B2"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => removeBlock(block.id)}
+              className="w-9 h-9 rounded-lg bg-broadcast-bg items-center justify-center"
+            >
+              <Text className="text-broadcast-danger text-base font-bold">
+                X
+              </Text>
+            </Pressable>
           </View>
         </View>
 
-        {/* Countdown always visible */}
-        <Text className="text-4xl sm:text-[80px] sm:py-6 font-bold text-yellow-400 text-center py-3">
-          Countdown: {block.countdown}
+        {/* Countdown - always visible */}
+        <Text
+          className="text-4xl sm:text-[72px] sm:py-4 font-bold text-broadcast-countdown text-center py-2"
+          style={{ fontVariant: ["tabular-nums"] }}
+        >
+          {block.countdown}
         </Text>
 
-        {/* Expanded content */}
+        {/* Expanded controls */}
         {!block.isCollapsed && (
           <>
-            <View className="flex flex-row justify-center items-center w-full my-2 gap-4 sm:px-48">
-              <View className="flex basis-1/2">
-                <Button
-                  title={`Target: ${pad(block.targetHour)}:${pad(
-                    block.targetMinute
-                  )}`}
-                  onPress={() => toggleTargetPicker(block.id, true)}
-                />
-              </View>
+            <View className="flex-row justify-center items-center w-full mt-4 gap-3 sm:px-24">
+              <Pressable
+                onPress={() => toggleTargetPicker(block.id, true)}
+                className="flex-1 bg-broadcast-bg border border-broadcast-surface-border rounded-xl py-3 px-4 items-center"
+              >
+                <Text className="text-broadcast-muted text-xs uppercase tracking-wider mb-1">
+                  Target
+                </Text>
+                <Text className="text-broadcast-header text-lg font-semibold">
+                  {pad(block.targetHour)}:{pad(block.targetMinute)}
+                </Text>
+              </Pressable>
 
-              <View className="flex basis-1/2">
-                <Button
-                  title={`Deduct: ${pad(block.deductHour)}:${pad(
-                    block.deductMinute
-                  )}`}
-                  onPress={() => toggleDeductPicker(block.id, true)}
-                />
-              </View>
+              <Pressable
+                onPress={() => toggleDeductPicker(block.id, true)}
+                className="flex-1 bg-broadcast-bg border border-broadcast-surface-border rounded-xl py-3 px-4 items-center"
+              >
+                <Text className="text-broadcast-muted text-xs uppercase tracking-wider mb-1">
+                  Deduct
+                </Text>
+                <Text className="text-broadcast-header text-lg font-semibold">
+                  {pad(block.deductHour)}:{pad(block.deductMinute)}
+                </Text>
+              </Pressable>
             </View>
 
-            {/* Bottom Layer */}
-            <View className="flex flex-row justify-center items-center w-full">
-              <Text style={styles.labelSmall}>Target Zone : </Text>
+            {/* Zone selector */}
+            <View className="flex-row justify-center items-center mt-3">
+              <Text className="text-broadcast-muted text-xs uppercase tracking-wider mr-2">
+                Zone
+              </Text>
               <Picker
                 selectedValue={block.targetZone}
                 onValueChange={(val) =>
@@ -147,24 +164,19 @@ export default function TargetBlock({
                     )
                   )
                 }
-                style={[
-                  tw`m-2 rounded-md`,
-                  {
-                    width: pickerWidth,
-                    height: pickerHeight,
-                    backgroundColor: "white",
-                    color: "black",
-                    fontSize: "25px",
-                    textAlign: "center",
-                  },
-                ]}
+                style={{
+                  maxWidth: 160,
+                  height: 40,
+                  backgroundColor: colors.pickerBg,
+                  color: colors.pickerText,
+                  borderRadius: 8,
+                }}
               >
                 <Picker.Item label="Zone 1" value="zone1" />
                 <Picker.Item label="Zone 2" value="zone2" />
               </Picker>
             </View>
 
-            {/* Pickers that pop up */}
             <DateTimePickerModal
               isVisible={block.isTargetPickerVisible}
               mode="time"
@@ -198,40 +210,13 @@ export default function TargetBlock({
 }
 
 const styles = StyleSheet.create({
-  targetBlock: {
-    marginBottom: 20,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerButtons: { flexDirection: "row", gap: 5 },
   nameInput: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.header,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    minWidth: 120,
     flex: 1,
-    marginRight: 10,
-  },
-  labelSmall: { fontSize: 14, color: colors.header, marginTop: 5 },
-  row: { flexDirection: "row", marginVertical: 5, alignItems: "center" },
-  countdown: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 5,
-    color: colors.countdown,
-  },
-  pickerSmall: {
-    marginVertical: 5,
-    backgroundColor: "white",
-    height: 50,
-    color: colors.pickerText,
+    marginRight: 12,
+    paddingVertical: 4,
   },
 });

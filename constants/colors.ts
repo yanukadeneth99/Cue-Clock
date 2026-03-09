@@ -1,11 +1,15 @@
-// Mentioning the
-
 export const colors = {
-  background: "black",
-  header: "white",
-  zone1: "green",
-  zone2: "red",
-  countdown: "yellow",
-  pickerText: "black",
-  border: "white",
+  background: "#0a0a0a",
+  surface: "#161616",
+  surfaceBorder: "#2a2a2a",
+  header: "#e0e0e0",
+  zone1: "#4ade80",
+  zone2: "#f87171",
+  countdown: "#facc15",
+  pickerText: "#0a0a0a",
+  pickerBg: "#f5f5f5",
+  border: "#3a3a3a",
+  muted: "#888888",
+  danger: "#ef4444",
+  accent: "#60a5fa",
 };
