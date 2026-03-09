@@ -37,7 +37,7 @@ Every PR or change should be evaluated against these three criteria before anyth
 | Framework | React Native 0.79.5 + Expo 53 |
 | Navigation | Expo Router v5 (file-based) |
 | Language | TypeScript ~5.8.3 (strict mode) |
-| Styling | NativeWind v4 / Tailwind CSS v3, twrnc for inline styles |
+| Styling | NativeWind v4 / Tailwind CSS v3 |
 | Date/Time | Luxon v3 |
 | Persistence | @react-native-async-storage/async-storage |
 | Time pickers | react-native-modal-datetime-picker + @react-native-community/datetimepicker |
@@ -79,7 +79,7 @@ hooks/
 | `targetBlocks` | `TargetBlock[]` | All countdown timers |
 | `fullScreen` | `boolean` | Toggle full-screen display mode |
 
-All state is persisted to AsyncStorage on every change and rehydrated on mount.
+All state is persisted to AsyncStorage via `multiSet`/`multiGet` and rehydrated on mount.
 
 ### Countdown Algorithm
 
@@ -89,20 +89,27 @@ All state is persisted to AsyncStorage on every change and rehydrated on mount.
 4. Subtract the deduction (`deductHour:deductMinute`)
 5. Compute the difference → format as `MM:SS` (total minutes : seconds)
 6. Recalculate every 1 second via `setInterval`
+7. Skip object spread when countdown string hasn't changed (optimization)
 
 ### Color Scheme
 
 ```
-background  black
-zone1       green
-zone2       red
-countdown   yellow
-header      white
-border      white
-pickerText  black
+background       #0a0a0a    (near-black)
+surface          #161616    (card backgrounds)
+surfaceBorder    #2a2a2a    (card borders)
+header           #e0e0e0    (light gray text)
+zone1            #4ade80    (green-400)
+zone2            #f87171    (red-400)
+countdown        #facc15    (yellow-400)
+muted            #888888    (secondary text)
+danger           #ef4444    (destructive actions)
+accent           #60a5fa    (blue-400, interactive elements)
+pickerText       #0a0a0a    (picker foreground)
+pickerBg         #f5f5f5    (picker background)
+border           #3a3a3a    (general borders)
 ```
 
-All colors are defined in `constants/colors.ts`. Do not hardcode colors elsewhere.
+All colors are defined in `constants/colors.ts` and mirrored in `tailwind.config.js` under the `broadcast` namespace. Do not hardcode colors elsewhere.
 
 ### Supported Timezones
 
@@ -142,8 +149,10 @@ npm run lint
 ## Coding Conventions
 
 - TypeScript strict mode is enabled — no `any`, no suppression without explanation.
-- Styles use NativeWind `className` props; use `twrnc` only for dynamic/computed styles.
+- Styles use NativeWind `className` props; use inline `style` only for dynamic/computed values.
 - Components should be self-contained and stateless where possible; lift state to `index.tsx`.
+- Use `useCallback` for handlers passed as props to prevent unnecessary re-renders.
+- Use `Pressable` instead of `Button` for custom-styled interactive elements.
 - No new external libraries without a strong justification — keep the bundle lean (speed requirement).
 - Full-screen mode must be handled in every new UI component (`fullScreen` prop pattern).
 
@@ -161,12 +170,16 @@ Android package: `com.yanukadeneth99.broadcastclock`
 
 ## Current Development Status
 
-**Done:** Core countdown logic, dual-clock display, full-screen mode, multi-target support, persistence.
+**Done:** Core countdown logic, dual-clock display, full-screen mode, multi-target support, persistence, design polish pass.
 
-**Pending (from README):** Proper theme/design pass, logo/favicon/splash assets, animations, app store deployment.
+**Pending:** Logo/favicon/splash assets, animations, app store deployment.
 
 ---
 
+## License
+
+AGPL-3.0. Commercial licensing available — contact hello@yashura.music.
+
 ## Security
 
-This app is not production-hardened. See `SECURITY.md` for vulnerability reporting. Contact: yanukadeneth99@gmail.com.
+This app is not production-hardened. See `SECURITY.md` for vulnerability reporting. Contact: hello@yashura.music.

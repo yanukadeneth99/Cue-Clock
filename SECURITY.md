@@ -2,19 +2,30 @@
 
 ## Supported Versions
 
-This application is still underworks and have no versions that are production ready.
+This application is under active development. There are no production releases yet.
+
+| Version | Supported |
+|---|---|
+| `main` branch | Yes |
+| All others | No |
 
 ## Reporting a Vulnerability
 
-Since this is an open-source project, reporting vulnerabilities and bugs should be
-fairly straightforward using Issues or PRs.
+If you discover a security vulnerability, please report it responsibly.
 
-However, depending on the level of vulnerability, feel free to [email me](mailto:yanukadeneth99@gmail.com) on
-the following details:
+**For non-sensitive issues**, open a [GitHub Issue](https://github.com/yanukadeneth99/Broadcast-Clock/issues) with the details.
 
-- What the issue is (Describe it to the best of your knowledge)
-- How you came across the issue (Screenshots/Screen recordings are much appreciated)
-- Any thoughts on how to fix this issue
-- How serious is this issue according to you.
+**For sensitive or critical vulnerabilities**, email [hello@yashura.music](mailto:hello@yashura.music) directly with:
 
-Make sure to label the subject as **Vulnerability - BROADCAST CLOCK**
+- A description of the vulnerability
+- Steps to reproduce it
+- Any thoughts on how to fix it
+- Your assessment of severity (low / medium / high / critical)
+
+Use the subject line: **Security - Broadcast Clock**
+
+You can expect an initial response within 72 hours. We will work with you to understand the issue and coordinate a fix before any public disclosure.
+
+## Scope
+
+This policy covers the Broadcast Clock application code in this repository. Third-party dependencies are outside the direct scope of this policy, but reports about vulnerable dependencies are still welcome.
