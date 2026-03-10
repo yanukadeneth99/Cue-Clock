@@ -170,9 +170,9 @@ Android package: `com.yanukadeneth99.broadcastclock`
 
 ## Current Development Status
 
-**Done:** Core countdown logic, dual-clock display, full-screen mode, multi-target support, persistence, design polish pass.
+**Done:** Core countdown logic, dual-clock display, full-screen mode, multi-target support, persistence, design polish pass, logo/favicon/splash assets, alert/alarm per target block.
 
-**Pending:** Logo/favicon/splash assets, animations, app store deployment.
+**Pending:** Animations, app store deployment.
 
 ---
 

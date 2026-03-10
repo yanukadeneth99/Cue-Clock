@@ -1,3 +1,4 @@
+import AlertModal from "@/components/AlertModal";
 import { colors } from "@/constants/colors";
 import { Picker } from "@react-native-picker/picker";
 import React from "react";
@@ -22,6 +23,9 @@ export interface TargetBlockType {
   isDeductPickerVisible: boolean;
   isCollapsed: boolean;
   name: string;
+  alertMinutesBefore: number | null;
+  isAlertModalVisible: boolean;
+  alertFired: boolean;
 }
 
 interface Props {
@@ -30,6 +34,9 @@ interface Props {
   toggleDeductPicker: (id: number, show: boolean) => void;
   handleTargetConfirm: (id: number, date: Date) => void;
   handleDeductConfirm: (id: number, date: Date) => void;
+  toggleAlertModal: (id: number, show: boolean) => void;
+  handleAlertConfirm: (id: number, minutes: number) => void;
+  handleAlertDelete: (id: number) => void;
   setTargetBlocks: React.Dispatch<React.SetStateAction<TargetBlockType[]>>;
   zone1: string;
   zone2: string;
@@ -48,6 +55,9 @@ export default function TargetBlock({
   toggleDeductPicker,
   handleDeductConfirm,
   handleTargetConfirm,
+  toggleAlertModal,
+  handleAlertConfirm,
+  handleAlertDelete,
 }: Props) {
   if (fullScreen) {
     return (
@@ -57,12 +67,19 @@ export default function TargetBlock({
             ? block.name.substring(0, 12) + "..."
             : block.name}
         </Text>
-        <Text
-          className="text-broadcast-countdown text-6xl sm:text-7xl font-bold py-3 text-center basis-3/4 sm:basis-2/3"
-          style={{ fontVariant: ["tabular-nums"] }}
-        >
-          {block.countdown}
-        </Text>
+        <View className="flex-row items-center justify-center basis-3/4 sm:basis-2/3">
+          {block.alertMinutesBefore !== null && (
+            <Text style={{ color: colors.countdown, fontSize: 16, marginRight: 8 }}>
+              {"\u{1F514}"}
+            </Text>
+          )}
+          <Text
+            className="text-broadcast-countdown text-6xl sm:text-7xl font-bold py-3 text-center"
+            style={{ fontVariant: ["tabular-nums"] }}
+          >
+            {block.countdown}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -86,6 +103,14 @@ export default function TargetBlock({
             }
           />
           <View className="flex-row gap-2">
+            <Pressable
+              onPress={() => toggleAlertModal(block.id, true)}
+              className="w-9 h-9 rounded-lg bg-broadcast-bg items-center justify-center"
+            >
+              <Text style={{ color: block.alertMinutesBefore !== null ? colors.countdown : colors.muted, fontSize: 16 }}>
+                {block.alertMinutesBefore !== null ? "\u{1F514}" : "\u{1F515}"}
+              </Text>
+            </Pressable>
             <Pressable
               onPress={() =>
                 setTargetBlocks((blocks) =>
@@ -204,6 +229,15 @@ export default function TargetBlock({
             />
           </>
         )}
+
+        <AlertModal
+          visible={block.isAlertModalVisible}
+          currentAlertMinutes={block.alertMinutesBefore}
+          maxMinutes={parseInt(block.countdown.split(":")[0], 10) || 0}
+          onConfirm={(minutes) => handleAlertConfirm(block.id, minutes)}
+          onDelete={() => handleAlertDelete(block.id)}
+          onCancel={() => toggleAlertModal(block.id, false)}
+        />
       </View>
     </View>
   );
