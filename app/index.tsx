@@ -1,4 +1,5 @@
 import ClockPicker from "@/components/ClockPicker";
+import HelpModal from "@/components/HelpModal";
 import TargetBlock, { TargetBlockType } from "@/components/TargetBlock";
 import { colors } from "@/constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -37,12 +38,13 @@ export default function HomeScreen() {
   const [zone1, setZone1] = useState("Europe/Berlin");
   const [zone2, setZone2] = useState("Asia/Colombo");
   const [fullScreen, setFullScreen] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     createDefaultBlock(1),
   ]);
   const nextIdRef = useRef(2);
   const isLoadedRef = useRef(false);
-  const alertQueueRef = useRef<Array<{ id: number; name: string; minutes: number }>>([]);
+  const alertQueueRef = useRef<{ id: number; name: string; minutes: number }[]>([]);
 
   // Load saved values
   useEffect(() => {
@@ -62,8 +64,8 @@ export default function HomeScreen() {
           const maxId = parsed.reduce((max, b) => Math.max(max, b.id), 0);
           nextIdRef.current = maxId + 1;
         }
-      } catch (error) {
-        console.log("Error loading data:", error);
+      } catch {
+        // silently fail — app defaults will be used
       }
       isLoadedRef.current = true;
     };
@@ -265,15 +267,14 @@ export default function HomeScreen() {
       setZone2("Asia/Colombo");
       nextIdRef.current = 2;
       setTargetBlocks([createDefaultBlock(1)]);
-    } catch (error) {
-      console.log("Error resetting data:", error);
+    } catch {
+      // silently fail — state already reset above
     }
   }, []);
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 justify-start w-screen h-screen"
-      style={{ backgroundColor: colors.background }}
+      style={{ flex: 1, justifyContent: "flex-start", backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -285,9 +286,26 @@ export default function HomeScreen() {
         }}
       >
         {!fullScreen && (
-          <Text className="text-broadcast-header text-2xl sm:text-3xl text-center tracking-widest uppercase mb-4 font-light">
-            Broadcast Clock
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", width: "100%", marginBottom: 16 }}>
+            <Text style={{ color: colors.header, fontSize: 20, letterSpacing: 3, textTransform: "uppercase", fontWeight: "300", flex: 1 }}>
+              Broadcast Clock
+            </Text>
+            <Pressable
+              onPress={() => setHelpVisible(true)}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.surfaceBorder,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700" }}>?</Text>
+            </Pressable>
+          </View>
         )}
 
         <ClockPicker
@@ -318,41 +336,47 @@ export default function HomeScreen() {
         ))}
 
         {!fullScreen && (
-          <View className="w-full sm:w-2/3 mt-4 gap-3">
+          <View style={{ width: "100%", marginTop: 16, gap: 12 }}>
             <Pressable
               onPress={addTargetBlock}
-              className="bg-broadcast-surface border border-broadcast-surface-border rounded-xl py-3 items-center"
+              style={{ backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
             >
-              <Text className="text-broadcast-accent text-base font-medium">
+              <Text style={{ color: colors.accent, fontSize: 15, fontWeight: "500" }}>
                 + Add Target
               </Text>
             </Pressable>
 
             <Pressable
               onPress={resetAll}
-              className="bg-broadcast-surface border border-broadcast-surface-border rounded-xl py-3 items-center"
+              style={{ backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
             >
-              <Text className="text-broadcast-danger text-base font-medium">
+              <Text style={{ color: colors.danger, fontSize: 15, fontWeight: "500" }}>
                 Reset All
               </Text>
             </Pressable>
           </View>
         )}
 
-        <View className="w-full sm:w-2/3 mt-3 mb-6">
+        <View style={{ width: "100%", marginTop: 12, marginBottom: 24 }}>
           <Pressable
             onPress={toggleFullScreen}
-            className="border border-broadcast-surface-border rounded-xl py-3 items-center"
             style={{
               backgroundColor: fullScreen ? colors.surface : "transparent",
+              borderColor: colors.surfaceBorder,
+              borderWidth: 1,
+              borderRadius: 12,
+              paddingVertical: 14,
+              alignItems: "center",
             }}
           >
-            <Text className="text-broadcast-muted text-sm font-medium">
+            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
               {fullScreen ? "Exit Full Screen" : "Full Screen"}
             </Text>
           </Pressable>
         </View>
       </ScrollView>
+
+      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} />
     </KeyboardAvoidingView>
   );
 }

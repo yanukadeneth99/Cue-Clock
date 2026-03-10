@@ -1,0 +1,163 @@
+import { colors } from "@/constants/colors";
+import React from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+
+interface HelpModalProps {
+  visible: boolean;
+  onClose: () => void;
+}
+
+const helpItems: { label: string; description: string }[] = [
+  {
+    label: "Zone 1 / Zone 2",
+    description:
+      "Two live clocks displaying the current time in different timezones. Tap the dropdown to change the timezone for each clock.",
+  },
+  {
+    label: "+ Add Target",
+    description:
+      "Creates a new countdown timer. You can have multiple countdowns running at the same time.",
+  },
+  {
+    label: "Target Name",
+    description:
+      "Tap the name field at the top of a countdown card to rename it (e.g. \"Show Start\", \"News Break\").",
+  },
+  {
+    label: "Target Time",
+    description:
+      "The time you are counting down to. Tap to open a time picker and set the target hour and minute.",
+  },
+  {
+    label: "Deduct Time",
+    description:
+      "A buffer offset subtracted from the countdown. Useful for pre-show preparation \u2014 e.g. deduct 5 minutes to get a warning before the actual target.",
+  },
+  {
+    label: "Zone Selector",
+    description:
+      "Choose which timezone (Zone 1 or Zone 2) the countdown is calculated against.",
+  },
+  {
+    label: "\u{1F514}  Alert Button",
+    description:
+      "Set an alert that fires when the countdown reaches a specified number of minutes before the target time.",
+  },
+  {
+    label: "\u2013  Collapse / +  Expand",
+    description:
+      "Minimizes the countdown card to show only the name and timer, hiding the settings. Tap again to expand.",
+  },
+  {
+    label: "X  Delete",
+    description: "Removes the countdown timer permanently.",
+  },
+  {
+    label: "Full Screen",
+    description:
+      "Hides all controls and shows only the clocks and countdowns in a large, easy-to-read display for on-air use.",
+  },
+  {
+    label: "Reset All",
+    description:
+      "Clears all saved data and returns the app to its default state with one countdown timer.",
+  },
+];
+
+export default function HelpModal({ visible, onClose }: HelpModalProps) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      {/* Backdrop and card are siblings — prevents backdrop Pressable from
+          stealing scroll gestures that belong to the inner ScrollView */}
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+        <View style={styles.card}>
+          <Text style={styles.title}>How to Use</Text>
+
+          <ScrollView showsVerticalScrollIndicator nestedScrollEnabled>
+            {helpItems.map((item, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.item,
+                  index < helpItems.length - 1 && styles.itemBorder,
+                ]}
+              >
+                <Text style={styles.itemLabel}>{item.label}</Text>
+                <Text style={styles.itemDesc}>{item.description}</Text>
+              </View>
+            ))}
+          </ScrollView>
+
+          <Pressable onPress={onClose} style={styles.closeButton}>
+            <Text style={styles.closeText}>Close</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderColor: colors.surfaceBorder,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 24,
+    width: "90%",
+    maxWidth: 400,
+    maxHeight: "80%",
+  },
+  title: {
+    color: colors.header,
+    fontSize: 20,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  item: {
+    marginBottom: 16,
+    paddingBottom: 16,
+  },
+  itemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceBorder,
+  },
+  itemLabel: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  itemDesc: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  closeButton: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  closeText: {
+    color: colors.header,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+});

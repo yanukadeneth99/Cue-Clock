@@ -40,26 +40,20 @@ export default function ClockPicker({
 
   if (fullScreen) {
     return (
-      <View className="flex-col sm:flex-row justify-center items-center w-full my-4 gap-2">
-        <View className="items-center">
-          <Text className="text-broadcast-muted text-sm tracking-widest uppercase mb-1">
+      <View style={{ flexDirection: "column", justifyContent: "center", alignItems: "center", width: "100%", marginVertical: 16, gap: 8 }}>
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ color: colors.muted, fontSize: 12, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>
             {zone1.replace("/", " / ")}
           </Text>
-          <Text
-            className="text-broadcast-zone1 text-7xl sm:text-8xl font-bold"
-            style={{ fontVariant: ["tabular-nums"] }}
-          >
+          <Text style={{ color: colors.zone1, fontSize: 64, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
             {time1}
           </Text>
         </View>
-        <View className="items-center">
-          <Text className="text-broadcast-muted text-sm tracking-widest uppercase mb-1">
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ color: colors.muted, fontSize: 12, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>
             {zone2.replace("/", " / ")}
           </Text>
-          <Text
-            className="text-broadcast-zone2 text-7xl sm:text-8xl font-bold"
-            style={{ fontVariant: ["tabular-nums"] }}
-          >
+          <Text style={{ color: colors.zone2, fontSize: 64, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
             {time2}
           </Text>
         </View>
@@ -68,61 +62,47 @@ export default function ClockPicker({
   }
 
   return (
-    <View className="py-6 w-full flex flex-row justify-center items-stretch gap-3 my-2">
+    <View style={{ paddingVertical: 8, width: "100%", flexDirection: "row", justifyContent: "center", alignItems: "stretch", gap: 12, marginVertical: 8 }}>
       {/* Zone 1 */}
-      <View className="flex-1 flex-col items-center bg-broadcast-surface border border-broadcast-surface-border rounded-2xl py-5 px-3">
-        <Text className="text-broadcast-muted text-xs tracking-widest uppercase mb-2">
+      <View style={{ flex: 1, alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 16, paddingVertical: 20, paddingHorizontal: 12 }}>
+        <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
           Zone 1
         </Text>
-        <Picker
-          selectedValue={zone1}
-          onValueChange={setZone1}
-          style={{
-            width: "100%",
-            maxWidth: 220,
-            height: 44,
-            backgroundColor: colors.pickerBg,
-            color: colors.pickerText,
-            borderRadius: 8,
-          }}
-        >
-          {timezones.map((tz) => (
-            <Picker.Item label={tz} value={tz} key={tz} />
-          ))}
-        </Picker>
-        <Text
-          className="text-broadcast-zone1 text-[36px] sm:text-[120px] mt-3 font-bold"
-          style={{ fontVariant: ["tabular-nums"] }}
-        >
+        <View style={{ width: "100%", backgroundColor: colors.pickerBg, borderRadius: 8, borderColor: colors.border, borderWidth: 1 }}>
+          <Picker
+            selectedValue={zone1}
+            onValueChange={setZone1}
+            style={{ width: "100%", color: colors.pickerText }}
+            dropdownIconColor={colors.muted}
+          >
+            {timezones.map((tz) => (
+              <Picker.Item label={tz.replace("/", " / ")} value={tz} key={tz} style={{ backgroundColor: colors.pickerBg, color: colors.pickerText, fontSize: 13 }} />
+            ))}
+          </Picker>
+        </View>
+        <Text style={{ color: colors.zone1, fontSize: 32, marginTop: 12, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
           {time1}
         </Text>
       </View>
 
       {/* Zone 2 */}
-      <View className="flex-1 flex-col items-center bg-broadcast-surface border border-broadcast-surface-border rounded-2xl py-5 px-3">
-        <Text className="text-broadcast-muted text-xs tracking-widest uppercase mb-2">
+      <View style={{ flex: 1, alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 16, paddingVertical: 20, paddingHorizontal: 12 }}>
+        <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
           Zone 2
         </Text>
-        <Picker
-          selectedValue={zone2}
-          onValueChange={setZone2}
-          style={{
-            width: "100%",
-            maxWidth: 220,
-            height: 44,
-            backgroundColor: colors.pickerBg,
-            color: colors.pickerText,
-            borderRadius: 8,
-          }}
-        >
-          {timezones.map((tz) => (
-            <Picker.Item label={tz} value={tz} key={tz} />
-          ))}
-        </Picker>
-        <Text
-          className="text-broadcast-zone2 text-[36px] sm:text-[120px] mt-3 font-bold"
-          style={{ fontVariant: ["tabular-nums"] }}
-        >
+        <View style={{ width: "100%", backgroundColor: colors.pickerBg, borderRadius: 8, borderColor: colors.border, borderWidth: 1 }}>
+          <Picker
+            selectedValue={zone2}
+            onValueChange={setZone2}
+            style={{ width: "100%", color: colors.pickerText }}
+            dropdownIconColor={colors.muted}
+          >
+            {timezones.map((tz) => (
+              <Picker.Item label={tz.replace("/", " / ")} value={tz} key={tz} style={{ backgroundColor: colors.pickerBg, color: colors.pickerText, fontSize: 13 }} />
+            ))}
+          </Picker>
+        </View>
+        <Text style={{ color: colors.zone2, fontSize: 32, marginTop: 12, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
           {time2}
         </Text>
       </View>

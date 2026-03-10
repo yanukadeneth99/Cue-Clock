@@ -7,14 +7,14 @@ module.exports = {
     extend: {
       colors: {
         broadcast: {
-          bg: "#0a0a0a",
-          surface: "#161616",
-          "surface-border": "#2a2a2a",
-          header: "#e0e0e0",
+          bg: "#1a1d23",
+          surface: "#252830",
+          "surface-border": "#353840",
+          header: "#e8eaed",
           zone1: "#4ade80",
           zone2: "#f87171",
-          countdown: "#facc15",
-          muted: "#888888",
+          countdown: "#fbbf24",
+          muted: "#8b8f96",
           danger: "#ef4444",
           accent: "#60a5fa",
         },

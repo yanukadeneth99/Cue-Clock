@@ -57,6 +57,8 @@ app/
 components/
   ClockPicker.tsx   # Live dual-timezone clock display + timezone selector
   TargetBlock.tsx   # Individual countdown timer block (collapsible)
+  AlertModal.tsx    # Modal for setting/managing countdown alerts
+  HelpModal.tsx     # In-app help overlay explaining all controls
 
 constants/
   colors.ts         # Single source of truth for the color palette
@@ -78,6 +80,7 @@ hooks/
 | `zone2` | `string` | Second timezone (displayed in red) |
 | `targetBlocks` | `TargetBlock[]` | All countdown timers |
 | `fullScreen` | `boolean` | Toggle full-screen display mode |
+| `helpVisible` | `boolean` | Toggle help modal visibility |
 
 All state is persisted to AsyncStorage via `multiSet`/`multiGet` and rehydrated on mount.
 
@@ -94,22 +97,26 @@ All state is persisted to AsyncStorage via `multiSet`/`multiGet` and rehydrated 
 ### Color Scheme
 
 ```
-background       #0a0a0a    (near-black)
-surface          #161616    (card backgrounds)
-surfaceBorder    #2a2a2a    (card borders)
-header           #e0e0e0    (light gray text)
+background       #1a1d23    (dark blue-gray)
+surface          #252830    (card backgrounds)
+surfaceBorder    #353840    (card borders)
+header           #e8eaed    (light text)
 zone1            #4ade80    (green-400)
 zone2            #f87171    (red-400)
-countdown        #facc15    (yellow-400)
-muted            #888888    (secondary text)
+countdown        #fbbf24    (amber-400)
+muted            #8b8f96    (secondary text)
 danger           #ef4444    (destructive actions)
 accent           #60a5fa    (blue-400, interactive elements)
-pickerText       #0a0a0a    (picker foreground)
-pickerBg         #f5f5f5    (picker background)
-border           #3a3a3a    (general borders)
+pickerText       #e8eaed    (picker foreground, light)
+pickerBg         #2f323a    (picker background, dark)
+border           #3f434d    (general borders)
 ```
 
 All colors are defined in `constants/colors.ts` and mirrored in `tailwind.config.js` under the `broadcast` namespace. Do not hardcode colors elsewhere.
+
+### Styling Approach
+
+Components use inline `style` props (not NativeWind `className`) for all layout and visual styling to ensure reliable rendering on native mobile platforms. NativeWind/Tailwind is configured but className should only be used as a secondary option.
 
 ### Supported Timezones
 
@@ -149,7 +156,7 @@ npm run lint
 ## Coding Conventions
 
 - TypeScript strict mode is enabled — no `any`, no suppression without explanation.
-- Styles use NativeWind `className` props; use inline `style` only for dynamic/computed values.
+- Styles use inline `style` props for reliable native rendering; NativeWind `className` may be used as a supplement but is not the primary styling method.
 - Components should be self-contained and stateless where possible; lift state to `index.tsx`.
 - Use `useCallback` for handlers passed as props to prevent unnecessary re-renders.
 - Use `Pressable` instead of `Button` for custom-styled interactive elements.
@@ -170,7 +177,7 @@ Android package: `com.yanukadeneth99.broadcastclock`
 
 ## Current Development Status
 
-**Done:** Core countdown logic, dual-clock display, full-screen mode, multi-target support, persistence, design polish pass, logo/favicon/splash assets, alert/alarm per target block.
+**Done:** Core countdown logic, dual-clock display, full-screen mode, multi-target support, persistence, design polish pass, logo/favicon/splash assets, alert/alarm per target block, in-app help modal.
 
 **Pending:** Animations, app store deployment.
 

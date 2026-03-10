@@ -61,22 +61,19 @@ export default function TargetBlock({
 }: Props) {
   if (fullScreen) {
     return (
-      <View className="w-full flex flex-row items-center my-2 sm:w-1/2 justify-center">
-        <Text className="text-broadcast-muted text-base font-medium text-center basis-1/4 sm:basis-1/3">
+      <View style={{ width: "100%", flexDirection: "row", alignItems: "center", marginVertical: 8, justifyContent: "center" }}>
+        <Text style={{ color: colors.muted, fontSize: 16, fontWeight: "500", textAlign: "center", flex: 1 }}>
           {block.name.length > 12
             ? block.name.substring(0, 12) + "..."
             : block.name}
         </Text>
-        <View className="flex-row items-center justify-center basis-3/4 sm:basis-2/3">
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", flex: 3 }}>
           {block.alertMinutesBefore !== null && (
             <Text style={{ color: colors.countdown, fontSize: 16, marginRight: 8 }}>
               {"\u{1F514}"}
             </Text>
           )}
-          <Text
-            className="text-broadcast-countdown text-6xl sm:text-7xl font-bold py-3 text-center"
-            style={{ fontVariant: ["tabular-nums"] }}
-          >
+          <Text style={{ color: colors.countdown, fontSize: 56, fontWeight: "bold", paddingVertical: 12, textAlign: "center", fontVariant: ["tabular-nums"] }}>
             {block.countdown}
           </Text>
         </View>
@@ -85,10 +82,10 @@ export default function TargetBlock({
   }
 
   return (
-    <View className="w-full sm:w-2/3 my-2">
-      <View className="bg-broadcast-surface border border-broadcast-surface-border rounded-2xl p-5">
-        {/* Header: name, collapse, delete */}
-        <View className="flex-row items-center mb-3">
+    <View style={{ width: "100%", marginVertical: 8 }}>
+      <View style={styles.card}>
+        {/* Header: name, alert, collapse, delete */}
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
           <TextInput
             style={styles.nameInput}
             placeholder={`Target #${block.id}`}
@@ -102,10 +99,10 @@ export default function TargetBlock({
               )
             }
           />
-          <View className="flex-row gap-2">
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Pressable
               onPress={() => toggleAlertModal(block.id, true)}
-              className="w-9 h-9 rounded-lg bg-broadcast-bg items-center justify-center"
+              style={styles.iconButton}
             >
               <Text style={{ color: block.alertMinutesBefore !== null ? colors.countdown : colors.muted, fontSize: 16 }}>
                 {block.alertMinutesBefore !== null ? "\u{1F514}" : "\u{1F515}"}
@@ -121,17 +118,17 @@ export default function TargetBlock({
                   )
                 )
               }
-              className="w-9 h-9 rounded-lg bg-broadcast-bg items-center justify-center"
+              style={styles.iconButton}
             >
-              <Text className="text-broadcast-muted text-base">
-                {block.isCollapsed ? "\u25BC" : "\u25B2"}
+              <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "bold" }}>
+                {block.isCollapsed ? "+" : "\u2013"}
               </Text>
             </Pressable>
             <Pressable
               onPress={() => removeBlock(block.id)}
-              className="w-9 h-9 rounded-lg bg-broadcast-bg items-center justify-center"
+              style={styles.iconButton}
             >
-              <Text className="text-broadcast-danger text-base font-bold">
+              <Text style={{ color: colors.danger, fontSize: 14, fontWeight: "bold" }}>
                 X
               </Text>
             </Pressable>
@@ -139,67 +136,61 @@ export default function TargetBlock({
         </View>
 
         {/* Countdown - always visible */}
-        <Text
-          className="text-4xl sm:text-[72px] sm:py-4 font-bold text-broadcast-countdown text-center py-2"
-          style={{ fontVariant: ["tabular-nums"] }}
-        >
+        <Text style={{ fontSize: 40, fontWeight: "bold", color: colors.countdown, textAlign: "center", paddingVertical: 8, fontVariant: ["tabular-nums"] }}>
           {block.countdown}
         </Text>
 
         {/* Expanded controls */}
         {!block.isCollapsed && (
           <>
-            <View className="flex-row justify-center items-center w-full mt-4 gap-3 sm:px-24">
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", width: "100%", marginTop: 16, gap: 12 }}>
               <Pressable
                 onPress={() => toggleTargetPicker(block.id, true)}
-                className="flex-1 bg-broadcast-bg border border-broadcast-surface-border rounded-xl py-3 px-4 items-center"
+                style={styles.timeButton}
               >
-                <Text className="text-broadcast-muted text-xs uppercase tracking-wider mb-1">
+                <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
                   Target
                 </Text>
-                <Text className="text-broadcast-header text-lg font-semibold">
+                <Text style={{ color: colors.header, fontSize: 18, fontWeight: "600" }}>
                   {pad(block.targetHour)}:{pad(block.targetMinute)}
                 </Text>
               </Pressable>
 
               <Pressable
                 onPress={() => toggleDeductPicker(block.id, true)}
-                className="flex-1 bg-broadcast-bg border border-broadcast-surface-border rounded-xl py-3 px-4 items-center"
+                style={styles.timeButton}
               >
-                <Text className="text-broadcast-muted text-xs uppercase tracking-wider mb-1">
+                <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
                   Deduct
                 </Text>
-                <Text className="text-broadcast-header text-lg font-semibold">
+                <Text style={{ color: colors.header, fontSize: 18, fontWeight: "600" }}>
                   {pad(block.deductHour)}:{pad(block.deductMinute)}
                 </Text>
               </Pressable>
             </View>
 
             {/* Zone selector */}
-            <View className="flex-row justify-center items-center mt-3">
-              <Text className="text-broadcast-muted text-xs uppercase tracking-wider mr-2">
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 12 }}>
+              <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginRight: 8 }}>
                 Zone
               </Text>
-              <Picker
-                selectedValue={block.targetZone}
-                onValueChange={(val) =>
-                  setTargetBlocks((blocks) =>
-                    blocks.map((b) =>
-                      b.id === block.id ? { ...b, targetZone: val } : b
+              <View style={{ width: 160, backgroundColor: colors.pickerBg, borderRadius: 8, borderColor: colors.border, borderWidth: 1 }}>
+                <Picker
+                  selectedValue={block.targetZone}
+                  onValueChange={(val) =>
+                    setTargetBlocks((blocks) =>
+                      blocks.map((b) =>
+                        b.id === block.id ? { ...b, targetZone: val } : b
+                      )
                     )
-                  )
-                }
-                style={{
-                  maxWidth: 160,
-                  height: 40,
-                  backgroundColor: colors.pickerBg,
-                  color: colors.pickerText,
-                  borderRadius: 8,
-                }}
-              >
-                <Picker.Item label="Zone 1" value="zone1" />
-                <Picker.Item label="Zone 2" value="zone2" />
-              </Picker>
+                  }
+                  style={{ width: 160, color: colors.pickerText }}
+                  dropdownIconColor={colors.muted}
+                >
+                  <Picker.Item label="Zone 1" value="zone1" style={{ backgroundColor: colors.pickerBg, color: colors.pickerText, fontSize: 14 }} />
+                  <Picker.Item label="Zone 2" value="zone2" style={{ backgroundColor: colors.pickerBg, color: colors.pickerText, fontSize: 14 }} />
+                </Picker>
+              </View>
             </View>
 
             <DateTimePickerModal
@@ -244,6 +235,13 @@ export default function TargetBlock({
 }
 
 const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderColor: colors.surfaceBorder,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 20,
+  },
   nameInput: {
     fontSize: 15,
     color: colors.header,
@@ -252,5 +250,25 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
     paddingVertical: 4,
+  },
+  iconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  timeButton: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderColor: colors.surfaceBorder,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: "center",
   },
 });
