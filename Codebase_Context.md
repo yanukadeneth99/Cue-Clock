@@ -23,6 +23,13 @@ HomeScreen (app/index.tsx)
 
 All state persisted via AsyncStorage (`multiSet`/`multiGet`).
 
+### Fullscreen Layout Pattern
+`HomeScreen` uses a **single `View` root** (never swaps root type) with conditional children to avoid native crashes. In fullscreen:
+- `ClockPicker` is rendered above the `ScrollView` (fixed, not scrollable)
+- `TargetBlock` list is inside a `ScrollView` (scroll enabled only when blocks overflow minimum font size)
+- Full Screen / Exit button is in a fixed `View` below the `ScrollView`
+- `safeTop`/`safeBottom` from `useSafeAreaInsets()` used for all edge padding
+
 ## Key Patterns
 
 ### Styling
@@ -47,3 +54,6 @@ All components use **inline `style` props** for layout and visual properties. Na
 - Use `T[]` not `Array<T>` (ESLint rule)
 - Catch blocks: use empty `catch {}` or comment-only — no `console.log` in production error handlers
 - Icon buttons: 34×34, `borderRadius: 8`, background `colors.background`, border `colors.surfaceBorder` — consistent across all three header icons in TargetBlock
+- Safe area: always use `useSafeAreaInsets()` from `react-native-safe-area-context`; never hardcode platform offsets
+- Single root element: `HomeScreen` must return a single `View` root to prevent tree remounts when toggling fullscreen
+- Exported React components and functions must have JSDoc describing props/parameters

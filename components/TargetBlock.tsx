@@ -42,13 +42,33 @@ interface Props {
   zone2: string;
   removeBlock: (id: number) => void;
   fullScreen?: boolean;
+  countdownFontSize?: number;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+/**
+ * Renders a single countdown timer block.
+ * In fullscreen mode shows a compact row with name and countdown at dynamic font size.
+ * In normal mode shows a card with editable controls (target time, deduction, zone, alert).
+ *
+ * @param block - The countdown block data.
+ * @param fullScreen - Whether the app is in fullscreen display mode.
+ * @param countdownFontSize - Font size for the countdown text (fullscreen only, default 56).
+ * @param setTargetBlocks - Dispatcher to update the blocks array.
+ * @param removeBlock - Callback to delete this block by id.
+ * @param toggleTargetPicker - Show/hide the target time picker for a block.
+ * @param toggleDeductPicker - Show/hide the deduction time picker for a block.
+ * @param handleTargetConfirm - Confirm a new target time selection.
+ * @param handleDeductConfirm - Confirm a new deduction time selection.
+ * @param toggleAlertModal - Show/hide the alert configuration modal.
+ * @param handleAlertConfirm - Confirm a new alert threshold in minutes.
+ * @param handleAlertDelete - Remove the alert from this block.
+ */
 export default function TargetBlock({
   block,
   fullScreen,
+  countdownFontSize = 56,
   setTargetBlocks,
   removeBlock,
   toggleTargetPicker,
@@ -60,20 +80,21 @@ export default function TargetBlock({
   handleAlertDelete,
 }: Props) {
   if (fullScreen) {
+    const labelFontSize = Math.max(12, Math.round(countdownFontSize * 0.28));
     return (
-      <View style={{ width: "100%", flexDirection: "row", alignItems: "center", marginVertical: 8, justifyContent: "center" }}>
-        <Text style={{ color: colors.muted, fontSize: 16, fontWeight: "500", textAlign: "center", flex: 1 }}>
+      <View style={{ width: "100%", flexDirection: "row", alignItems: "center", marginVertical: 6, justifyContent: "center" }}>
+        <Text style={{ color: colors.muted, fontSize: labelFontSize, fontWeight: "500", textAlign: "center", flex: 1 }}>
           {block.name.length > 12
             ? block.name.substring(0, 12) + "..."
             : block.name}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", flex: 3 }}>
           {block.alertMinutesBefore !== null && (
-            <Text style={{ color: colors.countdown, fontSize: 16, marginRight: 8 }}>
+            <Text style={{ color: colors.countdown, fontSize: labelFontSize, marginRight: 6 }}>
               {"\u{1F514}"}
             </Text>
           )}
-          <Text style={{ color: colors.countdown, fontSize: 56, fontWeight: "bold", paddingVertical: 12, textAlign: "center", fontVariant: ["tabular-nums"] }}>
+          <Text style={{ color: colors.countdown, fontSize: countdownFontSize, fontWeight: "bold", paddingVertical: 8, textAlign: "center", fontVariant: ["tabular-nums"] }}>
             {block.countdown}
           </Text>
         </View>

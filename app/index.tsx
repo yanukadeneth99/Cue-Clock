@@ -7,13 +7,21 @@ import { DateTime } from "luxon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const FULLSCREEN_CLOCK_HEIGHT = 210; // estimated height of ClockPicker in fullscreen
+const FULLSCREEN_EXIT_BTN_HEIGHT = 60; // height of exit button + margins
+const FULLSCREEN_MAX_FONT = 56;
+const FULLSCREEN_MIN_FONT = 24;
+// per-block height overhead beyond font size (marginVertical + line-height overhead)
+const BLOCK_OVERHEAD = 42;
 
 function createDefaultBlock(id: number): TargetBlockType {
   return {
@@ -34,7 +42,14 @@ function createDefaultBlock(id: number): TargetBlockType {
   };
 }
 
+/**
+ * Root screen for Broadcast Clock.
+ * Manages all app state: timezones, countdown blocks, fullscreen mode, and alerts.
+ * Persists state to AsyncStorage and rehydrates on mount.
+ */
 export default function HomeScreen() {
+  const { height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [zone1, setZone1] = useState("Europe/Berlin");
   const [zone2, setZone2] = useState("Asia/Colombo");
   const [fullScreen, setFullScreen] = useState(false);
@@ -272,49 +287,76 @@ export default function HomeScreen() {
     }
   }, []);
 
-  return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, justifyContent: "flex-start", backgroundColor: colors.background }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        scrollEnabled={!fullScreen}
-        contentContainerStyle={{
-          padding: 16,
-          alignItems: "center",
-          paddingTop: Platform.OS === "web" ? 16 : 48,
-        }}
-      >
-        {!fullScreen && (
-          <View style={{ flexDirection: "row", alignItems: "center", width: "100%", marginBottom: 16 }}>
-            <Text style={{ color: colors.header, fontSize: 20, letterSpacing: 3, textTransform: "uppercase", fontWeight: "300", flex: 1 }}>
-              Broadcast Clock
-            </Text>
-            <Pressable
-              onPress={() => setHelpVisible(true)}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.surfaceBorder,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700" }}>?</Text>
-            </Pressable>
-          </View>
-        )}
+  // Compute dynamic font size for fullscreen target blocks
+  const safeTop = Math.max(insets.top, Platform.OS === "web" ? 16 : 32);
+  const safeBottom = Math.max(insets.bottom, 16);
+  const fullscreenAvailableHeight =
+    screenHeight - FULLSCREEN_CLOCK_HEIGHT - FULLSCREEN_EXIT_BTN_HEIGHT - safeTop - safeBottom;
+  const blockCount = targetBlocks.length;
+  const idealFontSize =
+    blockCount > 0
+      ? Math.floor((fullscreenAvailableHeight / blockCount - BLOCK_OVERHEAD) / 1.2)
+      : FULLSCREEN_MAX_FONT;
+  const countdownFontSize = Math.min(FULLSCREEN_MAX_FONT, Math.max(FULLSCREEN_MIN_FONT, idealFontSize));
+  const fullscreenNeedsScroll = idealFontSize < FULLSCREEN_MIN_FONT;
 
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: safeTop }}>
+      {/* Header — normal mode only */}
+      {!fullScreen && (
+        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, marginBottom: 8 }}>
+          <Text style={{ color: colors.header, fontSize: 20, letterSpacing: 3, textTransform: "uppercase", fontWeight: "300", flex: 1 }}>
+            Broadcast Clock
+          </Text>
+          <Pressable
+            onPress={() => setHelpVisible(true)}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 17,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.surfaceBorder,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700" }}>?</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Clock section — always visible, not scrollable in fullscreen */}
+      {fullScreen && (
         <ClockPicker
           zone1={zone1}
           zone2={zone2}
           setZone1={setZone1}
           setZone2={setZone2}
-          fullScreen={fullScreen}
+          fullScreen
         />
+      )}
+
+      {/* Scrollable content */}
+      <ScrollView
+        scrollEnabled={fullScreen ? fullscreenNeedsScroll : true}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          alignItems: fullScreen ? undefined : "center",
+          paddingBottom: fullScreen ? 0 : safeBottom + 16,
+        }}
+        showsVerticalScrollIndicator={fullScreen ? fullscreenNeedsScroll : true}
+      >
+        {/* Clock section in normal mode — scrolls with content */}
+        {!fullScreen && (
+          <ClockPicker
+            zone1={zone1}
+            zone2={zone2}
+            setZone1={setZone1}
+            setZone2={setZone2}
+          />
+        )}
 
         {targetBlocks.map((block) => (
           <TargetBlock
@@ -332,6 +374,7 @@ export default function HomeScreen() {
             zone2={zone2}
             removeBlock={removeBlock}
             fullScreen={fullScreen}
+            countdownFontSize={fullScreen ? countdownFontSize : undefined}
           />
         ))}
 
@@ -356,27 +399,28 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         )}
-
-        <View style={{ width: "100%", marginTop: 12, marginBottom: 24 }}>
-          <Pressable
-            onPress={toggleFullScreen}
-            style={{
-              backgroundColor: fullScreen ? colors.surface : "transparent",
-              borderColor: colors.surfaceBorder,
-              borderWidth: 1,
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
-              {fullScreen ? "Exit Full Screen" : "Full Screen"}
-            </Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
+      {/* Full Screen toggle — fixed at bottom */}
+      <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4 }}>
+        <Pressable
+          onPress={toggleFullScreen}
+          style={{
+            backgroundColor: fullScreen ? colors.surface : "transparent",
+            borderColor: colors.surfaceBorder,
+            borderWidth: 1,
+            borderRadius: 12,
+            paddingVertical: 14,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
+            {fullScreen ? "Exit Full Screen" : "Full Screen"}
+          </Text>
+        </Pressable>
+      </View>
+
       <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
