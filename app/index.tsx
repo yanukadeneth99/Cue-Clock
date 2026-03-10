@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DateTime } from "luxon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -26,6 +27,9 @@ function createDefaultBlock(id: number): TargetBlockType {
     isDeductPickerVisible: false,
     isCollapsed: false,
     name: `Target #${id}`,
+    alertMinutesBefore: null,
+    isAlertModalVisible: false,
+    alertFired: false,
   };
 }
 
@@ -38,6 +42,7 @@ export default function HomeScreen() {
   ]);
   const nextIdRef = useRef(2);
   const isLoadedRef = useRef(false);
+  const alertQueueRef = useRef<Array<{ id: number; name: string; minutes: number }>>([]);
 
   // Load saved values
   useEffect(() => {
@@ -105,14 +110,61 @@ export default function HomeScreen() {
           const seconds = Math.floor(diff.seconds ?? 0);
           const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
-          if (block.countdown === newCountdown) return block;
-          return { ...block, countdown: newCountdown };
+          let changed = block.countdown !== newCountdown;
+          let updates: Partial<TargetBlockType> = {};
+
+          if (changed) {
+            updates.countdown = newCountdown;
+          }
+
+          // Alert detection
+          if (block.alertMinutesBefore !== null) {
+            const shouldFire =
+              !block.alertFired &&
+              totalMinutes <= block.alertMinutesBefore &&
+              totalMinutes >= 0;
+
+            if (shouldFire) {
+              alertQueueRef.current.push({
+                id: block.id,
+                name: block.name,
+                minutes: block.alertMinutesBefore,
+              });
+              updates.alertFired = true;
+              changed = true;
+            }
+
+            // Reset alertFired when countdown rolls over (next day)
+            if (
+              block.alertFired &&
+              totalMinutes > block.alertMinutesBefore
+            ) {
+              updates.alertFired = false;
+              changed = true;
+            }
+          }
+
+          if (!changed) return block;
+          return { ...block, ...updates };
         })
       );
     }, 1000);
 
     return () => clearInterval(timer);
   }, [zone1, zone2]);
+
+  // Process queued alerts
+  useEffect(() => {
+    if (alertQueueRef.current.length > 0) {
+      const alerts = alertQueueRef.current.splice(0);
+      alerts.forEach((a) => {
+        Alert.alert(
+          "Countdown Alert",
+          `"${a.name}" has reached ${a.minutes} minute${a.minutes !== 1 ? "s" : ""} before target!`
+        );
+      });
+    }
+  }, [targetBlocks]);
 
   const toggleFullScreen = useCallback(
     () => setFullScreen((prev) => !prev),
@@ -144,6 +196,7 @@ export default function HomeScreen() {
               targetHour: date.getHours(),
               targetMinute: date.getMinutes(),
               isTargetPickerVisible: false,
+              alertFired: false,
             }
           : b
       )
@@ -159,7 +212,36 @@ export default function HomeScreen() {
               deductHour: date.getHours(),
               deductMinute: date.getMinutes(),
               isDeductPickerVisible: false,
+              alertFired: false,
             }
+          : b
+      )
+    );
+  }, []);
+
+  const toggleAlertModal = useCallback((id: number, show: boolean) => {
+    setTargetBlocks((blocks) =>
+      blocks.map((b) =>
+        b.id === id ? { ...b, isAlertModalVisible: show } : b
+      )
+    );
+  }, []);
+
+  const handleAlertConfirm = useCallback((id: number, minutes: number) => {
+    setTargetBlocks((blocks) =>
+      blocks.map((b) =>
+        b.id === id
+          ? { ...b, alertMinutesBefore: minutes, isAlertModalVisible: false, alertFired: false }
+          : b
+      )
+    );
+  }, []);
+
+  const handleAlertDelete = useCallback((id: number) => {
+    setTargetBlocks((blocks) =>
+      blocks.map((b) =>
+        b.id === id
+          ? { ...b, alertMinutesBefore: null, isAlertModalVisible: false, alertFired: false }
           : b
       )
     );
@@ -224,6 +306,9 @@ export default function HomeScreen() {
             toggleDeductPicker={toggleDeductPicker}
             handleTargetConfirm={handleTargetConfirm}
             handleDeductConfirm={handleDeductConfirm}
+            toggleAlertModal={toggleAlertModal}
+            handleAlertConfirm={handleAlertConfirm}
+            handleAlertDelete={handleAlertDelete}
             setTargetBlocks={setTargetBlocks}
             zone1={zone1}
             zone2={zone2}
