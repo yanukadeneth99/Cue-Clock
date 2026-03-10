@@ -34,14 +34,14 @@ Every PR or change should be evaluated against these three criteria before anyth
 
 | Layer | Technology |
 |---|---|
-| Framework | React Native 0.79.5 + Expo 53 |
-| Navigation | Expo Router v5 (file-based) |
+| Framework | React Native 0.81.5 + Expo 54 |
+| Navigation | Expo Router v6 (file-based) |
 | Language | TypeScript ~5.8.3 (strict mode) |
 | Styling | NativeWind v4 / Tailwind CSS v3 |
 | Date/Time | Luxon v3 |
 | Persistence | @react-native-async-storage/async-storage |
 | Time pickers | react-native-modal-datetime-picker + @react-native-community/datetimepicker |
-| Animations | react-native-reanimated ~3.17 |
+| Animations | react-native-reanimated ~4.1 |
 | Build/Deploy | EAS (Expo Application Services) |
 
 ---
