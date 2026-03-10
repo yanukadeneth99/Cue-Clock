@@ -1,6 +1,6 @@
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
-import "react-native-reanimated";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import "../global.css";
 
@@ -15,9 +15,11 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="+not-found" />
-    </Stack>
+    <SafeAreaProvider>
+      <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+    </SafeAreaProvider>
   );
 }
