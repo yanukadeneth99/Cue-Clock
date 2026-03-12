@@ -1,5 +1,15 @@
 # Codebase Edit History
 
+## 2026-03-11: Performance, notifications, timezones, padding, reset confirm, warning fixes
+- **React.memo on TargetBlock:** Wrapped in `React.memo` so only the block whose countdown changed re-renders each second. Reason: 15+ blocks caused noticeable lag.
+- **Countdown interval optimization:** Returns same array reference when no block changed (`anyChanged` flag). Reason: prevents unnecessary React reconciliation on idle ticks.
+- **expo-notifications:** Added `expo-notifications` for push alerts. Guarded with `Constants.executionEnvironment === "storeClient"` to prevent module load in Expo Go (throws on SDK 53+). Falls back to `Alert.alert` via `sendAlert()` helper. Reason: in-app alerts were not reliable or visible when app is backgrounded.
+- **LogBox suppression:** `LogBox.ignoreLogs(["SafeAreaView has been deprecated"])` added for expo-router internal warning we cannot patch. Reason: warning is noise from a library dependency.
+- **Timezones expanded:** 8 → 18 zones covering all major world regions. Reason: user request.
+- **Padding increased:** `safeTop = insets.top + 8` (min 44px), `safeBottom = insets.bottom + 8` (min 28px). Reason: content too close to status bar and nav buttons.
+- **Reset All confirmation:** Uses `Alert.alert` with "Cancel" / "Yes, Reset" (destructive) buttons before executing reset. Reason: accidental resets reported.
+- **Preflight JSDoc:** Auto-generated JSDoc on `HelpModal` export. CLAUDE.md updated with new standards.
+
 ## 2026-03-10: Fullscreen overflow fix + safe-area padding + preflight JSDoc
 - **Fullscreen font scaling:** Dynamic `countdownFontSize` computed from screen height and block count (clamped 24–56px). Font shrinks as blocks increase; scrolling enabled when minimum reached. Reason: target blocks overflowing screen in fullscreen mode.
 - **Fixed fullscreen layout:** ClockPicker pinned above a ScrollView; exit button fixed at bottom. Reason: clock must remain visible while targets scroll.

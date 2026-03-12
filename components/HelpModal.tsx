@@ -41,7 +41,7 @@ const helpItems: { label: string; description: string }[] = [
   {
     label: "\u{1F514}  Alert Button",
     description:
-      "Set an alert that fires when the countdown reaches a specified number of minutes before the target time.",
+      "Set an alert that sends a push notification when the countdown reaches a specified number of minutes before the target time.",
   },
   {
     label: "\u2013  Collapse / +  Expand",
@@ -60,10 +60,16 @@ const helpItems: { label: string; description: string }[] = [
   {
     label: "Reset All",
     description:
-      "Clears all saved data and returns the app to its default state with one countdown timer.",
+      "Clears all saved data and returns the app to its default state with one countdown timer. You will be asked to confirm before resetting.",
   },
 ];
 
+/**
+ * Scrollable help overlay explaining all app controls.
+ *
+ * @param visible - Whether the modal is shown.
+ * @param onClose - Callback to dismiss the modal.
+ */
 export default function HelpModal({ visible, onClose }: HelpModalProps) {
   return (
     <Modal

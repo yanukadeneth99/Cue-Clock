@@ -3,10 +3,12 @@ import HelpModal from "@/components/HelpModal";
 import TargetBlock, { TargetBlockType } from "@/components/TargetBlock";
 import { colors } from "@/constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import { DateTime } from "luxon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  LogBox,
   Platform,
   Pressable,
   ScrollView,
@@ -15,6 +17,45 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// Suppress deprecation warning from expo-router internals (uses RN's SafeAreaView)
+LogBox.ignoreLogs(["SafeAreaView has been deprecated"]);
+
+// Only load expo-notifications outside Expo Go (remote notifications removed in SDK 53)
+const isExpoGo = Constants.executionEnvironment === "storeClient";
+let Notifications: typeof import("expo-notifications") | null = null;
+if (!isExpoGo) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod: typeof import("expo-notifications") = require("expo-notifications");
+    mod.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+    Notifications = mod;
+  } catch {
+    // expo-notifications failed to initialize — will fall back to Alert.alert
+  }
+}
+
+/** Send a push notification, or fall back to Alert.alert if unavailable */
+function sendAlert(title: string, body: string) {
+  if (Notifications) {
+    Notifications.scheduleNotificationAsync({
+      content: { title, body, sound: true },
+      trigger: null,
+    }).catch(() => {
+      Alert.alert(title, body);
+    });
+  } else {
+    Alert.alert(title, body);
+  }
+}
 
 const FULLSCREEN_CLOCK_HEIGHT = 210; // estimated height of ClockPicker in fullscreen
 const FULLSCREEN_EXIT_BTN_HEIGHT = 60; // height of exit button + margins
@@ -61,6 +102,21 @@ export default function HomeScreen() {
   const isLoadedRef = useRef(false);
   const alertQueueRef = useRef<{ id: number; name: string; minutes: number }[]>([]);
 
+  // Request notification permissions on mount
+  useEffect(() => {
+    if (!Notifications) return;
+    (async () => {
+      try {
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== "granted") {
+          await Notifications.requestPermissionsAsync();
+        }
+      } catch {
+        // Permissions API unavailable — alerts will use Alert.alert fallback
+      }
+    })();
+  }, []);
+
   // Load saved values
   useEffect(() => {
     const loadData = async () => {
@@ -97,11 +153,12 @@ export default function HomeScreen() {
     ]);
   }, [zone1, zone2, targetBlocks]);
 
-  // Countdown updater
+  // Countdown updater — returns same array reference if nothing changed
   useEffect(() => {
     const timer = setInterval(() => {
-      setTargetBlocks((blocks) =>
-        blocks.map((block) => {
+      setTargetBlocks((blocks) => {
+        let anyChanged = false;
+        const next = blocks.map((block) => {
           const selectedZone = block.targetZone === "zone1" ? zone1 : zone2;
           const nowInZone = DateTime.now().setZone(selectedZone);
 
@@ -162,20 +219,22 @@ export default function HomeScreen() {
           }
 
           if (!changed) return block;
+          anyChanged = true;
           return { ...block, ...updates };
-        })
-      );
+        });
+        return anyChanged ? next : blocks;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
   }, [zone1, zone2]);
 
-  // Process queued alerts
+  // Process queued alerts via push notification (or Alert.alert fallback)
   useEffect(() => {
     if (alertQueueRef.current.length > 0) {
       const alerts = alertQueueRef.current.splice(0);
       alerts.forEach((a) => {
-        Alert.alert(
+        sendAlert(
           "Countdown Alert",
           `"${a.name}" has reached ${a.minutes} minute${a.minutes !== 1 ? "s" : ""} before target!`
         );
@@ -275,7 +334,7 @@ export default function HomeScreen() {
     []
   );
 
-  const resetAll = useCallback(async () => {
+  const doReset = useCallback(async () => {
     try {
       await AsyncStorage.clear();
       setZone1("Europe/Berlin");
@@ -287,9 +346,20 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const resetAll = useCallback(() => {
+    Alert.alert(
+      "Reset All",
+      "This will clear all timers and settings. Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Yes, Reset", style: "destructive", onPress: doReset },
+      ]
+    );
+  }, [doReset]);
+
   // Compute dynamic font size for fullscreen target blocks
-  const safeTop = Math.max(insets.top, Platform.OS === "web" ? 16 : 32);
-  const safeBottom = Math.max(insets.bottom, 16);
+  const safeTop = Math.max(insets.top + 8, Platform.OS === "web" ? 24 : 44);
+  const safeBottom = Math.max(insets.bottom + 8, 28);
   const fullscreenAvailableHeight =
     screenHeight - FULLSCREEN_CLOCK_HEIGHT - FULLSCREEN_EXIT_BTN_HEIGHT - safeTop - safeBottom;
   const blockCount = targetBlocks.length;

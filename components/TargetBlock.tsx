@@ -65,7 +65,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
  * @param handleAlertConfirm - Confirm a new alert threshold in minutes.
  * @param handleAlertDelete - Remove the alert from this block.
  */
-export default function TargetBlock({
+function TargetBlockInner({
   block,
   fullScreen,
   countdownFontSize = 56,
@@ -254,6 +254,9 @@ export default function TargetBlock({
     </View>
   );
 }
+
+const TargetBlock = React.memo(TargetBlockInner);
+export default TargetBlock;
 
 const styles = StyleSheet.create({
   card: {

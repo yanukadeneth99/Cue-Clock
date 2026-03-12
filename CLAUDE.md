@@ -120,7 +120,7 @@ Components use inline `style` props (not NativeWind `className`) for all layout 
 
 ### Supported Timezones
 
-UTC, Asia/Colombo, Europe/Berlin, America/New_York, Asia/Tokyo, Australia/Sydney, Europe/London, America/Los_Angeles.
+UTC, America/Los_Angeles, America/Chicago, America/New_York, America/Sao_Paulo, Europe/London, Europe/Berlin, Europe/Moscow, Africa/Johannesburg, Asia/Dubai, Asia/Kolkata, Asia/Colombo, Asia/Bangkok, Asia/Singapore, Asia/Tokyo, Asia/Seoul, Australia/Sydney, Pacific/Auckland.
 
 Defaults: `zone1 = Europe/Berlin`, `zone2 = Asia/Colombo`.
 
@@ -159,9 +159,12 @@ npm run lint
 - Styles use inline `style` props for reliable native rendering; NativeWind `className` may be used as a supplement but is not the primary styling method.
 - Components should be self-contained and stateless where possible; lift state to `index.tsx`.
 - Use `useCallback` for handlers passed as props to prevent unnecessary re-renders.
+- Use `React.memo` on list-item components (`TargetBlock`) to prevent re-renders when sibling state changes.
 - Use `Pressable` instead of `Button` for custom-styled interactive elements.
 - No new external libraries without a strong justification — keep the bundle lean (speed requirement).
 - Full-screen mode must be handled in every new UI component (`fullScreen` prop pattern).
+- expo-notifications: guard load with `Constants.executionEnvironment === "storeClient"` check — module throws in Expo Go (SDK 53+). Always provide an `Alert.alert` fallback via `sendAlert()`.
+- LogBox warnings from third-party internals (e.g. expo-router's SafeAreaView usage) should be suppressed at the top of `index.tsx` with `LogBox.ignoreLogs([...])` and the reason documented in a comment.
 
 ---
 
@@ -177,7 +180,7 @@ Android package: `com.yanukadeneth99.broadcastclock`
 
 ## Current Development Status
 
-**Done:** Core countdown logic, dual-clock display, full-screen mode, multi-target support, persistence, design polish pass, logo/favicon/splash assets, alert/alarm per target block, in-app help modal.
+**Done:** Core countdown logic, dual-clock display, full-screen mode, multi-target support, persistence, design polish pass, logo/favicon/splash assets, alert/alarm per target block (push notifications in dev/prod builds, Alert.alert fallback in Expo Go), in-app help modal, Reset All confirmation, 18-timezone coverage.
 
 **Pending:** Animations, app store deployment.
 
