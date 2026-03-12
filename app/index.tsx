@@ -21,10 +21,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // Suppress deprecation warning from expo-router internals (uses RN's SafeAreaView)
 LogBox.ignoreLogs(["SafeAreaView has been deprecated"]);
 
-// Only load expo-notifications outside Expo Go (remote notifications removed in SDK 53)
+// Only load expo-notifications outside Expo Go and not on web
+// (remote notifications removed in SDK 53; expo-notifications unsupported on web)
 const isExpoGo = Constants.executionEnvironment === "storeClient";
 let Notifications: typeof import("expo-notifications") | null = null;
-if (!isExpoGo) {
+if (!isExpoGo && Platform.OS !== "web") {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod: typeof import("expo-notifications") = require("expo-notifications");
