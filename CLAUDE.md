@@ -1,4 +1,4 @@
-# Broadcast Clock — CLAUDE.md
+# Cue Clock — CLAUDE.md
 
 Developer reference for AI-assisted work on this repository.
 
@@ -6,190 +6,177 @@ Developer reference for AI-assisted work on this repository.
 
 ## What This App Does
 
-**Broadcast Clock** is a React Native (Expo) mobile app for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously. Core functionality:
+**Cue Clock** is a specialized time management tool for broadcast professionals. It allows users to monitor multiple timezones and track countdown timers simultaneously with high reliability and precision.
 
-- Display two live clocks in different timezones side by side
-- Create multiple named countdown timers, each tied to a specific timezone and target time
-- Support a "deduction" offset subtracted from each countdown (useful for pre-show buffer calculations)
-- Full-screen mode for on-air display
-- Persistent state across sessions via AsyncStorage
+### Core Features
+- **Dual live clocks** — Display two side-by-side clocks, each configurable to any of 18 broadcast timezones.
+- **Multiple countdown timers** — Create, name, and manage infinite countdowns tied to specific timezones.
+- **Deduction offsets** — Subtract "pre-show buffer" durations from countdown targets (useful for live show prep).
+- **On-air (Full-screen) mode** — A distraction-free display that strips away controls for studio use.
+- **Persistent state** — All settings, zones, and timers are saved locally across sessions via AsyncStorage.
+- **Per-timer alerts** — Configurable "minutes-before" push notifications and in-app alerts.
+- **In-app help** — Integrated guide explaining all controls and usage patterns.
 
 ---
 
-## Non-Functional Requirements
+## Project Structure (Monolithic)
 
-### Speed is the primary non-functional requirement
+The project is organized into two primary sub-directories:
 
-This app is used in live broadcast environments where every second counts. All design and implementation decisions must prioritize:
+```
+app/              # React Native (Expo) Mobile Application
+  app/            # Expo Router (file-based) directory
+    _layout.tsx   # Root layout: font loading, Expo Router stack
+    index.tsx     # Main screen — all primary state and logic lives here
+  components/     # UI Components (ClockPicker, TargetBlock, etc.)
+  constants/      # App-wide constants (colors.ts, timezones.ts)
+  hooks/          # Shared hooks (useColorScheme, useSafeAreaInsets)
+  assets/         # Icons, splash screens, fonts
+  scripts/        # Maintenance and utility scripts
+  app.json        # Expo configuration
+  package.json    # Mobile app dependencies and scripts
 
-- **Minimal overhead** — avoid unnecessary re-renders, heavy libraries, or background processing. Countdowns update every 1 second; nothing heavier should run on the main thread without justification.
-- **Simple, understandable designs** — code and UI alike. Prefer flat logic over clever abstractions. A reader should understand a component in one pass.
-- **Intuitive UX** — controls must be immediately obvious to a stressed operator. No hidden gestures, no multi-step flows for common actions, no ambiguous labels.
-
-Every PR or change should be evaluated against these three criteria before anything else.
+website/          # Next.js Landing Page & Documentation
+  app/            # Next.js App Router directory
+  public/         # Static assets
+  package.json    # Website dependencies and scripts
+```
 
 ---
 
 ## Tech Stack
 
+### Mobile (app/)
 | Layer | Technology |
 |---|---|
 | Framework | React Native 0.81.5 + Expo 54 |
 | Navigation | Expo Router v6 (file-based) |
-| Language | TypeScript ~5.8.3 (strict mode) |
-| Styling | NativeWind v4 / Tailwind CSS v3 |
+| Language | TypeScript ~5.9.3 (strict mode) |
+| Styling | Inline Styles (primary) / NativeWind v4 (secondary) |
 | Date/Time | Luxon v3 |
 | Persistence | @react-native-async-storage/async-storage |
-| Time pickers | react-native-modal-datetime-picker + @react-native-community/datetimepicker |
+| Notifications| expo-notifications |
 | Animations | react-native-reanimated ~4.1 |
-| Build/Deploy | EAS (Expo Application Services) |
+
+### Website (website/)
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15.2 |
+| Language | TypeScript |
+| Styling | Tailwind CSS 4 |
 
 ---
 
-## Project Structure
+## Architecture & Key Concepts
 
+### Component Tree (Mobile)
 ```
-app/
-  _layout.tsx       # Root layout: font loading, Expo Router stack
-  index.tsx         # Main screen — all primary state and logic lives here
-  +not-found.tsx    # 404 fallback
-
-components/
-  ClockPicker.tsx   # Live dual-timezone clock display + timezone selector
-  TargetBlock.tsx   # Individual countdown timer block (collapsible)
-  AlertModal.tsx    # Modal for setting/managing countdown alerts
-  HelpModal.tsx     # In-app help overlay explaining all controls
-
-constants/
-  colors.ts         # Single source of truth for the color palette
-  timezones.ts      # Allowed timezones list (8 entries)
-
-hooks/
-  useColorScheme.ts # Thin wrapper around RN useColorScheme
+HomeScreen (app/app/index.tsx)
+├── ClockPicker          — Dual live-clock with timezone pickers
+├── TargetBlock[]        — One per countdown; collapsible; includes AlertModal
+│   └── AlertModal       — Set/delete countdown alert
+└── HelpModal            — In-app help overlay (triggered by ? button in header)
 ```
 
----
-
-## Key Concepts
-
-### State (app/index.tsx)
-
-| State | Type | Purpose |
-|---|---|---|
-| `zone1` | `string` | First timezone (displayed in green) |
-| `zone2` | `string` | Second timezone (displayed in red) |
-| `targetBlocks` | `TargetBlock[]` | All countdown timers |
-| `fullScreen` | `boolean` | Toggle full-screen display mode |
-| `helpVisible` | `boolean` | Toggle help modal visibility |
-
-All state is persisted to AsyncStorage via `multiSet`/`multiGet` and rehydrated on mount.
+### State Management
+All state is lifted to `HomeScreen` and persisted via AsyncStorage (`multiSet`/`multiGet`). State is rehydrated on mount.
+- `zone1` / `zone2`: Timezone strings.
+- `targetBlocks`: JSON-serialized `TargetBlockType[]`.
+- `fullScreen`: Boolean for on-air mode.
+- `helpVisible`: Boolean for help modal.
 
 ### Countdown Algorithm
-
-1. Get current time in the block's selected timezone (Luxon `DateTime`)
-2. Construct a target `DateTime` for today at the block's `targetHour:targetMinute`
-3. If the target is already past, add 1 day (next occurrence)
-4. Subtract the deduction (`deductHour:deductMinute`)
-5. Compute the difference → format as `MM:SS` (total minutes : seconds)
-6. Recalculate every 1 second via `setInterval`
-7. Skip object spread when countdown string hasn't changed (optimization)
+1. Get current time in the block's selected timezone (Luxon `DateTime`).
+2. Construct a target `DateTime` for today at the block's `targetHour:targetMinute`.
+3. If the target is already past, add 1 day (next occurrence).
+4. Subtract the deduction (`deductHour:deductMinute`).
+5. Compute the difference → format as `MM:SS`.
+6. Recalculate every 1 second via `setInterval` in `HomeScreen`.
+7. Optimization: Skip object spread/React reconciliation if the formatted countdown string hasn't changed.
 
 ### Color Scheme
+The app uses a specific dark blue-gray palette for high visibility in broadcast environments.
+- `background`     : `#1a1d23` (Main app background)
+- `surface`        : `#252830` (Card and modal backgrounds)
+- `surfaceBorder`  : `#353840` (Card and modal borders)
+- `header`         : `#e8eaed` (Primary light text)
+- `zone1`          : `#4ade80` (Green-400, first clock)
+- `zone2`          : `#f87171` (Red-400, second clock)
+- `countdown`      : `#fbbf24` (Amber-400, timer text)
+- `muted`          : `#8b8f96` (Secondary text)
+- `danger`         : `#ef4444` (Destructive actions)
+- `accent`         : `#60a5fa` (Blue-400, interactive elements)
+- `pickerText`     : `#e8eaed` (Time picker foreground)
+- `pickerBg`       : `#2f323a` (Time picker background)
+- `border`         : `#3f434d` (General structural borders)
 
-```
-background       #1a1d23    (dark blue-gray)
-surface          #252830    (card backgrounds)
-surfaceBorder    #353840    (card borders)
-header           #e8eaed    (light text)
-zone1            #4ade80    (green-400)
-zone2            #f87171    (red-400)
-countdown        #fbbf24    (amber-400)
-muted            #8b8f96    (secondary text)
-danger           #ef4444    (destructive actions)
-accent           #60a5fa    (blue-400, interactive elements)
-pickerText       #e8eaed    (picker foreground, light)
-pickerBg         #2f323a    (picker background, dark)
-border           #3f434d    (general borders)
-```
+Colors are defined in `app/constants/colors.ts` and used via the `colors` object.
 
-All colors are defined in `constants/colors.ts` and mirrored in `tailwind.config.js` under the `broadcast` namespace. Do not hardcode colors elsewhere.
+### Fullscreen Layout Pattern
+Uses a **single `View` root** (to prevent native crashes from tree remounts) with conditional children.
+- `ClockPicker` is pinned above a `ScrollView`.
+- `TargetBlock` list is inside the `ScrollView` (scroll enabled only when blocks overflow available space).
+- Exit button is fixed at the bottom.
+- Safe area padding is dynamically calculated using `useSafeAreaInsets()`.
 
-### Styling Approach
+---
 
-Components use inline `style` props (not NativeWind `className`) for all layout and visual styling to ensure reliable rendering on native mobile platforms. NativeWind/Tailwind is configured but className should only be used as a secondary option.
+## Engineering Standards
 
-### Supported Timezones
+### 1. Speed & Reliability (Primary Mandate)
+- **Minimal overhead** — Avoid heavy libraries or unnecessary re-renders.
+- **Simple Designs** — Prefer flat logic over clever abstractions.
+- **Intuitive UX** — Controls must be obvious to a stressed operator.
 
-UTC, America/Los_Angeles, America/Chicago, America/New_York, America/Sao_Paulo, Europe/London, Europe/Berlin, Europe/Moscow, Africa/Johannesburg, Asia/Dubai, Asia/Kolkata, Asia/Colombo, Asia/Bangkok, Asia/Singapore, Asia/Tokyo, Asia/Seoul, Australia/Sydney, Pacific/Auckland.
+### 2. Styling Standards
+- **Inline Style Props** — Use for all layout and visual properties. NativeWind `className` is secondary due to inconsistent native Android rendering.
+- **Color Scheme** — Strictly source colors from `app/constants/colors.ts`.
+- **Picker Rendering** — Never use fixed `height` or `overflow: hidden` on `@react-native-picker/picker` containers (fixes Android clipping).
+- **Safe Area** — Always use `useSafeAreaInsets()`; never hardcode platform offsets.
 
-Defaults: `zone1 = Europe/Berlin`, `zone2 = Asia/Colombo`.
+### 3. Coding Conventions
+- **TypeScript** — Strict mode enabled. Use `T[]` not `Array<T>`.
+- **Performance** — Use `useCallback` for handlers and `React.memo` on list items (`TargetBlock`).
+- **Error Handling** — Use empty or comment-only `catch` blocks for production-safe silence; no `console.log` in production.
+- **Documentation** — Exported components and functions must have JSDoc describing props/parameters.
+- **Interaction** — Use `Pressable` instead of `Button` for custom-styled elements.
 
 ---
 
 ## Development Commands
 
+### Mobile App (`app/`)
 ```bash
-# Start dev server
-npx expo start
+npx expo start         # Start dev server
+npx expo run:android   # Run on Android emulator/device
+npx expo run:ios       # Run on iOS simulator/device
+npm run lint           # Run ESLint
+```
 
-# Run on specific platform
-npx expo run:android
-npx expo run:ios
-npx expo start --web
-
-# Lint
-npm run lint
+### Website (`website/`)
+```bash
+npm run dev            # Start Next.js dev server
+npm run build          # Build for production
 ```
 
 ---
 
-## AsyncStorage Keys
+## Codebase Edit History (2026)
 
-| Key | Value |
-|---|---|
-| `zone1` | Timezone string |
-| `zone2` | Timezone string |
-| `targetBlocks` | JSON-serialized `TargetBlock[]` |
+### 2026-03-11: Performance & Notifications
+- **Optimization:** `React.memo` on `TargetBlock` and reference-stability in countdown interval (prevents lag with 15+ blocks).
+- **Push Alerts:** Added `expo-notifications` (guarded for Expo Go compatibility) with `Alert.alert` fallback.
+- **UX:** Added "Reset All" confirmation and increased safe-area padding for status/nav bar clearance.
+- **Coverage:** Expanded timezones from 8 to 18.
 
----
-
-## Coding Conventions
-
-- TypeScript strict mode is enabled — no `any`, no suppression without explanation.
-- Styles use inline `style` props for reliable native rendering; NativeWind `className` may be used as a supplement but is not the primary styling method.
-- Components should be self-contained and stateless where possible; lift state to `index.tsx`.
-- Use `useCallback` for handlers passed as props to prevent unnecessary re-renders.
-- Use `React.memo` on list-item components (`TargetBlock`) to prevent re-renders when sibling state changes.
-- Use `Pressable` instead of `Button` for custom-styled interactive elements.
-- No new external libraries without a strong justification — keep the bundle lean (speed requirement).
-- Full-screen mode must be handled in every new UI component (`fullScreen` prop pattern).
-- expo-notifications: guard load with `Constants.executionEnvironment === "storeClient"` check — module throws in Expo Go (SDK 53+). Always provide an `Alert.alert` fallback via `sendAlert()`.
-- LogBox warnings from third-party internals (e.g. expo-router's SafeAreaView usage) should be suppressed at the top of `index.tsx` with `LogBox.ignoreLogs([...])` and the reason documented in a comment.
+### 2026-03-10: Layout & Stability
+- **Overflow Fix:** Dynamic `countdownFontSize` in fullscreen mode (shrinks as blocks increase).
+- **Architecture:** Moved to a single-root `View` pattern in `HomeScreen` to fix native crashes during fullscreen toggles.
+- **Styling:** Migrated from NativeWind `className` to inline styles for Android reliability.
+- **Help Modal:** Created `HelpModal.tsx` explaining all 11 UI controls.
 
 ---
 
-## Platform Targets
-
-- iOS (including tablet)
-- Android (edge-to-edge, adaptive icons)
-- Web (via react-native-web + Metro static output)
-
-Android package: `com.yanukadeneth99.broadcastclock`
-
----
-
-## Current Development Status
-
-**Done:** Core countdown logic, dual-clock display, full-screen mode, multi-target support, persistence, design polish pass, logo/favicon/splash assets, alert/alarm per target block (push notifications in dev/prod builds, Alert.alert fallback in Expo Go), in-app help modal, Reset All confirmation, 18-timezone coverage.
-
-**Pending:** Animations, app store deployment.
-
----
-
-## License
-
-AGPL-3.0. Commercial licensing available — contact hello@yashura.music.
-
-## Security
-
-This app is not production-hardened. See `SECURITY.md` for vulnerability reporting. Contact: hello@yashura.music.
+## License & Security
+- **License:** AGPL-3.0. Commercial licensing: hello@yashura.music.
+- **Security:** Not production-hardened. See `SECURITY.md` for reporting. Contact: hello@yashura.music.

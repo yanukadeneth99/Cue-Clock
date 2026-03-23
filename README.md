@@ -1,62 +1,72 @@
-# Broadcast Clock
+# Cue Clock
 
-A minimal, distraction-free clock app built for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously.
+**Time. Under Control.**
 
-## What It Does
+A minimal, distraction-free clock app built specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously.
 
-**Broadcast Clock** gives you two things on one screen:
+---
 
-1. **Dual timezone clocks** -- two live clocks side by side, each configurable to any of 8 common broadcast timezones.
-2. **Countdown timers** -- create as many named countdowns as you need, each tied to a timezone and target time, with an optional deduction offset for pre-show buffer calculations.
+## ⚡ What it Does
 
-There is also a **full-screen mode** that strips away all controls and shows only the clocks and countdowns -- designed for on-air display.
+In high-pressure broadcast environments, every second counts. **Cue Clock** is built for that constraint: **fast, obvious, and zero friction.**
 
-## Why
+- 🕒 **Dual Timezone Clocks** — Side-by-side live clocks configurable to 18 global broadcast timezones.
+- ⏳ **Infinite Countdowns** — Create as many named countdowns as you need, tied to any timezone.
+- 📐 **Deduction Offsets** — Subtract pre-show buffers automatically from your countdown targets.
+- 🎬 **On-Air Mode** — A dedicated full-screen mode that strips away all controls for studio display.
+- 📱 **Native Everywhere** — Optimized for iOS, Android, and Web with local state persistence.
 
-In live broadcast environments, every second counts. Operators need to glance at a screen and immediately know the time in multiple locations and how long until the next event. This app is built around that constraint: **fast, obvious, zero friction**.
+---
 
-## Tech Stack
+## 🏗️ Project Structure
 
-| Layer | Technology |
-|---|---|
-| Framework | React Native + Expo |
-| Navigation | Expo Router (file-based) |
-| Language | TypeScript (strict mode) |
-| Styling | NativeWind / Tailwind CSS |
-| Date/Time | Luxon |
-| Persistence | AsyncStorage |
+This is a monolithic codebase containing two main projects:
 
-## Getting Started
+### 1. The Mobile App (`app/`)
+The core React Native (Expo) application. It handles the clock logic, state persistence, and native notifications.
+
+**[Get Started with the App](./app/README.md)**
+
+### 2. The Landing Page (`website/`)
+A modern Next.js 15 landing page showcasing Cue Clock’s features and design.
+
+**[Get Started with the Website](./website/README.md)**
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-# Install dependencies
-npm install
+# Clone the repository
+git clone https://github.com/yanukadeneth99/Cue-Clock.git
+cd Cue-Clock
 
-# Start the dev server
-npx expo start
+# Start the Mobile App
+cd app && npm install && npx expo start
 
-# Run on a specific platform
-npx expo run:android
-npx expo run:ios
-npx expo start --web
+# Start the Website
+cd ../website && npm install && npm run dev
 ```
 
-## Platforms
+---
 
-- iOS (including iPad)
-- Android (edge-to-edge, adaptive icons)
-- Web (via react-native-web)
+## 🛠️ Tech Stack
 
-## Contributing
+| Project | Tech Stack |
+|---|---|
+| **Mobile App** | React Native, Expo, Luxon, TypeScript, Reanimated, AsyncStorage |
+| **Website** | Next.js 15, Tailwind CSS 4, TypeScript |
 
-Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before submitting a pull request, and follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
+---
 
-## License
+## 🤝 Contributing & License
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)** -- see the [LICENSE](./LICENSE) file for full details.
+We love contributions! Please read our [CONTRIBUTING.md](./CONTRIBUTING.md) and follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
-**Commercial licensing:** If the AGPL does not work for your use case (proprietary deployment, SaaS without source disclosure, etc.), a commercial license is available. Contact [hello@yashura.music](mailto:hello@yashura.music) for more information.
+Cue Clock is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. For commercial licensing, contact [hello@yashura.music](mailto:hello@yashura.music).
 
-## Security
+---
 
-See [SECURITY.md](./SECURITY.md) for how to report vulnerabilities.
+## 🛡️ Security
+
+Found a vulnerability? See [SECURITY.md](./SECURITY.md) for reporting details.

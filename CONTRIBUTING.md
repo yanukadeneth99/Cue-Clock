@@ -1,61 +1,66 @@
-# Contributing to Broadcast Clock
+# Contributing to Cue Clock
 
-Thank you for your interest in contributing. This guide explains how to get involved.
+Thank you for your interest in contributing to Cue Clock! This project is a monorepo containing both the mobile application and its landing page.
 
 ## Code of Conduct
 
-By participating, you agree to abide by the [Code of Conduct](./CODE_OF_CONDUCT.md). Please read it before contributing.
+By participating, you agree to abide by the [Code of Conduct](./CODE_OF_CONDUCT.md).
+
+## Project Structure
+
+- **`app/`**: The React Native (Expo) mobile application.
+- **`website/`**: The Next.js landing page and documentation site.
+
+---
 
 ## How to Contribute
 
-### Reporting Bugs
+### 1. Reporting Bugs & Features
 
-Open a [GitHub Issue](https://github.com/yanukadeneth99/Broadcast-Clock/issues) with:
+Open a [GitHub Issue](https://github.com/yanukadeneth99/Cue-Clock/issues) for:
+- **Bugs**: Provide steps to reproduce, expected vs actual behavior, and your platform (iOS/Android/Web).
+- **Features**: Describe the utility for broadcast professionals and any implementation ideas.
 
-- A clear description of the bug
-- Steps to reproduce it
-- Expected vs actual behavior
-- Platform and device info (iOS, Android, Web, screen size)
+### 2. Development Setup
 
-### Suggesting Features
+1. **Fork** and **Clone** the repository.
+2. Choose the project you want to work on:
 
-Open an issue and describe:
+#### Working on the Mobile App (`app/`)
+```bash
+cd app
+npm install
+npx expo start
+```
+*Note: We prioritize **inline styles** for layout to ensure reliability on Android native.*
 
-- What the feature would do
-- Why it's useful for broadcast professionals
-- Any implementation ideas you have
+#### Working on the Website (`website/`)
+```bash
+cd website
+npm install
+npm run dev
+```
+*Note: Built with Next.js 15 and Tailwind CSS 4.*
 
-### Submitting Code
+### 3. Submitting Code
 
-1. **Fork** the repository.
-2. **Clone** your fork and install dependencies (`npm install`).
-3. **Create a branch** from `main`:
-   - `feature/short-description` for new features
-   - `fix/short-description` for bug fixes
-4. **Make your changes.** Keep them focused -- one feature or fix per PR.
-5. **Test** on at least one platform (web is the easiest to verify).
-6. **Run the linter** with `npm run lint` and fix any issues.
-7. **Push** to your fork and open a pull request.
+1. **Create a branch**: `feature/description` or `fix/description`.
+2. **Focus**: Keep PRs small and focused on a single change.
+3. **Linting**: Run the linter in the respective directory (`npm run lint`).
+4. **Test**: Verify changes on at least one target platform.
+5. **Push** and open a Pull Request against `main`.
 
-### Pull Request Guidelines
-
-- Keep the PR title concise and descriptive.
-- In the PR description, explain:
-  - What changes you made and why
-  - How to test the changes
-  - Link to any related issues
-- Small, focused PRs are reviewed faster than large ones.
+---
 
 ## Development Principles
 
-This app prioritizes **speed** and **simplicity** above all else. When contributing, keep these principles in mind:
+Cue Clock is built for high-pressure broadcast environments. All contributions must respect these core mandates:
 
-- **Minimal overhead** -- avoid unnecessary re-renders, heavy libraries, or complex abstractions.
-- **Obvious UX** -- controls must be immediately clear to a stressed broadcast operator.
-- **No new dependencies** without strong justification. The bundle must stay lean.
-- **TypeScript strict mode** -- no `any` types, no suppression without explanation.
-- **NativeWind / Tailwind** for styling. Use inline styles only for dynamic/computed values.
+1. **Speed is Priority**: Avoid heavy libraries, unnecessary re-renders, or deep abstractions.
+2. **Intuitive UX**: Controls must be immediately obvious. No hidden gestures or complex flows.
+3. **Zero Friction**: Minimize background processing. The main thread is for the clock.
+4. **TypeScript Strict**: No `any` types. Ensure full type safety.
 
 ## Questions?
 
-Open an issue or reach out at [hello@yashura.music](mailto:hello@yashura.music).
+Reach out at [hello@yashura.music](mailto:hello@yashura.music) or open a discussion on GitHub.

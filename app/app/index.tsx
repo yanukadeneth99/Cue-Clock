@@ -85,7 +85,7 @@ function createDefaultBlock(id: number): TargetBlockType {
 }
 
 /**
- * Root screen for Broadcast Clock.
+ * Root screen for Cue Clock.
  * Manages all app state: timezones, countdown blocks, fullscreen mode, and alerts.
  * Persists state to AsyncStorage and rehydrates on mount.
  */
@@ -377,7 +377,7 @@ export default function HomeScreen() {
       {!fullScreen && (
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, marginBottom: 8 }}>
           <Text style={{ color: colors.header, fontSize: 20, letterSpacing: 3, textTransform: "uppercase", fontWeight: "300", flex: 1 }}>
-            Broadcast Clock
+            Cue Clock
           </Text>
           <Pressable
             onPress={() => setHelpVisible(true)}

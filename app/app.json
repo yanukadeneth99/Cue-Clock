@@ -1,23 +1,23 @@
 {
   "expo": {
-    "name": "broadcast-clock",
-    "slug": "broadcast-clock",
+    "name": "cue-clock",
+    "slug": "cue-clock",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo_cropped.png",
-    "scheme": "broadcastclock",
+    "scheme": "cueclock",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yanukadeneth99.broadcastclock"
+      "bundleIdentifier": "com.yanukadeneth99.cueclock"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo_cropped.png",
         "backgroundColor": "#0a0a0a"
       },
-      "package": "com.yanukadeneth99.broadcastclock"
+      "package": "com.yanukadeneth99.cueclock"
     },
     "web": {
       "bundler": "metro",
