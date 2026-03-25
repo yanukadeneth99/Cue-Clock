@@ -1,0 +1,27 @@
+# Cue Clock
+
+Cue Clock is a minimal, distraction-free clock and countdown timer app designed specifically for broadcast professionals.
+
+## Key Information
+- **URL**: https://cueclock.app
+- **App URL**: https://cue-clock-app.yanukadeneth.com
+- **Repository**: https://github.com/yanukadeneth99/Cue-Clock
+- **Developer**: Yanuka Deneth
+- **License**: Open Source
+- **Cost**: Completely Free (No Ads)
+
+## Features
+- **Dual Live Clocks**: side-by-side clocks configurable to 18 broadcast timezones.
+- **Multiple Countdowns**: infinite timers tied to specific zones.
+- **Deduction Offsets**: subtract pre-show buffer durations with single-tap logic.
+- **On-Air Mode**: distraction-free, full-screen display for studio environments.
+- **Persistent State**: settings saved locally across sessions.
+- **Per-Timer Alerts**: visual and notification-based alerts.
+
+## Tech Stack
+- **Web App**: React, Tailwind CSS, GSAP.
+- **Native App**: React Native (Expo).
+- **Website**: Next.js, Tailwind CSS, GSAP.
+
+## Mission
+Built to provide a reliable, straightforward, and simple timing tool during live broadcast production.

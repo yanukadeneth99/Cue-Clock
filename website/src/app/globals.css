@@ -59,6 +59,9 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     background-color: #101319;
     color: #e1e2ea;
