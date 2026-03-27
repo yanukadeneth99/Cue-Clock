@@ -7,7 +7,6 @@
     "icon": "./assets/images/logo_cropped.png",
     "scheme": "cueclock",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yanukadeneth99.cueclock"
@@ -44,8 +43,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "111035b7-c94e-43f7-91de-25d6430cf0f5"
+        "projectId": "de3c2a1d-42be-4f3a-a6d2-e022741a7fb2"
       }
-    }
+    },
+    "owner": "yanukadeneth99"
   }
 }

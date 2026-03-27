@@ -1,0 +1,67 @@
+name: Android Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy to Google Play
+    runs-on: ubuntu-latest
+    container:
+      image: thyrlian/android-sdk:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Run Expo Doctor
+        working-directory: app
+        run: npx expo doctor
+        continue-on-error: true
+
+      - name: Generate Android native project
+        working-directory: app
+        run: npx expo prebuild --platform android --clean
+
+      - name: Decode keystore
+        working-directory: app/android
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+
+      - name: Build release AAB
+        working-directory: app/android
+        run: |
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/release.keystore \
+            -Pandroid.injected.signing.store.password=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Upload AAB as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: app/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 30
+
+      # TODO: Uncomment after setting up Google Play service account
+      # - name: Upload to Google Play (Internal track)
+      #   uses: r0adkll/upload-google-play@v1
+      #   with:
+      #     serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+      #     packageName: com.yanukadeneth99.cueclock
+      #     releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
+      #     track: internal
+      #     status: completed

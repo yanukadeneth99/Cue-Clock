@@ -364,7 +364,7 @@ function TargetBlockInner({
                       )
                     )
                   }
-                  style={{ width: "100%", color: colors.pickerText }}
+                  style={{ width: "100%", color: colors.pickerText, backgroundColor: colors.pickerBg }}
                   dropdownIconColor={colors.muted}
                 >
                   <Picker.Item label="Zone 1" value="zone1" style={{ backgroundColor: colors.pickerBg, color: colors.pickerText, fontSize: 14 }} />

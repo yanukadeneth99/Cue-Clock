@@ -39,6 +39,14 @@ if (!isExpoGo && Platform.OS !== "web") {
         shouldShowList: true,
       }),
     });
+    // Android requires a notification channel to display notifications
+    if (Platform.OS === "android") {
+      mod.setNotificationChannelAsync("default", {
+        name: "Default",
+        importance: mod.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+      }).catch(() => {});
+    }
     Notifications = mod;
   } catch {
     // expo-notifications failed to initialize — will fall back to Alert.alert
@@ -59,7 +67,12 @@ function sendAlert(title: string, body: string) {
   }
   if (Notifications) {
     Notifications.scheduleNotificationAsync({
-      content: { title, body, sound: true },
+      content: {
+        title,
+        body,
+        sound: true,
+        ...(Platform.OS === "android" ? { channelId: "default" } : {}),
+      },
       trigger: null,
     }).catch(() => {
       Alert.alert(title, body);
@@ -749,27 +762,30 @@ export default function HomeScreen() {
                 Reset All
               </Text>
             </Pressable>
-
-            <Pressable
-              onPress={toggleFullScreen}
-              style={{
-                borderColor: colors.surfaceBorder,
-                borderWidth: 1,
-                borderRadius: 12,
-                paddingVertical: 14,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
-                Full Screen
-              </Text>
-            </Pressable>
           </View>
         )}
       </ScrollView>
 
-      {/* Exit Full Screen — fixed at bottom (fullscreen only) */}
-      {fullScreen && (
+      {/* Full Screen toggle — fixed at bottom (mobile: always visible toggle; web: exit only when fullscreen) */}
+      {!isWeb ? (
+        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4 }}>
+          <Pressable
+            onPress={toggleFullScreen}
+            style={{
+              backgroundColor: fullScreen ? colors.surface : "transparent",
+              borderColor: colors.surfaceBorder,
+              borderWidth: 1,
+              borderRadius: 12,
+              paddingVertical: 14,
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
+              {fullScreen ? "Exit Full Screen" : "Full Screen"}
+            </Text>
+          </Pressable>
+        </View>
+      ) : fullScreen ? (
         <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, alignItems: "center" }}>
           <Pressable
             onPress={toggleFullScreen}
@@ -792,7 +808,8 @@ export default function HomeScreen() {
               paddingVertical: 14,
               alignItems: "center",
               opacity: exitButtonOpacity,
-              ...(isWeb && { width: "50%", minWidth: 200 }),
+              width: "50%",
+              minWidth: 200,
             }}
           >
             <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
@@ -800,7 +817,7 @@ export default function HomeScreen() {
             </Text>
           </Pressable>
         </View>
-      )}
+      ) : null}
 
       <ConfirmModal
         visible={resetModalVisible}
