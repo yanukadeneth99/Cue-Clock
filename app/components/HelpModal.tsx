@@ -1,6 +1,6 @@
 import { colors } from "@/constants/colors";
 import React from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 interface HelpModalProps {
   visible: boolean;
@@ -11,22 +11,22 @@ const helpItems: { label: string; description: string }[] = [
   {
     label: "Zone 1 / Zone 2",
     description:
-      "Two live clocks displaying the current time in different timezones. Tap the dropdown to change the timezone for each clock.",
+      "Two live clocks displaying the current time in different timezones. Use the dropdown to change the timezone for each clock.",
   },
   {
     label: "+ Add Target",
     description:
-      "Creates a new countdown timer. You can have multiple countdowns running at the same time.",
+      "Creates a new countdown timer. You can have multiple countdowns running simultaneously.",
   },
   {
     label: "Target Name",
     description:
-      "Tap the name field at the top of a countdown card to rename it (e.g. \"Show Start\", \"News Break\").",
+      "Click or tap the name field at the top of a countdown card to rename it (e.g. \"Show Start\", \"News Break\").",
   },
   {
     label: "Target Time",
     description:
-      "The time you are counting down to. Tap to open a time picker and set the target hour and minute.",
+      "The time you are counting down to. Tap to set the target hour and minute.",
   },
   {
     label: "Deduct Time",
@@ -41,7 +41,7 @@ const helpItems: { label: string; description: string }[] = [
   {
     label: "\u{1F514}  Alert Button",
     description:
-      "Set an alert that sends a push notification when the countdown reaches a specified number of minutes before the target time.",
+      "Set an alert that fires at exactly MM:00 when the countdown reaches a chosen number of minutes before the target. The alert sends a browser notification (or a dialog if notifications are blocked) and removes itself automatically after firing.",
   },
   {
     label: "\u2013  Collapse / +  Expand",
@@ -50,17 +50,18 @@ const helpItems: { label: string; description: string }[] = [
   },
   {
     label: "X  Delete",
-    description: "Removes the countdown timer permanently.",
+    description:
+      "Removes the countdown timer. A confirmation dialog will appear before deletion.",
   },
   {
     label: "Full Screen",
     description:
-      "Hides all controls and shows only the clocks and countdowns in a large, easy-to-read display for on-air use.",
+      "Hides all controls and shows only the clocks and countdowns in a large, easy-to-read display for on-air use. Hover the bottom of the screen to reveal the exit button.",
   },
   {
     label: "Reset All",
     description:
-      "Clears all saved data and returns the app to its default state with one countdown timer. You will be asked to confirm before resetting.",
+      "Clears all saved data and returns the app to its default state with one countdown timer. A confirmation dialog will appear before resetting.",
   },
 ];
 
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     width: "90%",
-    maxWidth: 400,
+    maxWidth: Platform.OS === "web" ? 600 : 400,
     maxHeight: "80%",
   },
   title: {

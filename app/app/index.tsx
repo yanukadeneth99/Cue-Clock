@@ -1,4 +1,5 @@
 import ClockPicker from "@/components/ClockPicker";
+import ConfirmModal from "@/components/ConfirmModal";
 import HelpModal from "@/components/HelpModal";
 import TargetBlock, { TargetBlockType } from "@/components/TargetBlock";
 import { colors } from "@/constants/colors";
@@ -44,8 +45,18 @@ if (!isExpoGo && Platform.OS !== "web") {
   }
 }
 
-/** Send a push notification, or fall back to Alert.alert if unavailable */
+/** Send a push notification, or fall back to web/alert fallbacks if unavailable */
 function sendAlert(title: string, body: string) {
+  if (Platform.OS === "web") {
+    if (typeof window !== "undefined") {
+      if ("Notification" in window && (window as any).Notification.permission === "granted") {
+        new (window as any).Notification(title, { body });
+      } else {
+        window.alert(`${title}\n\n${body}`);
+      }
+    }
+    return;
+  }
   if (Notifications) {
     Notifications.scheduleNotificationAsync({
       content: { title, body, sound: true },
@@ -58,7 +69,7 @@ function sendAlert(title: string, body: string) {
   }
 }
 
-const FULLSCREEN_CLOCK_HEIGHT = 210; // estimated height of ClockPicker in fullscreen
+const FULLSCREEN_CLOCK_HEIGHT = 100; // estimated height of ClockPicker in fullscreen (horizontal layout)
 const FULLSCREEN_EXIT_BTN_HEIGHT = 60; // height of exit button + margins
 const FULLSCREEN_MAX_FONT = 56;
 const FULLSCREEN_MIN_FONT = 24;
@@ -85,6 +96,75 @@ function createDefaultBlock(id: number): TargetBlockType {
 }
 
 /**
+ * Icon button with tooltip for the header (web only).
+ */
+function HeaderIconButton({
+  icon,
+  label,
+  onPress,
+  danger,
+}: {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <View style={{ position: "relative", zIndex: hovered ? 9999 : 1 }}>
+      <Pressable
+        onPress={onPress}
+        {...({
+          onHoverIn: () => setHovered(true),
+          onHoverOut: () => setHovered(false),
+        } as any)}
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 8,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.surfaceBorder,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text
+          style={{
+            color: danger ? colors.danger : colors.muted,
+            fontSize: 15,
+            textAlign: "center",
+          }}
+        >
+          {icon}
+        </Text>
+      </Pressable>
+      {hovered && (
+        <View
+          style={{
+            position: "absolute",
+            top: 38,
+            right: 0,
+            backgroundColor: colors.surface,
+            borderColor: colors.surfaceBorder,
+            borderWidth: 1,
+            borderRadius: 6,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            zIndex: 9999,
+          }}
+        >
+          <Text style={{ color: colors.header, fontSize: 12, whiteSpace: "nowrap" } as any}>
+            {label}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/**
  * Root screen for Cue Clock.
  * Manages all app state: timezones, countdown blocks, fullscreen mode, and alerts.
  * Persists state to AsyncStorage and rehydrates on mount.
@@ -96,15 +176,33 @@ export default function HomeScreen() {
   const [zone2, setZone2] = useState("Asia/Colombo");
   const [fullScreen, setFullScreen] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
+  const [resetModalVisible, setResetModalVisible] = useState(false);
+  const [exitButtonOpacity, setExitButtonOpacity] = useState(1);
+  const [notifBlocked, setNotifBlocked] = useState(false);
+  const [addTargetHovered, setAddTargetHovered] = useState(false);
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     createDefaultBlock(1),
   ]);
   const nextIdRef = useRef(2);
   const isLoadedRef = useRef(false);
   const alertQueueRef = useRef<{ id: number; name: string; minutes: number }[]>([]);
+  const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Request notification permissions on mount
   useEffect(() => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && "Notification" in window) {
+        const perm = (window as any).Notification.permission;
+        if (perm === "denied") {
+          setNotifBlocked(true);
+        } else if (perm === "default") {
+          (window as any).Notification.requestPermission().then((result: string) => {
+            setNotifBlocked(result === "denied");
+          }).catch(() => {});
+        }
+      }
+      return;
+    }
     if (!Notifications) return;
     (async () => {
       try {
@@ -116,6 +214,74 @@ export default function HomeScreen() {
         // Permissions API unavailable — alerts will use Alert.alert fallback
       }
     })();
+  }, []);
+
+  // Fullscreen exit button opacity: fade to 30% after 3 seconds
+  useEffect(() => {
+    if (!fullScreen) {
+      setExitButtonOpacity(1);
+      if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
+      return;
+    }
+
+    setExitButtonOpacity(1);
+    exitButtonTimerRef.current = setTimeout(() => {
+      setExitButtonOpacity(0.3);
+    }, 3000);
+
+    return () => {
+      if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
+    };
+  }, [fullScreen]);
+
+  // Inject web-specific styles for select elements and time inputs
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const style = (document as any).createElement("style");
+    style.textContent = `
+      select {
+        background-color: ${colors.pickerBg} !important;
+        color: ${colors.pickerText} !important;
+        border: 1px solid ${colors.border} !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+      }
+      select option {
+        background-color: ${colors.pickerBg} !important;
+        color: ${colors.pickerText} !important;
+      }
+      input[type="time"] {
+        color-scheme: dark;
+      }
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+      body {
+        overflow-y: scroll;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: ${colors.background};
+      }
+      ::-webkit-scrollbar-thumb {
+        background: ${colors.surfaceBorder};
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: ${colors.border};
+      }
+    `;
+    (document as any).head.appendChild(style);
+    return () => {
+      (document as any).head.removeChild(style);
+    };
   }, []);
 
   // Load saved values
@@ -170,6 +336,9 @@ export default function HomeScreen() {
             millisecond: 0,
           });
 
+          // Add 1 second so that target time rounds up to the next second
+          targetDT = targetDT.plus({ seconds: 1 });
+
           if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
 
           const deductionMs =
@@ -196,8 +365,8 @@ export default function HomeScreen() {
           if (block.alertMinutesBefore !== null) {
             const shouldFire =
               !block.alertFired &&
-              totalMinutes <= block.alertMinutesBefore &&
-              totalMinutes >= 0;
+              totalMinutes === block.alertMinutesBefore &&
+              seconds === 0;
 
             if (shouldFire) {
               alertQueueRef.current.push({
@@ -206,6 +375,7 @@ export default function HomeScreen() {
                 minutes: block.alertMinutesBefore,
               });
               updates.alertFired = true;
+              updates.alertMinutesBefore = null;
               changed = true;
             }
 
@@ -324,6 +494,26 @@ export default function HomeScreen() {
     );
   }, []);
 
+  const updateTargetTime = useCallback((id: number, hour: number, minute: number) => {
+    setTargetBlocks((blocks) =>
+      blocks.map((b) =>
+        b.id === id
+          ? { ...b, targetHour: hour, targetMinute: minute, alertFired: false }
+          : b
+      )
+    );
+  }, []);
+
+  const updateDeductTime = useCallback((id: number, hour: number, minute: number) => {
+    setTargetBlocks((blocks) =>
+      blocks.map((b) =>
+        b.id === id
+          ? { ...b, deductHour: hour, deductMinute: minute, alertFired: false }
+          : b
+      )
+    );
+  }, []);
+
   const addTargetBlock = useCallback(() => {
     const newId = nextIdRef.current++;
     setTargetBlocks((blocks) => [...blocks, createDefaultBlock(newId)]);
@@ -348,14 +538,18 @@ export default function HomeScreen() {
   }, []);
 
   const resetAll = useCallback(() => {
-    Alert.alert(
-      "Reset All",
-      "This will clear all timers and settings. Are you sure?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Yes, Reset", style: "destructive", onPress: doReset },
-      ]
-    );
+    if (Platform.OS === "web") {
+      setResetModalVisible(true);
+    } else {
+      Alert.alert(
+        "Reset All",
+        "This will clear all timers and settings. Are you sure?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Yes, Reset", style: "destructive", onPress: doReset },
+        ]
+      );
+    }
   }, [doReset]);
 
   // Compute dynamic font size for fullscreen target blocks
@@ -371,29 +565,121 @@ export default function HomeScreen() {
   const countdownFontSize = Math.min(FULLSCREEN_MAX_FONT, Math.max(FULLSCREEN_MIN_FONT, idealFontSize));
   const fullscreenNeedsScroll = idealFontSize < FULLSCREEN_MIN_FONT;
 
+  const isWeb = Platform.OS === "web";
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: safeTop }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{
+      flex: 1,
+      paddingTop: safeTop,
+      width: "100%",
+    }}>
       {/* Header — normal mode only */}
       {!fullScreen && (
-        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, marginBottom: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: isWeb ? 32 : 16, marginBottom: 8, zIndex: 100, maxWidth: isWeb ? 1100 : undefined, alignSelf: "center", width: "100%" }}>
           <Text style={{ color: colors.header, fontSize: 20, letterSpacing: 3, textTransform: "uppercase", fontWeight: "300", flex: 1 }}>
             Cue Clock
           </Text>
-          <Pressable
-            onPress={() => setHelpVisible(true)}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.surfaceBorder,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700" }}>?</Text>
-          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {isWeb && notifBlocked && (
+              <Pressable
+                onPress={() => {
+                  if (typeof window === "undefined" || !("Notification" in window)) return;
+                  const perm = (window as any).Notification.permission;
+                  if (perm === "denied") {
+                    window.alert(
+                      "Notifications are blocked by your browser.\n\nTo enable them:\n1. Click the lock icon in the address bar\n2. Set Notifications to \"Allow\"\n3. Refresh the page"
+                    );
+                  } else {
+                    (window as any).Notification.requestPermission().then((result: string) => {
+                      if (result === "granted") setNotifBlocked(false);
+                    }).catch(() => {});
+                  }
+                }}
+                style={{
+                  backgroundColor: colors.background,
+                  borderColor: colors.danger,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  paddingVertical: 4,
+                  paddingHorizontal: 10,
+                }}
+              >
+                <Text style={{ color: colors.danger, fontSize: 11, fontWeight: "600" }}>
+                  🔕 Notifications blocked
+                </Text>
+              </Pressable>
+            )}
+            {isWeb && (
+              <>
+                <View style={{ position: "relative" }}>
+                  <Pressable
+                    onPress={addTargetBlock}
+                    {...({
+                      onHoverIn: () => setAddTargetHovered(true),
+                      onHoverOut: () => setAddTargetHovered(false),
+                    } as any)}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      backgroundColor: colors.accent,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 1,
+                      borderColor: colors.accent,
+                    }}
+                  >
+                    <Text style={{ color: "#ffffff", fontSize: 20, fontWeight: "600", textAlign: "center", lineHeight: 20 }}>+</Text>
+                  </Pressable>
+                  {addTargetHovered && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: 48,
+                        left: -30,
+                        backgroundColor: colors.surface,
+                        borderColor: colors.surfaceBorder,
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        zIndex: 9999,
+                        minWidth: 100,
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ color: colors.header, fontSize: 12, whiteSpace: "nowrap" } as any}>
+                        Add Target
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <HeaderIconButton icon="⛶" label="Full Screen" onPress={toggleFullScreen} />
+                <HeaderIconButton icon="↺" label="Reset All" onPress={resetAll} danger />
+              </>
+            )}
+            {isWeb ? (
+              <HeaderIconButton icon="?" label="Help" onPress={() => setHelpVisible(true)} />
+            ) : (
+              <Pressable
+                onPress={() => setHelpVisible(true)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.surfaceBorder,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700" }}>?</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       )}
 
@@ -413,9 +699,11 @@ export default function HomeScreen() {
         scrollEnabled={fullScreen ? fullscreenNeedsScroll : true}
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingHorizontal: 16,
-          alignItems: fullScreen ? undefined : "center",
+          paddingHorizontal: isWeb ? 32 : 16,
+          alignItems: "center",
           paddingBottom: fullScreen ? 0 : safeBottom + 16,
+          ...(isWeb && { maxWidth: 1100, alignSelf: "center" as const, width: "100%" }),
+          ...(fullScreen && !fullscreenNeedsScroll && { flexGrow: 1, justifyContent: "center" as const }),
         }}
         showsVerticalScrollIndicator={fullScreen ? fullscreenNeedsScroll : true}
       >
@@ -437,6 +725,8 @@ export default function HomeScreen() {
             toggleDeductPicker={toggleDeductPicker}
             handleTargetConfirm={handleTargetConfirm}
             handleDeductConfirm={handleDeductConfirm}
+            updateTargetTime={updateTargetTime}
+            updateDeductTime={updateDeductTime}
             toggleAlertModal={toggleAlertModal}
             handleAlertConfirm={handleAlertConfirm}
             handleAlertDelete={handleAlertDelete}
@@ -449,17 +739,8 @@ export default function HomeScreen() {
           />
         ))}
 
-        {!fullScreen && (
+        {!fullScreen && !isWeb && (
           <View style={{ width: "100%", marginTop: 16, gap: 12 }}>
-            <Pressable
-              onPress={addTargetBlock}
-              style={{ backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
-            >
-              <Text style={{ color: colors.accent, fontSize: 15, fontWeight: "500" }}>
-                + Add Target
-              </Text>
-            </Pressable>
-
             <Pressable
               onPress={resetAll}
               style={{ backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
@@ -468,30 +749,73 @@ export default function HomeScreen() {
                 Reset All
               </Text>
             </Pressable>
+
+            <Pressable
+              onPress={toggleFullScreen}
+              style={{
+                borderColor: colors.surfaceBorder,
+                borderWidth: 1,
+                borderRadius: 12,
+                paddingVertical: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
+                Full Screen
+              </Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
 
-      {/* Full Screen toggle — fixed at bottom */}
-      <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4 }}>
-        <Pressable
-          onPress={toggleFullScreen}
-          style={{
-            backgroundColor: fullScreen ? colors.surface : "transparent",
-            borderColor: colors.surfaceBorder,
-            borderWidth: 1,
-            borderRadius: 12,
-            paddingVertical: 14,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
-            {fullScreen ? "Exit Full Screen" : "Full Screen"}
-          </Text>
-        </Pressable>
-      </View>
+      {/* Exit Full Screen — fixed at bottom (fullscreen only) */}
+      {fullScreen && (
+        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, alignItems: "center" }}>
+          <Pressable
+            onPress={toggleFullScreen}
+            {...({
+              onHoverIn: () => {
+                setExitButtonOpacity(1);
+                if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
+              },
+              onHoverOut: () => {
+                exitButtonTimerRef.current = setTimeout(() => {
+                  setExitButtonOpacity(0.3);
+                }, 3000);
+              },
+            } as any)}
+            style={{
+              backgroundColor: colors.surface,
+              borderColor: colors.surfaceBorder,
+              borderWidth: 1,
+              borderRadius: 12,
+              paddingVertical: 14,
+              alignItems: "center",
+              opacity: exitButtonOpacity,
+              ...(isWeb && { width: "50%", minWidth: 200 }),
+            }}
+          >
+            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
+              Exit Full Screen
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
+      <ConfirmModal
+        visible={resetModalVisible}
+        title="Reset All"
+        message="This will clear all timers and settings. Are you sure?"
+        confirmLabel="Yes, Reset"
+        onConfirm={() => {
+          setResetModalVisible(false);
+          doReset();
+        }}
+        onCancel={() => setResetModalVisible(false)}
+      />
 
       <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} />
+    </View>
     </View>
   );
 }

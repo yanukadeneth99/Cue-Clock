@@ -12,7 +12,7 @@ if (typeof window !== 'undefined') {
 export default function Home() {
   const container = useRef<HTMLDivElement>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<'web' | 'android' | 'ios'>('ios');
-  const [contributors, setContributors] = useState<any[]>([]);
+  const [contributors, setContributors] = useState<{ id: number; login: string; avatar_url: string; html_url: string; contributions: number }[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -162,7 +162,7 @@ export default function Home() {
     // 7. Ripple Effect for Download Button
     const downloadBtn = document.querySelector('.download-btn');
     if (downloadBtn) {
-      downloadBtn.addEventListener('mousemove', (e: any) => {
+      (downloadBtn as HTMLElement).addEventListener('mousemove', (e: MouseEvent) => {
         const rect = downloadBtn.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -200,7 +200,7 @@ export default function Home() {
           {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-8">
             <a className="font-headline uppercase tracking-[0.05em] text-[0.6875rem] font-bold text-[#414751] hover:text-[#a4c9ff] hover:border-b-2 hover:border-[#60a5fa] pb-1 transition-all" href="#features">Features</a>
-            <a className="font-headline uppercase tracking-[0.05em] text-[0.6875rem] font-bold text-[#414751] hover:text-[#a4c9ff] hover:border-b-2 hover:border-[#60a5fa] pb-1 transition-all" href="#why-its-free">Why it's Free</a>
+            <a className="font-headline uppercase tracking-[0.05em] text-[0.6875rem] font-bold text-[#414751] hover:text-[#a4c9ff] hover:border-b-2 hover:border-[#60a5fa] pb-1 transition-all" href="#why-its-free">Why it&apos;s Free</a>
             <a className="font-headline uppercase tracking-[0.05em] text-[0.6875rem] font-bold text-[#414751] hover:text-[#a4c9ff] hover:border-b-2 hover:border-[#60a5fa] pb-1 transition-all" href="#download">Download</a>
           </div>
 
@@ -260,7 +260,7 @@ export default function Home() {
             href="#why-its-free"
             onClick={() => setMobileMenuOpen(false)}
           >
-            Why it's Free
+            Why it&apos;s Free
           </a>
           <a 
             className="font-headline uppercase tracking-[0.2em] text-2xl font-bold text-[#a4c9ff] hover:text-white transition-colors" 
@@ -416,7 +416,7 @@ export default function Home() {
                     Cue Clock started because I simply needed a reliable, straightforward, simple timing tool during live broadcast production. Everything else I used felt overly complicated and costs a fortune.
                   </p>
                   <p className="text-on-surface-variant text-base md:text-lg leading-relaxed font-body">
-                    I made it free because I believe great tools should be accessible to everyone in the industry, from independent producers to seasoned high-scaled teams. It's going to stay cost free and ad-free!
+                    I made it free because I believe great tools should be accessible to everyone in the industry, from independent producers to seasoned high-scaled teams. It&apos;s going to stay cost free and ad-free!
                   </p>
                 </div>
               </div>

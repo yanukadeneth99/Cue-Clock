@@ -11,6 +11,17 @@ interface AlertModalProps {
   onCancel: () => void;
 }
 
+/**
+ * Modal for setting or deleting a per-countdown alert.
+ * Shows an active-alert view if an alert is already set, otherwise shows a minute-picker list.
+ *
+ * @param visible - Whether the modal is shown.
+ * @param currentAlertMinutes - Currently set alert threshold in minutes, or null if unset.
+ * @param maxMinutes - Maximum selectable minutes (capped to current countdown value).
+ * @param onConfirm - Called with the selected minute value when confirmed.
+ * @param onDelete - Called when the user deletes an existing alert.
+ * @param onCancel - Called when the modal is dismissed without changes.
+ */
 export default function AlertModal({
   visible,
   currentAlertMinutes,
@@ -66,7 +77,7 @@ export default function AlertModal({
               Alert Active
             </Text>
             <Text style={{ color: colors.countdown, fontSize: 16, textAlign: "center", marginBottom: 24 }}>
-              {currentAlertMinutes} minute{currentAlertMinutes !== 1 ? "s" : ""} before target
+              Alert set for {currentAlertMinutes} minute{currentAlertMinutes !== 1 ? "s" : ""} before target time
             </Text>
             <View style={{ flexDirection: "row", gap: 12 }}>
               <Pressable

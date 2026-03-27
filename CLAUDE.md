@@ -163,6 +163,18 @@ npm run build          # Build for production
 
 ## Codebase Edit History (2026)
 
+### 2026-03-27: Web UX Enhancements & Delete Confirmation
+- **UX:** Added `ConfirmModal` to `TargetBlock` for delete confirmation (both web and mobile).
+- **Web Notifications:** Implemented Web Notifications API with `window.alert` fallback; added "Notifications blocked" tag in header (clickable to re-request permission).
+- **Header:** Added circular "Add Target" (+) button with tooltip in web header; moved "+ Add Target" out of footer for web.
+- **Layout:** Fixed scrollbar to sit at viewport edge (moved `maxWidth` centering to `ScrollView.contentContainerStyle`); added `zIndex: 100` to header for tooltip layering.
+- **ClockPicker:** Platform-aware time display size (48px web, 32px mobile); reduced picker container padding.
+- **Fullscreen:** Exit Full Screen button is 50% width on web (`minWidth: 200`).
+- **Website:** Fixed 5 ESLint errors in `website/src/app/page.tsx` (unescaped apostrophes, `any` types → proper types, `MouseEvent` cast).
+
+### 2026-03-27: `any` Type Pattern
+- **Standard:** `(window as any).Notification` and `onHoverIn/Out as any` spreads are intentional RN-Web escape hatches where no typed API exists. Do not attempt to remove these.
+
 ### 2026-03-11: Performance & Notifications
 - **Optimization:** `React.memo` on `TargetBlock` and reference-stability in countdown interval (prevents lag with 15+ blocks).
 - **Push Alerts:** Added `expo-notifications` (guarded for Expo Go compatibility) with `Alert.alert` fallback.

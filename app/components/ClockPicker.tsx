@@ -3,7 +3,7 @@ import { timezones } from "@/constants/timezones";
 import { Picker } from "@react-native-picker/picker";
 import { DateTime } from "luxon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 
 interface Props {
   zone1: string;
@@ -40,32 +40,35 @@ export default function ClockPicker({
 
   if (fullScreen) {
     return (
-      <View style={{ flexDirection: "column", justifyContent: "center", alignItems: "center", width: "100%", marginVertical: 16, gap: 8 }}>
+      <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", width: "100%", marginVertical: 12, gap: 48 }}>
         <View style={{ alignItems: "center" }}>
-          <Text style={{ color: colors.muted, fontSize: 12, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>
-            {zone1.replace("/", " / ")}
-          </Text>
-          <Text style={{ color: colors.zone1, fontSize: 64, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
+          <Text style={{ color: colors.zone1, fontSize: 80, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
             {time1}
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginTop: 4 }}>
+            {zone1.replace("/", " / ")}
           </Text>
         </View>
         <View style={{ alignItems: "center" }}>
-          <Text style={{ color: colors.muted, fontSize: 12, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>
-            {zone2.replace("/", " / ")}
-          </Text>
-          <Text style={{ color: colors.zone2, fontSize: 64, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
+          <Text style={{ color: colors.zone2, fontSize: 80, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
             {time2}
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginTop: 4 }}>
+            {zone2.replace("/", " / ")}
           </Text>
         </View>
       </View>
     );
   }
 
+  const isWeb = Platform.OS === "web";
+  const timeSize = isWeb ? 48 : 32;
+
   return (
-    <View style={{ paddingVertical: 8, width: "100%", flexDirection: "row", justifyContent: "center", alignItems: "stretch", gap: 12, marginVertical: 8 }}>
+    <View style={{ paddingVertical: 4, width: "100%", flexDirection: "row", justifyContent: "center", alignItems: "stretch", gap: 12, marginVertical: 4 }}>
       {/* Zone 1 */}
-      <View style={{ flex: 1, alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 16, paddingVertical: 20, paddingHorizontal: 12 }}>
-        <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
+      <View style={{ flex: 1, alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 12 }}>
+        <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>
           Zone 1
         </Text>
         <View style={{ width: "100%", backgroundColor: colors.pickerBg, borderRadius: 8, borderColor: colors.border, borderWidth: 1 }}>
@@ -80,14 +83,14 @@ export default function ClockPicker({
             ))}
           </Picker>
         </View>
-        <Text style={{ color: colors.zone1, fontSize: 32, marginTop: 12, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
+        <Text style={{ color: colors.zone1, fontSize: timeSize, marginTop: 8, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
           {time1}
         </Text>
       </View>
 
       {/* Zone 2 */}
-      <View style={{ flex: 1, alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 16, paddingVertical: 20, paddingHorizontal: 12 }}>
-        <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
+      <View style={{ flex: 1, alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 12 }}>
+        <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>
           Zone 2
         </Text>
         <View style={{ width: "100%", backgroundColor: colors.pickerBg, borderRadius: 8, borderColor: colors.border, borderWidth: 1 }}>
@@ -102,7 +105,7 @@ export default function ClockPicker({
             ))}
           </Picker>
         </View>
-        <Text style={{ color: colors.zone2, fontSize: 32, marginTop: 12, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
+        <Text style={{ color: colors.zone2, fontSize: timeSize, marginTop: 8, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
           {time2}
         </Text>
       </View>
