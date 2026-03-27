@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from 'react';
+import Image from 'next/image';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
@@ -9,6 +10,10 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
 }
 
+/**
+ * Landing page for Cue Clock.
+ * Renders hero, features, story, download, and credits sections with GSAP animations.
+ */
 export default function Home() {
   const container = useRef<HTMLDivElement>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<'web' | 'android' | 'ios'>('ios');
@@ -23,8 +28,8 @@ export default function Home() {
           const data = await response.json();
           setContributors(data);
         }
-      } catch (error) {
-        console.error('Error fetching contributors:', error);
+      } catch {
+        // Non-critical: contributors section degrades gracefully on fetch failure
       }
     };
     fetchContributors();
@@ -421,10 +426,12 @@ export default function Home() {
                 </div>
               </div>
               <div className="h-48 md:h-full min-h-[200px] md:min-h-[400px] relative overflow-hidden order-1 md:order-2">
-                <img 
-                  alt="Professional broadcast control room" 
-                  className="story-image absolute inset-0 w-full h-full object-cover grayscale opacity-50 contrast-125" 
+                <Image
+                  alt="Professional broadcast control room"
+                  className="story-image absolute inset-0 w-full h-full object-cover grayscale opacity-50 contrast-125"
                   src="https://images.unsplash.com/photo-1601506521937-0121a7fc2a6b?q=80&w=2071&auto=format&fit=crop"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-b md:bg-gradient-to-r from-surface-container via-surface-container/20 to-transparent"></div>
               </div>
@@ -522,7 +529,7 @@ export default function Home() {
                         title={c.login}
                         className="w-12 h-12 rounded-full overflow-hidden border-2 border-outline-variant/30 hover:border-primary transition-all group relative"
                       >
-                        <img src={c.avatar_url} alt={c.login} className="w-full h-full object-cover" />
+                        <Image src={c.avatar_url} alt={c.login} className="w-full h-full object-cover" width={48} height={48} />
                       </a>
                     ))
                   ) : (

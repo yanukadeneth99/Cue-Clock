@@ -172,6 +172,11 @@ npm run build          # Build for production
 - **Fullscreen:** Exit Full Screen button is 50% width on web (`minWidth: 200`).
 - **Website:** Fixed 5 ESLint errors in `website/src/app/page.tsx` (unescaped apostrophes, `any` types → proper types, `MouseEvent` cast).
 
+### 2026-03-27: Microsoft Clarity Analytics
+- **Analytics:** Integrated `@microsoft/react-native-clarity` (project ID `w2c5ecuzj5`) in `app/app/_layout.tsx` at module level with `LogLevel.Verbose` for development visibility.
+- **Security:** All 4 npm audit vulnerabilities in `app/` resolved via `npm audit fix` (affected: `brace-expansion`, `flatted`, `picomatch`, `yaml` — dev/build tooling only).
+- **Website CSS:** Fixed `@import` ordering in `globals.css` — Google Fonts `@import url(...)` must precede `@import "tailwindcss"` to comply with CSS spec.
+
 ### 2026-03-27: `any` Type Pattern
 - **Standard:** `(window as any).Notification` and `onHoverIn/Out as any` spreads are intentional RN-Web escape hatches where no typed API exists. Do not attempt to remove these.
 

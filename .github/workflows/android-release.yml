@@ -29,7 +29,7 @@ jobs:
 
       - name: Run Expo Doctor
         working-directory: app
-        run: npx expo doctor
+        run: npx expo-doctor
         continue-on-error: true
 
       - name: Generate Android native project
