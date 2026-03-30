@@ -1,9 +1,12 @@
 #!/bin/bash
-# Local Android APK build using the same Docker environment as CI.
-# Outputs: app/android/app/build/outputs/apk/release/app-release-unsigned.apk
+# Local Android APK/AAB build using the same Docker environment as CI.
+# Outputs: app/android/app/build/outputs/apk/debug/app-debug.apk (default)
+#          app/android/app/build/outputs/bundle/debug/app-debug.aab (--aab)
+#          app/android/app/build/outputs/apk/release/app-release-unsigned.apk (--release)
 #
 # Usage:
-#   ./scripts/build-android-local.sh              # unsigned debug APK
+#   ./scripts/build-android-local.sh              # debug APK
+#   ./scripts/build-android-local.sh --aab        # debug AAB (closest to CI bundleRelease)
 #   ./scripts/build-android-local.sh --release    # signed release APK (requires keystore env vars)
 #
 # Required env vars for --release:
@@ -18,7 +21,9 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="thyrlian/android-sdk:latest"
 MODE="debug"
 
-if [[ "$1" == "--release" ]]; then
+if [[ "$1" == "--aab" ]]; then
+  MODE="aab"
+elif [[ "$1" == "--release" ]]; then
   MODE="release"
 fi
 
@@ -34,6 +39,7 @@ docker run --rm \
   "$IMAGE" bash -c "
     npm ci && \
     npx expo prebuild --platform android --clean && \
+    echo 'reactNativeArchitectures=arm64-v8a' >> android/gradle.properties && \
     cd android && \
     if [ '$MODE' = 'release' ] && [ -n \"\$KEYSTORE_PATH\" ]; then
       ./gradlew assembleRelease \
@@ -41,15 +47,19 @@ docker run --rm \
         -Pandroid.injected.signing.store.password=\$KEYSTORE_PASSWORD \
         -Pandroid.injected.signing.key.alias=\$KEY_ALIAS \
         -Pandroid.injected.signing.key.password=\$KEY_PASSWORD
+    elif [ '$MODE' = 'aab' ]; then
+      ./gradlew bundleDebug
     else
       ./gradlew assembleDebug
     fi
   "
 
 echo ""
-echo "Build complete. APK location:"
+echo "Build complete. Output location:"
 if [ "$MODE" = "release" ]; then
   echo "  app/android/app/build/outputs/apk/release/"
+elif [ "$MODE" = "aab" ]; then
+  echo "  app/android/app/build/outputs/bundle/debug/"
 else
   echo "  app/android/app/build/outputs/apk/debug/"
 fi
