@@ -40,6 +40,11 @@ jobs:
         working-directory: app/android
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
 
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-home-cache-enabled: true
+
       - name: Build release AAB
         working-directory: app/android
         run: |
@@ -56,12 +61,11 @@ jobs:
           path: app/android/app/build/outputs/bundle/release/*.aab
           retention-days: 30
 
-      # TODO: Uncomment after setting up Google Play service account
-      # - name: Upload to Google Play (Internal track)
-      #   uses: r0adkll/upload-google-play@v1
-      #   with:
-      #     serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-      #     packageName: com.yanukadeneth99.cueclock
-      #     releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
-      #     track: internal
-      #     status: completed
+      - name: Upload to Google Play (Internal track)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.yanukadeneth99.cueclock
+          releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
+          track: internal
+          status: completed
