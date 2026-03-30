@@ -19,51 +19,83 @@ Developer reference for AI-assisted work on this repository.
 
 ---
 
-## Project Structure (Monolithic)
-
-The project is organized into two primary sub-directories:
+## Project Structure
 
 ```
 app/              # React Native (Expo) Mobile Application
   app/            # Expo Router (file-based) directory
-    _layout.tsx   # Root layout: font loading, Expo Router stack
-    index.tsx     # Main screen — all primary state and logic lives here
-  components/     # UI Components (ClockPicker, TargetBlock, etc.)
-  constants/      # App-wide constants (colors.ts, timezones.ts)
-  hooks/          # Shared hooks (useColorScheme, useSafeAreaInsets)
-  assets/         # Icons, splash screens, fonts
+    _layout.tsx   # Root layout: font loading, Expo Router stack, Clarity analytics init
+    index.tsx     # Main screen — all primary state and logic lives here (~839 lines)
+    +not-found.tsx# 404 catch-all route
+  components/     # UI Components
+    ClockPicker.tsx    # Dual live-clock with timezone pickers
+    TargetBlock.tsx    # Countdown card with name, times, zone, alert, collapse, delete
+    AlertModal.tsx     # Minutes-before alert configuration modal
+    ConfirmModal.tsx   # Generic yes/no confirmation dialog
+    HelpModal.tsx      # In-app help overlay explaining all 11 controls
+  constants/      # App-wide constants
+    colors.ts     # 14-color dark broadcast palette
+    timezones.ts  # 18 broadcast timezone definitions
+  hooks/          # Shared hooks
+    useColorScheme.ts  # Re-exports React Native's built-in hook
+  assets/         # Icons, splash screens, fonts (SpaceMono-Regular.ttf)
   scripts/        # Maintenance and utility scripts
-  app.json        # Expo configuration
+  app.json        # Expo configuration (slug, bundle ID, plugins, EAS project)
+  eas.json        # EAS build configs: development (internal), preview (APK), production
   package.json    # Mobile app dependencies and scripts
+  metro.config.js # Metro bundler with NativeWind integration
+  babel.config.js # Expo preset with NativeWind JSX
+  tailwind.config.js  # Custom broadcast color palette, NativeWind preset
+  global.css      # NativeWind integration CSS
 
 website/          # Next.js Landing Page & Documentation
-  app/            # Next.js App Router directory
-  public/         # Static assets
+  src/app/
+    page.tsx      # Landing page with GSAP animations, contributor grid, download buttons
+    layout.tsx    # Root layout: SEO metadata, fonts, dark theme
+    globals.css   # Tailwind 4, material icons, glassmorphism components
+    robots.ts     # SEO robots.txt generation
+    sitemap.ts    # SEO sitemap (cueclock.app)
+  public/         # Static assets (SVGs)
   package.json    # Website dependencies and scripts
+
+docker/
+  Dockerfile.android  # Ubuntu 24.04 image with Java 17, Node 22, Android SDK 35
+
+scripts/
+  build-android-local.sh  # Local Docker-based Android build (debug/release modes)
+
+.github/workflows/
+  android-release.yml  # CI/CD: build + sign AAB + upload to Google Play internal track
 ```
 
 ---
 
 ## Tech Stack
 
-### Mobile (app/)
-| Layer | Technology |
-|---|---|
-| Framework | React Native 0.81.5 + Expo 54 |
-| Navigation | Expo Router v6 (file-based) |
-| Language | TypeScript ~5.9.3 (strict mode) |
-| Styling | Inline Styles (primary) / NativeWind v4 (secondary) |
-| Date/Time | Luxon v3 |
-| Persistence | @react-native-async-storage/async-storage |
-| Notifications| expo-notifications |
-| Animations | react-native-reanimated ~4.1 |
+### Mobile (`app/`)
+| Layer | Technology | Version |
+|---|---|---|
+| Framework | React Native | 0.83.2 |
+| SDK | Expo | 55 |
+| Navigation | Expo Router | 55 (file-based) |
+| Language | TypeScript | ~5.9.2 (strict mode) |
+| Styling | Inline Styles (primary) / NativeWind v4 (secondary) | NativeWind 4.1.23 |
+| Date/Time | Luxon | 3.7.1 |
+| Persistence | @react-native-async-storage/async-storage | 2.2.0 |
+| Notifications | expo-notifications | 55 |
+| Animations | react-native-reanimated | ~4.2.1 |
+| Pickers | @react-native-picker/picker | 2.11.4 |
+| DateTime Picker | react-native-modal-datetime-picker | 18.0.0 |
+| Analytics | @microsoft/react-native-clarity | 4.5.3 |
 
-### Website (website/)
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 15.2 |
-| Language | TypeScript |
-| Styling | Tailwind CSS 4 |
+### Website (`website/`)
+| Layer | Technology | Version |
+|---|---|---|
+| Framework | Next.js | 16.2.1 |
+| React | React | 19.2.4 |
+| Animations | GSAP + @gsap/react | 3.14.2 / 2.1.2 |
+| Styling | Tailwind CSS | 4 |
+| Language | TypeScript | 6 |
 
 ---
 
@@ -73,8 +105,9 @@ website/          # Next.js Landing Page & Documentation
 ```
 HomeScreen (app/app/index.tsx)
 ├── ClockPicker          — Dual live-clock with timezone pickers
-├── TargetBlock[]        — One per countdown; collapsible; includes AlertModal
-│   └── AlertModal       — Set/delete countdown alert
+├── TargetBlock[]        — One per countdown; collapsible; includes AlertModal + ConfirmModal
+│   ├── AlertModal       — Set/delete countdown alert
+│   └── ConfirmModal     — Delete confirmation dialog
 └── HelpModal            — In-app help overlay (triggered by ? button in header)
 ```
 
@@ -83,16 +116,32 @@ All state is lifted to `HomeScreen` and persisted via AsyncStorage (`multiSet`/`
 - `zone1` / `zone2`: Timezone strings.
 - `targetBlocks`: JSON-serialized `TargetBlockType[]`.
 - `fullScreen`: Boolean for on-air mode.
-- `helpVisible`: Boolean for help modal.
+- `helpVisible` / `resetModalVisible`: Modal visibility booleans.
+- `notifBlocked`: Web notification permission state (web only).
+- `exitButtonOpacity`: Fullscreen exit button fade (auto-dims after 3s).
 
 ### Countdown Algorithm
 1. Get current time in the block's selected timezone (Luxon `DateTime`).
 2. Construct a target `DateTime` for today at the block's `targetHour:targetMinute`.
 3. If the target is already past, add 1 day (next occurrence).
 4. Subtract the deduction (`deductHour:deductMinute`).
-5. Compute the difference → format as `MM:SS`.
+5. Compute the difference → format as `HH:MM:SS`.
 6. Recalculate every 1 second via `setInterval` in `HomeScreen`.
 7. Optimization: Skip object spread/React reconciliation if the formatted countdown string hasn't changed.
+
+### Alert System
+- **Queue system**: Fired alerts tracked in a ref; processed in useEffect to prevent duplicate notifications.
+- **Trigger condition**: `totalMinutes === alertMinutesBefore && seconds === 0`.
+- **Auto-clears**: Alert config is removed from the block after firing.
+- **Notification priority**: `expo-notifications` → Web Notifications API → `window.alert` fallback.
+- **Android**: Requires notification channel (default, MAX importance, vibration) on first app launch.
+- **Web**: "Notifications blocked" tag appears in header if permission denied (clickable to re-request).
+- **Expo Go guard**: Notification registration is skipped in Expo Go and web environments.
+
+### Platform-Specific UI
+- **Web**: +Add button and ? help in header; more controls exposed; tooltips; select/input HTML elements styled via platform-injected inline styles.
+- **Mobile**: Footer-based controls; simpler layout.
+- **Detection**: `Platform.OS === "web" | "ios" | "android"`.
 
 ### Color Scheme
 The app uses a specific dark blue-gray palette for high visibility in broadcast environments.
@@ -112,12 +161,63 @@ The app uses a specific dark blue-gray palette for high visibility in broadcast 
 
 Colors are defined in `app/constants/colors.ts` and used via the `colors` object.
 
+### Typography
+- **Headline/Monospace**: `SpaceMono-Regular` (countdown timers, loaded via `useFonts` in `_layout.tsx`)
+- **Website Headline**: Space Grotesk (bold)
+- **Website Body**: Inter (regular)
+- **Countdown**: `fontVariant: ['tabular-nums']` for stable width during ticks
+
 ### Fullscreen Layout Pattern
 Uses a **single `View` root** (to prevent native crashes from tree remounts) with conditional children.
 - `ClockPicker` is pinned above a `ScrollView`.
 - `TargetBlock` list is inside the `ScrollView` (scroll enabled only when blocks overflow available space).
-- Exit button is fixed at the bottom.
+- Exit button is fixed at the bottom; auto-dims after 3 seconds of inactivity via opacity animation.
 - Safe area padding is dynamically calculated using `useSafeAreaInsets()`.
+- Countdown font size scales dynamically: `countdownFontSize = screenHeight / blockCount` (shrinks as blocks increase).
+
+---
+
+## CI/CD & Build Pipeline
+
+### Android Release Workflow (`.github/workflows/android-release.yml`)
+
+**Trigger**: Push to `master` branch
+**Runner**: `thyrlian/android-sdk:latest` container (Ubuntu 24.04, Java 17, Android SDK 35, Build Tools 34.0.0, NDK 26.1)
+
+**Steps**:
+1. Checkout code
+2. Setup Node.js 22 with npm cache
+3. `npm ci` in `app/`
+4. `npx expo-doctor` (continues on error)
+5. `npx expo prebuild --platform android --clean`
+6. Decode Base64 keystore secret → `release.keystore`
+7. Setup Gradle with cache (reduces build time significantly)
+8. Build signed release AAB via `./gradlew bundleRelease`
+9. Upload AAB as GitHub artifact (30-day retention)
+10. Upload AAB to Google Play **internal track** via `r0adkll/upload-google-play@v1`
+
+**Required GitHub Secrets**:
+| Secret | Description |
+|--------|-------------|
+| `ANDROID_KEYSTORE_BASE64` | Base64-encoded `.keystore` file |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
+| `ANDROID_KEY_ALIAS` | Key alias (`cue-clock-key`) |
+| `ANDROID_KEY_PASSWORD` | Individual key password |
+| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Google Cloud service account JSON for Play API |
+
+**Package name**: `com.yanukadeneth99.cueclock` (must match `app.json` and Google Play Console app)
+
+### Local Android Build (`scripts/build-android-local.sh`)
+
+- **Debug** (default): `./gradlew assembleDebug` → APK output
+- **Release** (`--release` flag): Requires env vars `KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+- Runs inside the `docker/Dockerfile.android` container
+
+### Docker (`docker/Dockerfile.android`)
+
+Custom Android build environment (not currently used by CI — CI uses `thyrlian/android-sdk:latest`). Useful for local builds without manual SDK installation.
+- Ubuntu 24.04, OpenJDK 17, Node.js 22
+- Android SDK: platform-tools, platforms;android-35, build-tools;34.0.0, ndk;26.1.10909125
 
 ---
 
@@ -140,6 +240,7 @@ Uses a **single `View` root** (to prevent native crashes from tree remounts) wit
 - **Error Handling** — Use empty or comment-only `catch` blocks for production-safe silence; no `console.log` in production.
 - **Documentation** — Exported components and functions must have JSDoc describing props/parameters.
 - **Interaction** — Use `Pressable` instead of `Button` for custom-styled elements.
+- **`any` Type Pattern** — `(window as any).Notification` and `onHoverIn/Out as any` spreads are intentional RN-Web escape hatches where no typed API exists. Do not remove these.
 
 ---
 
@@ -159,9 +260,23 @@ npm run dev            # Start Next.js dev server
 npm run build          # Build for production
 ```
 
+### Local Android Build
+```bash
+# Debug APK
+./scripts/build-android-local.sh
+
+# Signed release APK
+KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
+  ./scripts/build-android-local.sh --release
+```
+
 ---
 
 ## Codebase Edit History (2026)
+
+### 2026-03-30: CI/CD Pipeline
+- **Gradle Caching**: Added `gradle/gradle-build-action@v3` with `gradle-home-cache-enabled` to persist Gradle cache between CI runs (reduces build time from ~50 min to ~10-15 min on subsequent runs).
+- **Google Play Upload**: Enabled `r0adkll/upload-google-play@v1` step to automatically upload signed AAB to Google Play internal testing track on every push to master.
 
 ### 2026-03-27: Web UX Enhancements & Delete Confirmation
 - **UX:** Added `ConfirmModal` to `TargetBlock` for delete confirmation (both web and mobile).
