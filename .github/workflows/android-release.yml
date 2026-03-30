@@ -32,8 +32,8 @@ jobs:
           echo "Disk space before cleanup:"
           df -h
           # Remove unnecessary SDK components and large unneeded packages
+          # (preserve /opt/hostedtoolcache for Java)
           sudo rm -rf /usr/local/lib/android/sdk/ndk
-          sudo rm -rf /opt/hostedtoolcache
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/share/swift
           echo "Disk space after cleanup:"
