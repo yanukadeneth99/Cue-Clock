@@ -285,6 +285,10 @@ Custom Android build environment (not currently used by CI — CI uses `thyrlian
 - **Interaction** — Use `Pressable` instead of `Button` for custom-styled elements.
 - **`any` Type Pattern** — `(window as any).Notification` and `onHoverIn/Out as any` spreads are intentional RN-Web escape hatches where no typed API exists. Do not remove these.
 
+### 4. Git Conventions
+- **Commit Messages** — Never add Anthropic or Claude author lines (no `Co-Authored-By` trailers) in commit messages.
+- **Branch Policy** — Always ask for confirmation before committing directly to `master`, `main`, or `production` branches.
+
 ---
 
 ## Development Commands
