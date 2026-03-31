@@ -115,5 +115,5 @@ jobs:
           packageName: com.yanukadeneth99.cueclock
           releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
           track: beta
-          status: completed
+          status: draft
           releaseNotes: ${{ github.event.release.body }}
