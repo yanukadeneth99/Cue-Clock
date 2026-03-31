@@ -65,7 +65,8 @@ scripts/
   build-android-local.sh  # Local Docker-based Android build (debug/release modes)
 
 .github/workflows/
-  android-release.yml  # CI/CD: build + sign AAB + upload to Google Play internal track
+  android-internal.yml # CI/CD: build + sign AAB + upload to Google Play internal track (master pushes)
+  android-release.yml  # CI/CD: build + sign AAB + upload to Google Play beta track (GitHub releases)
 ```
 
 ---
@@ -179,33 +180,71 @@ Uses a **single `View` root** (to prevent native crashes from tree remounts) wit
 
 ## CI/CD & Build Pipeline
 
-### Android Release Workflow (`.github/workflows/android-release.yml`)
+### Pipeline Strategy
+
+**Two-track deployment approach:**
+
+| Trigger | Workflow | Track | Audience | Purpose |
+|---------|----------|-------|----------|---------|
+| Push to `master` | `android-internal.yml` | Internal Testing | Dev team + QA | Continuous testing |
+| Create GitHub Release | `android-release.yml` | Closed Testing (Beta) | Selected testers | Alpha/beta releases |
+
+### Android Internal Testing Workflow (`.github/workflows/android-internal.yml`)
 
 **Trigger**: Push to `master` branch
-**Runner**: `thyrlian/android-sdk:latest` container (Ubuntu 24.04, Java 17, Android SDK 35, Build Tools 34.0.0, NDK 26.1)
+**Runner**: Ubuntu 24.04 with Java 17, Node 22, Android SDK 35
 
 **Steps**:
 1. Checkout code
-2. Setup Node.js 22 with npm cache
-3. `npm ci` in `app/`
-4. `npx expo-doctor` (continues on error)
-5. `npx expo prebuild --platform android --clean`
-6. Decode Base64 keystore secret → `release.keystore`
-7. Setup Gradle with cache (reduces build time significantly)
-8. Build signed release AAB via `./gradlew bundleRelease`
-9. Upload AAB as GitHub artifact (30-day retention)
-10. Upload AAB to Google Play **internal track** via `r0adkll/upload-google-play@v1`
+2. Setup Java 17, Node.js 22 with npm cache
+3. Free up disk space (removes NDK, dotnet, Swift)
+4. `npm ci` in `app/`
+5. `npx expo-doctor` (continues on error)
+6. `npx expo prebuild --platform android --clean`
+7. Restrict build to `arm64-v8a` architecture
+8. Decode Base64 Firebase config → `google-services.json`
+9. Decode Base64 keystore secret → `release.keystore`
+10. Setup Gradle with persistent cache
+11. Build signed release AAB via `./gradlew bundleRelease`
+12. Upload AAB to Google Play **internal testing track** via `r0adkll/upload-google-play@v1`
 
-**Required GitHub Secrets**:
+### Android Release Workflow (`.github/workflows/android-release.yml`)
+
+**Trigger**: GitHub Release creation/publication
+**Runner**: Ubuntu 24.04 with Java 17, Node 22, Android SDK 35
+
+**Steps**: Same as internal workflow, but uploads to **beta track** with release notes.
+
+**Key difference**: Includes release notes from the GitHub Release body:
+```yaml
+releaseNotes: ${{ github.event.release.body }}
+```
+
+**Manual trigger option**: Both workflows support `workflow_dispatch` for manual GitHub Actions dashboard trigger.
+
+### Required GitHub Secrets
+
 | Secret | Description |
 |--------|-------------|
 | `ANDROID_KEYSTORE_BASE64` | Base64-encoded `.keystore` file |
 | `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
 | `ANDROID_KEY_ALIAS` | Key alias (`cue-clock-key`) |
 | `ANDROID_KEY_PASSWORD` | Individual key password |
+| `GOOGLE_SERVICES_JSON_BASE64` | Base64-encoded `google-services.json` (Firebase config) |
 | `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Google Cloud service account JSON for Play API |
 
 **Package name**: `com.yanukadeneth99.cueclock` (must match `app.json` and Google Play Console app)
+
+### Creating a Release
+
+1. Go to **GitHub** → **Releases** → **Create a new release**
+2. Enter tag name (e.g., `v1.0.0`)
+3. Set target to `master` branch
+4. Write release notes in the description (format with `## Features`, `## Bug Fixes`, etc.)
+5. ✅ Check **"This is a pre-release"** for alpha/beta testing
+6. Click **"Publish release"**
+
+→ Pipeline automatically triggers, builds signed AAB, and uploads to Google Play beta track with release notes.
 
 ### Local Android Build (`scripts/build-android-local.sh`)
 
@@ -273,6 +312,14 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 ---
 
 ## Codebase Edit History (2026)
+
+### 2026-03-31: Dual-Track CI/CD Pipeline
+- **Two Workflows**: Separated internal testing and release pipelines.
+  - `android-internal.yml`: Triggered on every `master` push → uploads to **internal testing track** (dev/QA continuous testing).
+  - `android-release.yml`: Triggered on GitHub Release creation → uploads to **beta track** with release notes (alpha/beta user testing).
+- **Release Notes Integration**: Release body from GitHub Release automatically passed to Google Play Console via `${{ github.event.release.body }}`.
+- **Workflow Dispatch**: Both workflows support manual trigger from GitHub Actions dashboard.
+- **Firebase Config**: Added `GOOGLE_SERVICES_JSON_BASE64` secret for secure Firebase configuration in CI/CD.
 
 ### 2026-03-30: CI/CD Pipeline
 - **Gradle Caching**: Added `gradle/gradle-build-action@v3` with `gradle-home-cache-enabled` to persist Gradle cache between CI runs (reduces build time from ~50 min to ~10-15 min on subsequent runs).

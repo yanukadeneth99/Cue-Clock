@@ -1,14 +1,23 @@
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Clarity from "@microsoft/react-native-clarity";
+import { initializeApp } from "@react-native-firebase/app";
+import analytics from "@react-native-firebase/analytics";
 
 import "../global.css";
 
-// Initialize Microsoft Clarity for analytics
-Clarity.initialize("w2c5ecuzj5", {
-  logLevel: Clarity.LogLevel.Verbose,
-});
+// Initialize Microsoft Clarity for analytics (mobile only — not supported on web)
+if (Platform.OS === "ios" || Platform.OS === "android") {
+  Clarity.initialize("w2c5ecuzj5", {
+    logLevel: Clarity.LogLevel.Verbose,
+  });
+
+  // Initialize Firebase Analytics (mobile only)
+  initializeApp();
+  analytics().setAnalyticsCollectionEnabled(true);
+}
 
 /**
  * Root layout for the Expo Router stack.

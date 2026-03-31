@@ -1,35 +1,16 @@
-name: Android Release
+name: Android Internal Testing
 
 on:
-  release:
-    types: [created, published]
-
-# Allow manual trigger from Actions tab
-  workflow_dispatch:
+  push:
+    branches:
+      - master
 
 jobs:
   build-and-deploy:
-    name: Build & Deploy to Google Play
+    name: Build & Deploy to Internal Testing
     runs-on: ubuntu-latest
 
     steps:
-      - name: Extract version code from tag
-        id: version
-        run: |
-          # Extract tag name (e.g., v1.0.33 -> 1.0.33)
-          VERSION_TAG="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION_TAG#v}"
-
-          # Parse semantic version (major.minor.patch)
-          IFS='.' read -r major minor patch <<< "$VERSION"
-
-          # Calculate version code: (major * 1000) + (minor * 100) + patch
-          VERSION_CODE=$((major * 1000 + minor * 100 + patch))
-
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION, versionCode: $VERSION_CODE"
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -67,13 +48,13 @@ jobs:
         run: npx expo-doctor
         continue-on-error: true
 
-      - name: Update version code for release
+      - name: Update version code for internal testing
         working-directory: app
         run: |
           node -e "
           const fs = require('fs');
           const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-          const versionCode = ${{ steps.version.outputs.version_code }};
+          const versionCode = ${{ github.run_number }};
           app.expo.android.versionCode = versionCode;
           app.expo.ios.buildNumber = versionCode.toString();
           fs.writeFileSync('app.json', JSON.stringify(app, null, 2));
@@ -108,12 +89,11 @@ jobs:
             -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Upload to Google Play (Closed Beta track)
+      - name: Upload to Google Play (Internal Testing track)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.yanukadeneth99.cueclock
           releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
-          track: beta
+          track: internal
           status: completed
-          releaseNotes: ${{ github.event.release.body }}
