@@ -95,5 +95,6 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.yanukadeneth99.cueclock
           releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
+          releaseName: cue-clock-1
           track: internal
-          status: draft
+          status: completed
