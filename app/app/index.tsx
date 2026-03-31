@@ -1,3 +1,4 @@
+import AnalyticsConsentModal from "@/components/AnalyticsConsentModal";
 import ClockPicker from "@/components/ClockPicker";
 import ConfirmModal from "@/components/ConfirmModal";
 import HelpModal from "@/components/HelpModal";
@@ -193,6 +194,9 @@ export default function HomeScreen() {
   const [exitButtonOpacity, setExitButtonOpacity] = useState(1);
   const [notifBlocked, setNotifBlocked] = useState(false);
   const [addTargetHovered, setAddTargetHovered] = useState(false);
+  // null = first launch (consent not yet given); true/false = user's explicit choice
+  const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean | null>(null);
+  const [consentModalVisible, setConsentModalVisible] = useState(false);
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     createDefaultBlock(1),
   ]);
@@ -304,14 +308,21 @@ export default function HomeScreen() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [storedZone1, storedZone2, storedTargets] = await AsyncStorage.multiGet([
+        const [storedZone1, storedZone2, storedTargets, storedAnalytics] = await AsyncStorage.multiGet([
           "zone1",
           "zone2",
           "targetBlocks",
+          "analyticsEnabled",
         ]);
 
         if (storedZone1[1]) setZone1(storedZone1[1]);
         if (storedZone2[1]) setZone2(storedZone2[1]);
+        if (storedAnalytics[1] === null) {
+          // First launch — show consent modal
+          setConsentModalVisible(true);
+        } else {
+          setAnalyticsEnabled(storedAnalytics[1] === "true");
+        }
         if (storedTargets[1]) {
           const parsed: TargetBlockType[] = JSON.parse(storedTargets[1]);
           setTargetBlocks(parsed);
@@ -326,7 +337,7 @@ export default function HomeScreen() {
     loadData();
   }, []);
 
-  // Save changes (batched)
+  // Save changes (batched); analyticsEnabled is saved explicitly in its handlers
   useEffect(() => {
     if (!isLoadedRef.current) return;
     AsyncStorage.multiSet([
@@ -568,6 +579,35 @@ export default function HomeScreen() {
     }
   }, []);
 
+  /** Apply an analytics consent choice: persist it, update Firebase, and init Clarity if accepted. */
+  const applyAnalyticsChoice = useCallback(async (enabled: boolean) => {
+    setAnalyticsEnabled(enabled);
+    await AsyncStorage.setItem("analyticsEnabled", String(enabled)).catch(() => {});
+    if (Platform.OS === "ios" || Platform.OS === "android") {
+      try {
+        const { initializeApp, getApps } = await import("@react-native-firebase/app");
+        const { default: analytics } = await import("@react-native-firebase/analytics");
+        if (getApps().length === 0) initializeApp();
+        await analytics().setAnalyticsCollectionEnabled(enabled);
+        if (enabled) {
+          const Clarity = await import("@microsoft/react-native-clarity");
+          Clarity.initialize("w2c5ecuzj5", { logLevel: Clarity.LogLevel.Verbose });
+        }
+      } catch {
+        // silently fail
+      }
+    }
+  }, []);
+
+  const handleAnalyticsConsent = useCallback(async (accepted: boolean) => {
+    setConsentModalVisible(false);
+    await applyAnalyticsChoice(accepted);
+  }, [applyAnalyticsChoice]);
+
+  const toggleAnalytics = useCallback(() => {
+    applyAnalyticsChoice(!(analyticsEnabled ?? false));
+  }, [analyticsEnabled, applyAnalyticsChoice]);
+
   const resetAll = useCallback(() => {
     if (Platform.OS === "web") {
       setResetModalVisible(true);
@@ -689,6 +729,11 @@ export default function HomeScreen() {
                 </View>
                 <HeaderIconButton icon="⛶" label="Full Screen" onPress={toggleFullScreen} />
                 <HeaderIconButton icon="↺" label="Reset All" onPress={resetAll} danger />
+                <HeaderIconButton
+                  icon={analyticsEnabled ? "◉" : "◎"}
+                  label={analyticsEnabled ? "Analytics On (tap to opt out)" : "Analytics Off (tap to opt in)"}
+                  onPress={toggleAnalytics}
+                />
               </>
             )}
             {isWeb ? (
@@ -790,6 +835,17 @@ export default function HomeScreen() {
                 Reset All
               </Text>
             </Pressable>
+            <Pressable
+              onPress={toggleAnalytics}
+              style={{ backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              <Text style={{ color: analyticsEnabled ? colors.accent : colors.muted, fontSize: 15 }}>
+                {analyticsEnabled ? "◉" : "◎"}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "500" }}>
+                Analytics: {analyticsEnabled ? "On" : "Off"}
+              </Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -869,6 +925,12 @@ export default function HomeScreen() {
       />
 
       <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} />
+
+      <AnalyticsConsentModal
+        visible={consentModalVisible}
+        onAccept={() => handleAnalyticsConsent(true)}
+        onDecline={() => handleAnalyticsConsent(false)}
+      />
     </View>
     </View>
   );
