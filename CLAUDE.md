@@ -28,11 +28,12 @@ app/              # React Native (Expo) Mobile Application
     index.tsx     # Main screen — all primary state and logic lives here (~839 lines)
     +not-found.tsx# 404 catch-all route
   components/     # UI Components
-    ClockPicker.tsx    # Dual live-clock with timezone pickers
-    TargetBlock.tsx    # Countdown card with name, times, zone, alert, collapse, delete
-    AlertModal.tsx     # Minutes-before alert configuration modal
-    ConfirmModal.tsx   # Generic yes/no confirmation dialog
-    HelpModal.tsx      # In-app help overlay explaining all 11 controls
+    AnalyticsConsentModal.tsx  # First-launch GDPR-compliant opt-in modal (non-dismissable)
+    ClockPicker.tsx            # Dual live-clock with timezone pickers
+    TargetBlock.tsx            # Countdown card with name, times, zone, alert, collapse, delete
+    AlertModal.tsx             # Minutes-before alert configuration modal
+    ConfirmModal.tsx           # Generic yes/no confirmation dialog
+    HelpModal.tsx              # In-app help overlay explaining all 11 controls
   constants/      # App-wide constants
     colors.ts     # 14-color dark broadcast palette
     timezones.ts  # 18 broadcast timezone definitions
@@ -52,6 +53,7 @@ website/          # Next.js Landing Page & Documentation
   src/app/
     page.tsx      # Landing page with GSAP animations, contributor grid, download buttons
     layout.tsx    # Root layout: SEO metadata, fonts, dark theme
+    privacy/page.tsx  # Privacy policy explaining data collection and user rights
     globals.css   # Tailwind 4, material icons, glassmorphism components
     robots.ts     # SEO robots.txt generation
     sitemap.ts    # SEO sitemap (cueclock.app)
@@ -117,6 +119,8 @@ All state is lifted to `HomeScreen` and persisted via AsyncStorage (`multiSet`/`
 - `zone1` / `zone2`: Timezone strings.
 - `targetBlocks`: JSON-serialized `TargetBlockType[]`.
 - `fullScreen`: Boolean for on-air mode.
+- `analyticsEnabled`: Three-state (`null` = not yet given, `true` = accepted, `false` = declined).
+- `consentModalVisible`: Boolean for first-launch analytics consent modal visibility.
 - `helpVisible` / `resetModalVisible`: Modal visibility booleans.
 - `notifBlocked`: Web notification permission state (web only).
 - `exitButtonOpacity`: Fullscreen exit button fade (auto-dims after 3s).
@@ -206,7 +210,7 @@ Uses a **single `View` root** (to prevent native crashes from tree remounts) wit
 9. Decode Base64 keystore secret → `release.keystore`
 10. Setup Gradle with persistent cache
 11. Build signed release AAB via `./gradlew bundleRelease`
-12. Upload AAB to Google Play **internal testing track** via `r0adkll/upload-google-play@v1`
+12. Generate downloadable artifact (30-day retention) for manual upload to Google Play internal testing track
 
 ### Android Release Workflow (`.github/workflows/android-release.yml`)
 
@@ -312,6 +316,28 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 ---
 
 ## Codebase Edit History (2026)
+
+### 2026-03-31: GDPR-Compliant Analytics Opt-In System
+- **Analytics Consent Modal:** Created `AnalyticsConsentModal.tsx` component for first-launch explicit opt-in (non-dismissable).
+  - Explains what data is collected (app usage patterns, device info, crashes, geographic region).
+  - Two buttons: "Allow Analytics" and "No Thanks".
+  - Cannot be dismissed without making an explicit choice.
+- **Three-State Consent System:** Implemented via AsyncStorage with `null` (not yet given), `true` (accepted), `false` (declined).
+  - First launch: Modal shows if consent not yet given.
+  - Subsequent launches: Consent state persisted.
+- **Analytics Initialization:** Moved to useEffect in `_layout.tsx` with dynamic imports.
+  - If `analyticsEnabled === null`: Exit early, no SDKs loaded.
+  - If `analyticsEnabled === true`: Initialize Clarity and Firebase with collection enabled.
+  - If `analyticsEnabled === false`: Initialize Firebase but disable collection; skip Clarity.
+- **Analytics Toggle UI:** Added visual indicators (◉ filled / ◎ empty) in web header and mobile footer.
+  - Users can toggle analytics on/off in app settings after initial choice.
+  - Changes persist to AsyncStorage.
+- **Privacy Policy Page:** Created `/website/src/app/privacy/page.tsx` explaining all data practices.
+  - Sections: Overview, Data Collection (local + analytics), Analytics Providers, Privacy Controls, Third-Party Services, Data Security, User Rights, Policy Changes, Contact.
+  - Complies with GDPR, CCPA, and other privacy regulations.
+- **CI/CD Update:** Commented out auto-upload to Google Play in `android-internal.yml`.
+  - Now generates downloadable artifact instead (30-day retention).
+  - Allows manual upload via Google Play Console.
 
 ### 2026-03-31: Dual-Track CI/CD Pipeline
 - **Two Workflows**: Separated internal testing and release pipelines.

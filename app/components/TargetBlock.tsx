@@ -28,6 +28,7 @@ export interface TargetBlockType {
   alertMinutesBefore: number | null;
   isAlertModalVisible: boolean;
   alertFired: boolean;
+  notificationId?: string | null;
 }
 
 interface Props {

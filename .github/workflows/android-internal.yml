@@ -96,12 +96,12 @@ jobs:
           path: app/android/app/build/outputs/bundle/release/*.aab
           retention-days: 30
 
-      # - name: Upload to Google Play (Internal Testing track)
-      #   uses: r0adkll/upload-google-play@v1
-      #   with:
-      #     serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-      #     packageName: com.yanukadeneth99.cueclock
-      #     releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
-      #     releaseName: cue-clock-1
-      #     track: internal
-      #     status: completed
+      - name: Upload to Google Play (Internal Testing track)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.yanukadeneth99.cueclock
+          releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
+          releaseName: cue-clock-${{ github.run_number }}
+          track: internal
+          status: draft

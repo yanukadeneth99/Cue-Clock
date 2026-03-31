@@ -10,6 +10,7 @@ import { DateTime } from "luxon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Linking,
   LogBox,
   Platform,
   Pressable,
@@ -85,10 +86,56 @@ function sendAlert(title: string, body: string) {
 
 const FULLSCREEN_CLOCK_HEIGHT = 100; // estimated height of ClockPicker in fullscreen (horizontal layout)
 const FULLSCREEN_EXIT_BTN_HEIGHT = 60; // height of exit button + margins
-const FULLSCREEN_MAX_FONT = 56;
+const FULLSCREEN_MAX_FONT = 40;
 const FULLSCREEN_MIN_FONT = 24;
 // per-block height overhead beyond font size (marginVertical + line-height overhead)
 const BLOCK_OVERHEAD = 42;
+
+/**
+ * Compute the Date at which a block's alert should fire.
+ * Returns null if alertMinutesBefore is null or the time is already past.
+ */
+function computeAlertFireDate(block: TargetBlockType, zone: string): Date | null {
+  if (block.alertMinutesBefore === null) return null;
+  const now = DateTime.now().setZone(zone);
+  let targetDT = now.set({ hour: block.targetHour, minute: block.targetMinute, second: 0, millisecond: 0 });
+  targetDT = targetDT.plus({ seconds: 1 });
+  if (targetDT <= now) targetDT = targetDT.plus({ days: 1 });
+  const deductionMs = (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
+  targetDT = targetDT.minus({ milliseconds: deductionMs });
+  const fireTime = targetDT.minus({ minutes: block.alertMinutesBefore });
+  if (fireTime <= now) return null;
+  return fireTime.toJSDate();
+}
+
+/** Schedule a native push notification for a block's alert. Returns the notification ID or null. */
+async function scheduleBlockNotification(block: TargetBlockType, zone: string): Promise<string | null> {
+  if (!Notifications || Platform.OS === "web" || block.alertMinutesBefore === null) return null;
+  const fireDate = computeAlertFireDate(block, zone);
+  if (!fireDate) return null;
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Countdown Alert",
+        body: `"${block.name}" has reached ${block.alertMinutesBefore} minute${block.alertMinutesBefore !== 1 ? "s" : ""} before target!`,
+        sound: true,
+        ...(Platform.OS === "android" ? { channelId: "default" } : {}),
+      },
+      trigger: { date: fireDate } as any,
+    });
+    return id;
+  } catch {
+    return null;
+  }
+}
+
+/** Cancel a previously scheduled native notification by ID. */
+async function cancelBlockNotification(notifId: string | null | undefined): Promise<void> {
+  if (!Notifications || !notifId) return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(notifId);
+  } catch {}
+}
 
 function createDefaultBlock(id: number): TargetBlockType {
   return {
@@ -204,6 +251,11 @@ export default function HomeScreen() {
   const isLoadedRef = useRef(false);
   const alertQueueRef = useRef<{ id: number; name: string; minutes: number }[]>([]);
   const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mirror of targetBlocks for use in async callbacks without stale closure issues
+  const targetBlocksRef = useRef<TargetBlockType[]>([createDefaultBlock(1)]);
+
+  // Keep ref in sync with state for use in async callbacks
+  useEffect(() => { targetBlocksRef.current = targetBlocks; }, [targetBlocks]);
 
   // Request notification permissions on mount
   useEffect(() => {
@@ -236,6 +288,13 @@ export default function HomeScreen() {
     })();
   }, []);
 
+  /** Reset exit-button opacity to 1 and restart the 3-second fade timer. */
+  const resetOpacityTimer = useCallback(() => {
+    setExitButtonOpacity(1);
+    if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
+    exitButtonTimerRef.current = setTimeout(() => setExitButtonOpacity(0.3), 3000);
+  }, []);
+
   // Fullscreen exit button opacity: fade to 30% after 3 seconds
   useEffect(() => {
     if (!fullScreen) {
@@ -243,16 +302,11 @@ export default function HomeScreen() {
       if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
       return;
     }
-
-    setExitButtonOpacity(1);
-    exitButtonTimerRef.current = setTimeout(() => {
-      setExitButtonOpacity(0.3);
-    }, 3000);
-
+    resetOpacityTimer();
     return () => {
       if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
     };
-  }, [fullScreen]);
+  }, [fullScreen, resetOpacityTimer]);
 
   // Inject web-specific styles for select elements and time inputs
   useEffect(() => {
@@ -396,13 +450,17 @@ export default function HomeScreen() {
               seconds === 0;
 
             if (shouldFire) {
-              alertQueueRef.current.push({
-                id: block.id,
-                name: block.name,
-                minutes: block.alertMinutesBefore,
-              });
+              // Web: use in-app queue (no background support); native: notification already scheduled
+              if (Platform.OS === "web" || !Notifications) {
+                alertQueueRef.current.push({
+                  id: block.id,
+                  name: block.name,
+                  minutes: block.alertMinutesBefore,
+                });
+              }
               updates.alertFired = true;
               updates.alertMinutesBefore = null;
+              updates.notificationId = null;
               changed = true;
             }
 
@@ -461,37 +519,41 @@ export default function HomeScreen() {
     );
   }, []);
 
-  const handleTargetConfirm = useCallback((id: number, date: Date) => {
+  const handleTargetConfirm = useCallback(async (id: number, date: Date) => {
+    const block = targetBlocksRef.current.find((b) => b.id === id);
+    let notifId = block?.notificationId ?? null;
+    if (block && block.alertMinutesBefore !== null) {
+      if (notifId) await cancelBlockNotification(notifId);
+      const tempBlock = { ...block, targetHour: date.getHours(), targetMinute: date.getMinutes() };
+      const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
+      notifId = await scheduleBlockNotification(tempBlock, zone);
+    }
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
-          ? {
-              ...b,
-              targetHour: date.getHours(),
-              targetMinute: date.getMinutes(),
-              isTargetPickerVisible: false,
-              alertFired: false,
-            }
+          ? { ...b, targetHour: date.getHours(), targetMinute: date.getMinutes(), isTargetPickerVisible: false, alertFired: false, notificationId: notifId }
           : b
       )
     );
-  }, []);
+  }, [zone1, zone2]);
 
-  const handleDeductConfirm = useCallback((id: number, date: Date) => {
+  const handleDeductConfirm = useCallback(async (id: number, date: Date) => {
+    const block = targetBlocksRef.current.find((b) => b.id === id);
+    let notifId = block?.notificationId ?? null;
+    if (block && block.alertMinutesBefore !== null) {
+      if (notifId) await cancelBlockNotification(notifId);
+      const tempBlock = { ...block, deductHour: date.getHours(), deductMinute: date.getMinutes() };
+      const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
+      notifId = await scheduleBlockNotification(tempBlock, zone);
+    }
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
-          ? {
-              ...b,
-              deductHour: date.getHours(),
-              deductMinute: date.getMinutes(),
-              isDeductPickerVisible: false,
-              alertFired: false,
-            }
+          ? { ...b, deductHour: date.getHours(), deductMinute: date.getMinutes(), isDeductPickerVisible: false, alertFired: false, notificationId: notifId }
           : b
       )
     );
-  }, []);
+  }, [zone1, zone2]);
 
   const toggleAlertModal = useCallback((id: number, show: boolean) => {
     setTargetBlocks((blocks) =>
@@ -501,68 +563,87 @@ export default function HomeScreen() {
     );
   }, []);
 
-  const handleAlertConfirm = useCallback((id: number, minutes: number) => {
+  const handleAlertConfirm = useCallback(async (id: number, minutes: number) => {
+    const block = targetBlocksRef.current.find((b) => b.id === id);
+    // Cancel any previously scheduled notification for this block
+    if (block?.notificationId) await cancelBlockNotification(block.notificationId);
+    // Schedule a new background notification
+    const tempBlock = { ...block!, alertMinutesBefore: minutes, alertFired: false };
+    const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
+    const notifId = await scheduleBlockNotification(tempBlock, zone);
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
-          ? { ...b, alertMinutesBefore: minutes, isAlertModalVisible: false, alertFired: false }
+          ? { ...b, alertMinutesBefore: minutes, isAlertModalVisible: false, alertFired: false, notificationId: notifId }
+          : b
+      )
+    );
+  }, [zone1, zone2]);
+
+  const handleAlertDelete = useCallback(async (id: number) => {
+    const block = targetBlocksRef.current.find((b) => b.id === id);
+    if (block?.notificationId) await cancelBlockNotification(block.notificationId);
+    setTargetBlocks((blocks) =>
+      blocks.map((b) =>
+        b.id === id
+          ? { ...b, alertMinutesBefore: null, isAlertModalVisible: false, alertFired: false, notificationId: null }
           : b
       )
     );
   }, []);
 
-  const handleAlertDelete = useCallback((id: number) => {
+  const updateTargetTime = useCallback(async (id: number, hour: number, minute: number) => {
+    const block = targetBlocksRef.current.find((b) => b.id === id);
+    let notifId = block?.notificationId ?? null;
+    if (block && block.alertMinutesBefore !== null) {
+      if (notifId) await cancelBlockNotification(notifId);
+      const tempBlock = { ...block, targetHour: hour, targetMinute: minute };
+      const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
+      notifId = await scheduleBlockNotification(tempBlock, zone);
+    }
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
-        b.id === id
-          ? { ...b, alertMinutesBefore: null, isAlertModalVisible: false, alertFired: false }
-          : b
+        b.id === id ? { ...b, targetHour: hour, targetMinute: minute, alertFired: false, notificationId: notifId } : b
       )
     );
-  }, []);
+  }, [zone1, zone2]);
 
-  const updateTargetTime = useCallback((id: number, hour: number, minute: number) => {
+  const updateDeductTime = useCallback(async (id: number, hour: number, minute: number) => {
+    const block = targetBlocksRef.current.find((b) => b.id === id);
+    let notifId = block?.notificationId ?? null;
+    if (block && block.alertMinutesBefore !== null) {
+      if (notifId) await cancelBlockNotification(notifId);
+      const tempBlock = { ...block, deductHour: hour, deductMinute: minute };
+      const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
+      notifId = await scheduleBlockNotification(tempBlock, zone);
+    }
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
-        b.id === id
-          ? { ...b, targetHour: hour, targetMinute: minute, alertFired: false }
-          : b
+        b.id === id ? { ...b, deductHour: hour, deductMinute: minute, alertFired: false, notificationId: notifId } : b
       )
     );
-  }, []);
-
-  const updateDeductTime = useCallback((id: number, hour: number, minute: number) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, deductHour: hour, deductMinute: minute, alertFired: false }
-          : b
-      )
-    );
-  }, []);
+  }, [zone1, zone2]);
 
   const addTargetBlock = useCallback(() => {
     const newId = nextIdRef.current++;
     setTargetBlocks((blocks) => [...blocks, createDefaultBlock(newId)]);
   }, []);
 
-  const removeBlock = useCallback(
-    (id: number) =>
-      setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id)),
-    []
-  );
+  const removeBlock = useCallback(async (id: number) => {
+    const block = targetBlocksRef.current.find((b) => b.id === id);
+    if (block?.notificationId) await cancelBlockNotification(block.notificationId);
+    setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id));
+  }, []);
 
   const requestNotifPermission = useCallback(async () => {
     if (!Notifications) return;
     try {
       const { status } = await Notifications.requestPermissionsAsync();
-      if (status === "granted") setNotifBlocked(false);
-      else {
-        Alert.alert(
-          "Notifications Blocked",
-          "Please enable notifications in your device settings to use alerts.",
-          [{ text: "OK" }]
-        );
+      if (status === "granted") {
+        setNotifBlocked(false);
+      } else {
+        // Permanently denied — send user to app settings
+        await Linking.openSettings();
       }
     } catch {}
   }, []);
@@ -640,11 +721,10 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-    <View style={{
-      flex: 1,
-      paddingTop: safeTop,
-      width: "100%",
-    }}>
+    <View
+      style={{ flex: 1, paddingTop: safeTop, width: "100%" }}
+      onTouchStart={fullScreen ? resetOpacityTimer : undefined}
+    >
       {/* Header — normal mode only */}
       {!fullScreen && (
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: isWeb ? 32 : 16, marginBottom: 8, zIndex: 100, maxWidth: isWeb ? 1100 : undefined, alignSelf: "center", width: "100%" }}>
@@ -854,16 +934,7 @@ export default function HomeScreen() {
       {!isWeb ? (
         <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, opacity: fullScreen ? exitButtonOpacity : 1 }}>
           <Pressable
-            onPress={() => {
-              if (fullScreen && exitButtonOpacity < 0.9) {
-                // First tap when faded: restore visibility and restart timer
-                setExitButtonOpacity(1);
-                if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-                exitButtonTimerRef.current = setTimeout(() => setExitButtonOpacity(0.3), 3000);
-              } else {
-                toggleFullScreen();
-              }
-            }}
+            onPress={toggleFullScreen}
             style={{
               backgroundColor: fullScreen ? colors.surface : "transparent",
               borderColor: colors.surfaceBorder,
