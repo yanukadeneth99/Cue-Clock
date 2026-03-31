@@ -15,7 +15,7 @@ If you discover a security vulnerability, please report it responsibly.
 
 **For non-sensitive issues**, open a [GitHub Issue](https://github.com/yanukadeneth99/Cue-Clock/issues) with the details.
 
-**For sensitive or critical vulnerabilities**, email [hello@yashura.music](mailto:hello@yashura.music) directly with:
+**For sensitive or critical vulnerabilities**, email [hello@yashura.io](mailto:hello@yashura.io) directly with:
 
 - A description of the vulnerability
 - Steps to reproduce it
@@ -29,6 +29,7 @@ You can expect an initial response within 72 hours. We will work with you to und
 ## Scope
 
 This policy covers both components of the monolithic repository:
+
 - **`app/`**: The Cue Clock React Native mobile application.
 - **`website/`**: The Cue Clock Next.js landing page.
 

@@ -63,7 +63,7 @@ cd ../website && npm install && npm run dev
 
 We love contributions! Please read our [CONTRIBUTING.md](./CONTRIBUTING.md) and follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
-Cue Clock is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. For commercial licensing, contact [hello@yashura.music](mailto:hello@yashura.music).
+Cue Clock is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. For commercial licensing, contact [hello@yashura.io](mailto:hello@yashura.io).
 
 ---
 

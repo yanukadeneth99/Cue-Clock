@@ -357,5 +357,5 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 ---
 
 ## License & Security
-- **License:** AGPL-3.0. Commercial licensing: hello@yashura.music.
-- **Security:** Not production-hardened. See `SECURITY.md` for reporting. Contact: hello@yashura.music.
+- **License:** AGPL-3.0. Commercial licensing: hello@yashura.io.
+- **Security:** Not production-hardened. See `SECURITY.md` for reporting. Contact: hello@yashura.io.

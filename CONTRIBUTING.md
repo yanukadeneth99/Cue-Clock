@@ -63,4 +63,4 @@ Cue Clock is built for high-pressure broadcast environments. All contributions m
 
 ## Questions?
 
-Reach out at [hello@yashura.music](mailto:hello@yashura.music) or open a discussion on GitHub.
+Reach out at [hello@yashura.io](mailto:hello@yashura.io) or open a discussion on GitHub.
