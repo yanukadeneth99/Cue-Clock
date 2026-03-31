@@ -39,21 +39,30 @@ export default function ClockPicker({
   }, [updateTimes]);
 
   if (fullScreen) {
+    const isMobileFullscreen = Platform.OS !== "web";
+    const clockFontSize = isMobileFullscreen ? 36 : 80;
     return (
-      <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", width: "100%", marginVertical: 12, gap: 48 }}>
+      <View style={{
+        flexDirection: isMobileFullscreen ? "column" : "row",
+        justifyContent: "center",
+        alignItems: "center",
+        width: "100%",
+        marginVertical: isMobileFullscreen ? 8 : 12,
+        gap: isMobileFullscreen ? 6 : 48,
+      }}>
         <View style={{ alignItems: "center" }}>
-          <Text style={{ color: colors.zone1, fontSize: 80, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
+          <Text style={{ color: colors.zone1, fontSize: clockFontSize, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
             {time1}
           </Text>
-          <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginTop: 4 }}>
+          <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginTop: 2 }}>
             {zone1.replace("/", " / ")}
           </Text>
         </View>
         <View style={{ alignItems: "center" }}>
-          <Text style={{ color: colors.zone2, fontSize: 80, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
+          <Text style={{ color: colors.zone2, fontSize: clockFontSize, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
             {time2}
           </Text>
-          <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginTop: 4 }}>
+          <Text style={{ color: colors.muted, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginTop: 2 }}>
             {zone2.replace("/", " / ")}
           </Text>
         </View>

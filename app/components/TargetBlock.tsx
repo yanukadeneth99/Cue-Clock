@@ -47,6 +47,8 @@ interface Props {
   removeBlock: (id: number) => void;
   fullScreen?: boolean;
   countdownFontSize?: number;
+  notifBlocked?: boolean;
+  onRequestNotifPermission?: () => void;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -84,6 +86,8 @@ function TargetBlockInner({
   toggleAlertModal,
   handleAlertConfirm,
   handleAlertDelete,
+  notifBlocked = false,
+  onRequestNotifPermission,
 }: Props) {
   const [bellHovered, setBellHovered] = React.useState(false);
   const [confirmDeleteVisible, setConfirmDeleteVisible] = React.useState(false);
@@ -165,10 +169,16 @@ function TargetBlockInner({
           />
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Pressable
-              onPress={() => toggleAlertModal(block.id, true)}
-              style={styles.iconButton}
+              onPress={() => {
+                if (notifBlocked && Platform.OS !== "web") {
+                  onRequestNotifPermission?.();
+                } else {
+                  toggleAlertModal(block.id, true);
+                }
+              }}
+              style={[styles.iconButton, notifBlocked && Platform.OS !== "web" ? { borderColor: colors.muted, opacity: 0.5 } : undefined]}
             >
-              <Text style={{ color: block.alertMinutesBefore !== null ? colors.countdown : colors.muted, fontSize: 16, textAlign: "center" }}>
+              <Text style={{ color: notifBlocked && Platform.OS !== "web" ? colors.muted : (block.alertMinutesBefore !== null ? colors.countdown : colors.muted), fontSize: 16, textAlign: "center" }}>
                 {block.alertMinutesBefore !== null ? "\u{1F514}" : "\u{1F515}"}
               </Text>
             </Pressable>
@@ -364,6 +374,7 @@ function TargetBlockInner({
                       )
                     )
                   }
+                  mode={Platform.OS === "android" ? "dropdown" : undefined}
                   style={{ width: "100%", color: colors.pickerText, backgroundColor: colors.pickerBg }}
                   dropdownIconColor={colors.muted}
                 >

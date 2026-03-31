@@ -219,9 +219,12 @@ export default function HomeScreen() {
     if (!Notifications) return;
     (async () => {
       try {
-        const { status } = await Notifications.getPermissionsAsync();
+        const { status } = await Notifications!.getPermissionsAsync();
         if (status !== "granted") {
-          await Notifications.requestPermissionsAsync();
+          const { status: newStatus } = await Notifications!.requestPermissionsAsync();
+          if (newStatus !== "granted") {
+            setNotifBlocked(true);
+          }
         }
       } catch {
         // Permissions API unavailable — alerts will use Alert.alert fallback
@@ -538,6 +541,21 @@ export default function HomeScreen() {
     []
   );
 
+  const requestNotifPermission = useCallback(async () => {
+    if (!Notifications) return;
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status === "granted") setNotifBlocked(false);
+      else {
+        Alert.alert(
+          "Notifications Blocked",
+          "Please enable notifications in your device settings to use alerts.",
+          [{ text: "OK" }]
+        );
+      }
+    } catch {}
+  }, []);
+
   const doReset = useCallback(async () => {
     try {
       await AsyncStorage.clear();
@@ -566,8 +584,8 @@ export default function HomeScreen() {
   }, [doReset]);
 
   // Compute dynamic font size for fullscreen target blocks
-  const safeTop = Math.max(insets.top + 8, Platform.OS === "web" ? 24 : 44);
-  const safeBottom = Math.max(insets.bottom + 8, 28);
+  const safeTop = Math.max(insets.top + 12, Platform.OS === "web" ? 24 : 56);
+  const safeBottom = Math.max(insets.bottom + 12, Platform.OS === "web" ? 28 : 40);
   const fullscreenAvailableHeight =
     screenHeight - FULLSCREEN_CLOCK_HEIGHT - FULLSCREEN_EXIT_BTN_HEIGHT - safeTop - safeBottom;
   const blockCount = targetBlocks.length;
@@ -749,11 +767,21 @@ export default function HomeScreen() {
             removeBlock={removeBlock}
             fullScreen={fullScreen}
             countdownFontSize={fullScreen ? countdownFontSize : undefined}
+            notifBlocked={notifBlocked}
+            onRequestNotifPermission={requestNotifPermission}
           />
         ))}
 
         {!fullScreen && !isWeb && (
           <View style={{ width: "100%", marginTop: 16, gap: 12 }}>
+            <Pressable
+              onPress={addTargetBlock}
+              style={{ backgroundColor: colors.accent, borderColor: colors.accent, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+            >
+              <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "600" }}>
+                + Add Target
+              </Text>
+            </Pressable>
             <Pressable
               onPress={resetAll}
               style={{ backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
@@ -768,9 +796,18 @@ export default function HomeScreen() {
 
       {/* Full Screen toggle — fixed at bottom (mobile: always visible toggle; web: exit only when fullscreen) */}
       {!isWeb ? (
-        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4 }}>
+        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, opacity: fullScreen ? exitButtonOpacity : 1 }}>
           <Pressable
-            onPress={toggleFullScreen}
+            onPress={() => {
+              if (fullScreen && exitButtonOpacity < 0.9) {
+                // First tap when faded: restore visibility and restart timer
+                setExitButtonOpacity(1);
+                if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
+                exitButtonTimerRef.current = setTimeout(() => setExitButtonOpacity(0.3), 3000);
+              } else {
+                toggleFullScreen();
+              }
+            }}
             style={{
               backgroundColor: fullScreen ? colors.surface : "transparent",
               borderColor: colors.surfaceBorder,
