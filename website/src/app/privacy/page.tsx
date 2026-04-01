@@ -126,7 +126,7 @@ export default function PrivacyPolicy() {
             <h2 className="text-2xl font-bold font-headline mb-4">Your Privacy Controls</h2>
             <div className="space-y-4 text-base leading-relaxed">
               <p>
-                <strong>First Launch — Explicit Consent:</strong> On first launch, Cue Clock shows a consent dialog before any analytics are collected. No data is sent until you explicitly choose <em>Allow Analytics</em>. You can decline and the app works fully without any data collection.
+                <strong>First Launch. Explicit Consent:</strong> On first launch, Cue Clock shows a consent dialog before any analytics are collected. No data is sent until you explicitly choose <em>Allow Analytics</em>. You can decline and the app works fully without any data collection.
               </p>
               <p>
                 <strong>Change Your Mind:</strong> You can toggle analytics on or off at any time using the <strong>Analytics toggle</strong> in the App (footer on mobile, header on web). Disabling analytics immediately stops Firebase data collection. Microsoft Clarity will stop initializing on the next app launch.
@@ -265,13 +265,6 @@ export default function PrivacyPolicy() {
           </section>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-border bg-surface mt-16">
-        <div className="max-w-3xl mx-auto px-6 py-8 text-center text-sm text-muted">
-          <p>© 2026 Cue Clock. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   );
 }

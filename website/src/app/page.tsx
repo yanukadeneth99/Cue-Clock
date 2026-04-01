@@ -579,8 +579,6 @@ export default function Home() {
               </a>
             </div>
           </div>
-        </div>
-        <div className="w-full border-t border-[#414751]/20 py-4 px-6 md:px-8 flex justify-center items-center max-w-screen-2xl mx-auto">
           <a
             href="/privacy"
             className="font-body text-[0.6rem] md:text-[0.6875rem] tracking-wider uppercase font-bold text-[#414751] hover:text-[#a4c9ff] transition-all duration-300"

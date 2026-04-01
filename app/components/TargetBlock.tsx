@@ -11,7 +11,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
+// Conditionally load datetime picker — has no web implementation; would resolve to undefined on web
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const DateTimePickerModal: typeof import("react-native-modal-datetime-picker").default | null =
+  Platform.OS !== "web" ? require("react-native-modal-datetime-picker").default : null;
 
 export interface TargetBlockType {
   id: number;
