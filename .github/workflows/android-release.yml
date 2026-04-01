@@ -122,4 +122,3 @@ jobs:
           releaseName: cue-clock-${{ steps.version.outputs.version }}
           track: alpha
           status: draft
-          releaseNotes: ${{ github.event.release.body }}
