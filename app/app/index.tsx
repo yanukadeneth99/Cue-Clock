@@ -1,4 +1,5 @@
 import AnalyticsConsentModal from "@/components/AnalyticsConsentModal";
+import AnalyticsOptOutModal from "@/components/AnalyticsOptOutModal";
 import ClockPicker from "@/components/ClockPicker";
 import ConfirmModal from "@/components/ConfirmModal";
 import HelpModal from "@/components/HelpModal";
@@ -244,6 +245,7 @@ export default function HomeScreen() {
   // null = first launch (consent not yet given); true/false = user's explicit choice
   const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean | null>(null);
   const [consentModalVisible, setConsentModalVisible] = useState(false);
+  const [optOutModalVisible, setOptOutModalVisible] = useState(false);
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     createDefaultBlock(1),
   ]);
@@ -685,10 +687,6 @@ export default function HomeScreen() {
     await applyAnalyticsChoice(accepted);
   }, [applyAnalyticsChoice]);
 
-  const toggleAnalytics = useCallback(() => {
-    applyAnalyticsChoice(!(analyticsEnabled ?? false));
-  }, [analyticsEnabled, applyAnalyticsChoice]);
-
   const resetAll = useCallback(() => {
     if (Platform.OS === "web") {
       setResetModalVisible(true);
@@ -809,11 +807,23 @@ export default function HomeScreen() {
                 </View>
                 <HeaderIconButton icon="⛶" label="Full Screen" onPress={toggleFullScreen} />
                 <HeaderIconButton icon="↺" label="Reset All" onPress={resetAll} danger />
-                <HeaderIconButton
-                  icon={analyticsEnabled ? "◉" : "◎"}
-                  label={analyticsEnabled ? "Analytics On (tap to opt out)" : "Analytics Off (tap to opt in)"}
-                  onPress={toggleAnalytics}
-                />
+                {analyticsEnabled === false && (
+                  <Pressable
+                    onPress={() => setConsentModalVisible(true)}
+                    style={{
+                      backgroundColor: colors.accent,
+                      borderRadius: 8,
+                      paddingVertical: 6,
+                      paddingHorizontal: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "600" }}>
+                      Help make this app better
+                    </Text>
+                  </Pressable>
+                )}
               </>
             )}
             {isWeb ? (
@@ -915,17 +925,16 @@ export default function HomeScreen() {
                 Reset All
               </Text>
             </Pressable>
-            <Pressable
-              onPress={toggleAnalytics}
-              style={{ backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
-            >
-              <Text style={{ color: analyticsEnabled ? colors.accent : colors.muted, fontSize: 15 }}>
-                {analyticsEnabled ? "◉" : "◎"}
-              </Text>
-              <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "500" }}>
-                Analytics: {analyticsEnabled ? "On" : "Off"}
-              </Text>
-            </Pressable>
+            {analyticsEnabled === false && (
+              <Pressable
+                onPress={() => setConsentModalVisible(true)}
+                style={{ backgroundColor: colors.accent, borderColor: colors.accent, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+              >
+                <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "600" }}>
+                  Help make this app better
+                </Text>
+              </Pressable>
+            )}
           </View>
         )}
       </ScrollView>
@@ -995,12 +1004,26 @@ export default function HomeScreen() {
         onCancel={() => setResetModalVisible(false)}
       />
 
-      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} />
+      <HelpModal
+        visible={helpVisible}
+        onClose={() => setHelpVisible(false)}
+        analyticsEnabled={analyticsEnabled}
+        onRequestOptOut={() => setOptOutModalVisible(true)}
+      />
 
       <AnalyticsConsentModal
         visible={consentModalVisible}
         onAccept={() => handleAnalyticsConsent(true)}
         onDecline={() => handleAnalyticsConsent(false)}
+      />
+
+      <AnalyticsOptOutModal
+        visible={optOutModalVisible}
+        onConfirmOptOut={() => {
+          setOptOutModalVisible(false);
+          applyAnalyticsChoice(false);
+        }}
+        onCancel={() => setOptOutModalVisible(false)}
       />
     </View>
     </View>

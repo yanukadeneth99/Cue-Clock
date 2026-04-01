@@ -5,6 +5,8 @@ import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "
 interface HelpModalProps {
   visible: boolean;
   onClose: () => void;
+  analyticsEnabled: boolean | null;
+  onRequestOptOut: () => void;
 }
 
 const helpItems: { label: string; description: string }[] = [
@@ -71,7 +73,7 @@ const helpItems: { label: string; description: string }[] = [
  * @param visible - Whether the modal is shown.
  * @param onClose - Callback to dismiss the modal.
  */
-export default function HelpModal({ visible, onClose }: HelpModalProps) {
+export default function HelpModal({ visible, onClose, analyticsEnabled, onRequestOptOut }: HelpModalProps) {
   return (
     <Modal
       visible={visible}
@@ -100,6 +102,18 @@ export default function HelpModal({ visible, onClose }: HelpModalProps) {
               </View>
             ))}
           </ScrollView>
+
+          {analyticsEnabled === true && (
+            <Pressable
+              onPress={() => {
+                onClose();
+                onRequestOptOut();
+              }}
+              style={styles.optOutButton}
+            >
+              <Text style={styles.optOutText}>Turn Off Analytics</Text>
+            </Pressable>
+          )}
 
           <Pressable onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeText}>Close</Text>
@@ -153,6 +167,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
   },
+  optOutButton: {
+    backgroundColor: colors.background,
+    borderColor: colors.surfaceBorder,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  optOutText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "400",
+  },
   closeButton: {
     backgroundColor: colors.background,
     borderColor: colors.border,
@@ -160,7 +188,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
-    marginTop: 16,
+    marginTop: 8,
   },
   closeText: {
     color: colors.header,
