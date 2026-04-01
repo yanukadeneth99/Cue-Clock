@@ -40,7 +40,7 @@ cd website
 npm install
 npm run dev
 ```
-*Note: Built with Next.js 15 and Tailwind CSS 4.*
+*Note: Built with Next.js 16.2.1 and Tailwind CSS 4.*
 
 ### 3. Submitting Code
 
@@ -48,7 +48,7 @@ npm run dev
 2. **Focus**: Keep PRs small and focused on a single change.
 3. **Linting**: Run the linter in the respective directory (`npm run lint`).
 4. **Test**: Verify changes on at least one target platform.
-5. **Push** and open a Pull Request against `main`.
+5. **Push** and open a Pull Request against `master`.
 
 ---
 

@@ -21,7 +21,15 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "Cue Clock",
+      "shortName": "CueClock",
+      "description": "Professional broadcast countdown timer and dual-timezone clock for live TV, radio, and streaming productions.",
+      "themeColor": "#1a1d23",
+      "backgroundColor": "#1a1d23",
+      "lang": "en",
+      "scope": "/",
+      "startUrl": "/"
     },
     "plugins": [
       "expo-router",

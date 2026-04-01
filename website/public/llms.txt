@@ -1,27 +1,30 @@
 # Cue Clock
 
-Cue Clock is a minimal, distraction-free clock and countdown timer app designed specifically for broadcast professionals.
+Cue Clock is a minimal, distraction-free clock and countdown timer app designed specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously.
 
 ## Key Information
-- **URL**: https://cueclock.app
-- **App URL**: https://cue-clock-app.yanukadeneth.com
+- **Website**: https://cueclock.app
+- **Web App**: https://live.cueclock.app
 - **Repository**: https://github.com/yanukadeneth99/Cue-Clock
-- **Developer**: Yanuka Deneth
-- **License**: Open Source
-- **Cost**: Completely Free (No Ads)
+- **Developer**: YASHURA (https://yashura.io)
+- **License**: AGPL-3.0 (Commercial licensing available)
+- **Cost**: Completely Free (No Ads, No Subscriptions)
+- **Privacy Policy**: https://cueclock.app/privacy
 
 ## Features
-- **Dual Live Clocks**: side-by-side clocks configurable to 18 broadcast timezones.
-- **Multiple Countdowns**: infinite timers tied to specific zones.
-- **Deduction Offsets**: subtract pre-show buffer durations with single-tap logic.
-- **On-Air Mode**: distraction-free, full-screen display for studio environments.
-- **Persistent State**: settings saved locally across sessions.
-- **Per-Timer Alerts**: visual and notification-based alerts.
+- **Dual Live Clocks**: Side-by-side clocks configurable to 18 broadcast timezones.
+- **Multiple Countdown Timers**: Infinite timers tied to specific zones with persistent state.
+- **Deduction Offsets**: Subtract pre-show buffer durations for setup and prep.
+- **On-Air (Full-Screen) Mode**: Distraction-free, full-screen display for studio environments.
+- **Persistent State**: All settings, zones, and timers saved locally across sessions via AsyncStorage.
+- **Per-Timer Alerts**: Configurable minutes-before push notifications and in-app alerts.
+- **In-App Help**: Integrated guide explaining all controls and usage patterns.
 
 ## Tech Stack
 - **Web App**: React, Tailwind CSS, GSAP.
-- **Native App**: React Native (Expo).
-- **Website**: Next.js, Tailwind CSS, GSAP.
+- **Mobile App**: React Native (Expo), Luxon for timezone handling, expo-notifications.
+- **Website**: Next.js 16.2.1, Tailwind CSS 4, GSAP animations.
+- **State Management**: AsyncStorage (local persistence), no cloud dependencies.
 
 ## Mission
-Built to provide a reliable, straightforward, and simple timing tool during live broadcast production.
+Built to provide a reliable, straightforward, and simple timing tool for broadcast professionals during live production. Completely free and open-source with no enterprise complexity or hidden costs.

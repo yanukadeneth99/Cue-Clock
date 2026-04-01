@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -11,9 +12,9 @@ export default function PrivacyPolicy() {
       {/* Header */}
       <header className="border-b border-border bg-surface sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-6 py-6">
-          <a href="/" className="text-accent hover:text-accent/80 transition-colors font-medium">
+          <Link href="/" className="text-accent hover:text-accent/80 transition-colors font-medium">
             ← Back to Cue Clock
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -27,7 +28,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-bold font-headline mb-4">Overview</h2>
             <p className="text-base leading-relaxed">
-              Cue Clock ("the App") is a minimal, distraction-free time management tool for broadcast professionals. We are committed to protecting your privacy and being transparent about how we handle data.
+              Cue Clock (&quot;the App&quot;) is a minimal, distraction-free time management tool for broadcast professionals. We are committed to protecting your privacy and being transparent about how we handle data.
             </p>
             <p className="text-base leading-relaxed mt-4">
               <strong>The most important thing to know:</strong> Cue Clock does not collect, store, or transmit your personal data or timer information to our servers. All timers, settings, and preferences are stored locally on your device using encrypted local storage.
@@ -174,7 +175,7 @@ export default function PrivacyPolicy() {
 
           {/* Children's Privacy */}
           <section>
-            <h2 className="text-2xl font-bold font-headline mb-4">Children's Privacy</h2>
+            <h2 className="text-2xl font-bold font-headline mb-4">Children&apos;s Privacy</h2>
             <p className="text-base leading-relaxed">
               Cue Clock is designed for broadcast professionals but is not intentionally targeted at children under 13 (or the applicable age of digital consent in your region). We do not knowingly collect personal information from children. If you believe a child has provided us with personal information, please contact us immediately.
             </p>
@@ -187,10 +188,10 @@ export default function PrivacyPolicy() {
               We take data security seriously:
             </p>
             <ul className="list-disc list-inside space-y-2 text-base leading-relaxed ml-2">
-              <li><strong>Local Data:</strong> All data stored on your device is protected by your device's security (pin, password, biometric lock).</li>
+              <li><strong>Local Data:</strong> All data stored on your device is protected by your device&apos;s security (pin, password, biometric lock).</li>
               <li><strong>In Transit:</strong> Analytics data is transmitted over HTTPS with encryption.</li>
               <li><strong>No Server Storage:</strong> We do not store your timer data, settings, or personal information on our servers.</li>
-              <li><strong>Open Source:</strong> The App's source code is publicly available on GitHub, allowing security researchers to audit the code. See <a href="https://github.com/yanukadeneth99/Cue-Clock" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">our GitHub repository</a>.</li>
+              <li><strong>Open Source:</strong> The App&apos;s source code is publicly available on GitHub, allowing security researchers to audit the code. See <a href="https://github.com/yanukadeneth99/Cue-Clock" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">our GitHub repository</a>.</li>
             </ul>
           </section>
 
@@ -221,9 +222,9 @@ export default function PrivacyPolicy() {
               We may update this Privacy Policy from time to time to reflect changes in our practices, technology, legal requirements, or other factors. When we make material changes, we will:
             </p>
             <ul className="list-disc list-inside space-y-2 text-base leading-relaxed ml-2 mt-4">
-              <li>Update the "Last updated" date at the top of this page.</li>
+              <li>Update the &quot;Last updated&quot; date at the top of this page.</li>
               <li>Post the revised policy on our website.</li>
-              <li>For significant changes, we may provide notice in the App or via email (if you've provided an email address).</li>
+              <li>For significant changes, we may provide notice in the App or via email (if you&apos;ve provided an email address).</li>
             </ul>
             <p className="text-base leading-relaxed mt-4">
               Your continued use of the App following the posting of revised Privacy Policy means that you accept and agree to the changes.

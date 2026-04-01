@@ -39,9 +39,9 @@ export default function Home() {
     web: {
       label: 'Web',
       icon: 'language',
-      buttonText: 'Coming Soon',
-      action: () => {},
-      theme: 'bg-primary text-on-primary opacity-80 cursor-default',
+      buttonText: 'Start Now',
+      action: () => window.open('https://live.cueclock.app', '_blank'),
+      theme: 'bg-primary text-on-primary hover:brightness-110 active:scale-95 cursor-pointer',
       logo: <span className="material-symbols-outlined">timer</span>
     },
     android: {
@@ -210,13 +210,6 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => window.open('https://cue-clock-app.yanukadeneth.com', '_blank')}
-              className="bg-primary-container text-on-primary-container px-4 py-1.5 font-label text-[0.6875rem] font-bold uppercase tracking-widest rounded-sm hover:brightness-110 hover:shadow-lg hover:shadow-primary/20 active:scale-95 transition-all cursor-pointer"
-            >
-              Get Started
-            </button>
-
             {/* Mobile Menu Toggle */}
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -275,14 +268,14 @@ export default function Home() {
             Download
           </a>
           
-          <button 
+          <button
             onClick={() => {
               setMobileMenuOpen(false);
-              window.open('https://cue-clock-app.yanukadeneth.com', '_blank');
+              window.open('https://live.cueclock.app', '_blank');
             }}
-            className="mt-8 bg-[#414751] text-white px-8 py-4 font-label text-sm font-bold uppercase tracking-widest rounded-sm border border-[#a4c9ff]/20 shadow-2xl"
+            className="mt-8 bg-primary text-on-primary px-8 py-4 font-label text-sm font-bold uppercase tracking-widest rounded-sm shadow-2xl"
           >
-            Get Started
+            Start Now
           </button>
         </div>
       </div>
@@ -306,8 +299,8 @@ export default function Home() {
                 >
                   Download Free Now <span className="material-symbols-outlined text-sm">download</span>
                 </button>
-                <button 
-                  onClick={() => window.open('https://cue-clock-app.yanukadeneth.com', '_blank')}
+                <button
+                  onClick={() => window.open('https://live.cueclock.app', '_blank')}
                   className="bg-surface-bright/10 border border-primary/20 text-on-surface font-label font-bold uppercase tracking-widest px-6 md:px-8 py-3 md:py-4 rounded-sm hover:bg-surface-bright/20 transition-all text-xs md:text-sm"
                 >
                   Start Now
@@ -548,17 +541,52 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-[#101319] border-t border-[#414751]/20">
-        <div className="w-full py-8 px-8 flex flex-col md:flex-row justify-between items-center gap-6 max-w-screen-2xl mx-auto">
+        <div className="w-full py-8 px-6 md:px-8 flex flex-col md:flex-row justify-between items-center gap-4 max-w-screen-2xl mx-auto">
           <div className="text-lg font-black text-[#a4c9ff] font-headline uppercase">{new Date().getFullYear()} Cue Clock</div>
-          <div className="flex items-center gap-2">
-            <a 
-              className="font-body text-[0.6875rem] tracking-wider uppercase font-bold text-[#414751] hover:text-[#a4c9ff] transition-all duration-300" 
-              href="https://yanukadeneth.com"
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <a
+              className="font-body text-[0.6875rem] tracking-wider uppercase font-bold text-[#414751] hover:text-[#a4c9ff] transition-all duration-300"
+              href="https://yashura.io"
               target="_blank"
+              rel="noopener noreferrer"
             >
-              Created with ❤️ by <span className="text-primary underline underline-offset-4 decoration-[#414751] hover:decoration-primary">Yanuka Deneth</span>
+              Created with ❤️ by <span className="text-primary underline underline-offset-4 decoration-[#414751] hover:decoration-primary">YASHURA</span>
             </a>
+            <div className="flex items-center gap-3">
+              {/* X (Twitter) */}
+              <a
+                href="https://x.com/yanukadeneth99"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="X (Twitter)"
+                className="text-[#414751] hover:text-[#a4c9ff] transition-colors duration-300"
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.736l7.73-8.835L1.254 2.25H8.08l4.258 5.63 5.906-5.63Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </a>
+              {/* LinkedIn */}
+              <a
+                href="https://linkedin.com/in/yanukadeneth99"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="LinkedIn"
+                className="text-[#414751] hover:text-[#a4c9ff] transition-colors duration-300"
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+              </a>
+            </div>
           </div>
+        </div>
+        <div className="w-full border-t border-[#414751]/20 py-4 px-6 md:px-8 flex justify-center items-center max-w-screen-2xl mx-auto">
+          <a
+            href="/privacy"
+            className="font-body text-[0.6rem] md:text-[0.6875rem] tracking-wider uppercase font-bold text-[#414751] hover:text-[#a4c9ff] transition-all duration-300"
+          >
+            Privacy Policy
+          </a>
         </div>
       </footer>
     </div>
