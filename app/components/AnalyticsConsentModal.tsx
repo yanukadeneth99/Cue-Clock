@@ -132,7 +132,7 @@ export default function AnalyticsConsentModal({
               }}
             >
               <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "600" }}>
-                Allow Analytics
+                Help
               </Text>
             </Pressable>
             <Pressable
@@ -147,7 +147,7 @@ export default function AnalyticsConsentModal({
               }}
             >
               <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "500" }}>
-                No Thanks
+                Don&apos;t Help
               </Text>
             </Pressable>
           </View>
