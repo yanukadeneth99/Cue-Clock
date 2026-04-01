@@ -113,13 +113,13 @@ jobs:
             -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Upload to Google Play (Closed Beta track)
+      - name: Upload to Google Play (Closed Testing - Alpha track)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.yanukadeneth99.cueclock
           releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
-          releaseName: cue-clock-1
-          track: beta
+          releaseName: cue-clock-${{ steps.version.outputs.version }}
+          track: alpha
           status: draft
           releaseNotes: ${{ github.event.release.body }}
