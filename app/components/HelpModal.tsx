@@ -101,19 +101,19 @@ export default function HelpModal({ visible, onClose, analyticsEnabled, onReques
                 <Text style={styles.itemDesc}>{item.description}</Text>
               </View>
             ))}
-          </ScrollView>
 
-          {analyticsEnabled === true && (
-            <Pressable
-              onPress={() => {
-                onClose();
-                onRequestOptOut();
-              }}
-              style={styles.optOutButton}
-            >
-              <Text style={styles.optOutText}>Turn Off Analytics</Text>
-            </Pressable>
-          )}
+            {analyticsEnabled === true && (
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onRequestOptOut();
+                }}
+                style={[styles.optOutButton, { marginTop: 8, marginBottom: 4 }]}
+              >
+                <Text style={styles.optOutText}>Turn Off Analytics</Text>
+              </Pressable>
+            )}
+          </ScrollView>
 
           <Pressable onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeText}>Close</Text>

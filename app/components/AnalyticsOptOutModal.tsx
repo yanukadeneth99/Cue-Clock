@@ -78,7 +78,7 @@ export default function AnalyticsOptOutModal({
             <Text style={{ color: colors.header, fontWeight: "600" }}>free</Text>
             {" "}and contains{" "}
             <Text style={{ color: colors.header, fontWeight: "600" }}>no ads</Text>
-            . Anonymous analytics are the only way we can understand how people use the app and keep making it better.
+            , anonymous analytics are the only way we can understand how people use the app and keep making it better.
           </Text>
 
           <Text

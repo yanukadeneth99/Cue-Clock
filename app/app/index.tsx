@@ -650,6 +650,13 @@ export default function HomeScreen() {
     } catch {}
   }, []);
 
+  const collapseExpandAll = useCallback(() => {
+    setTargetBlocks((blocks) => {
+      const shouldCollapse = blocks.some((b) => !b.isCollapsed);
+      return blocks.map((b) => ({ ...b, isCollapsed: shouldCollapse }));
+    });
+  }, []);
+
   const doReset = useCallback(async () => {
     try {
       await AsyncStorage.clear();
@@ -829,21 +836,55 @@ export default function HomeScreen() {
             {isWeb ? (
               <HeaderIconButton icon="?" label="Help" onPress={() => setHelpVisible(true)} />
             ) : (
-              <Pressable
-                onPress={() => setHelpVisible(true)}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.surfaceBorder,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700" }}>?</Text>
-              </Pressable>
+              <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                <Pressable
+                  onPress={collapseExpandAll}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.surfaceBorder,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ color: colors.muted, fontSize: 14 }}>
+                    {targetBlocks.some((b) => !b.isCollapsed) ? "–" : "+"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={toggleFullScreen}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.surfaceBorder,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ color: colors.muted, fontSize: 14 }}>⛶</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setHelpVisible(true)}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.surfaceBorder,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700" }}>?</Text>
+                </Pressable>
+              </View>
             )}
           </View>
         </View>
@@ -867,7 +908,7 @@ export default function HomeScreen() {
         contentContainerStyle={{
           paddingHorizontal: isWeb ? 32 : 16,
           alignItems: "center",
-          paddingBottom: fullScreen ? 0 : safeBottom + 16,
+          paddingBottom: fullScreen ? 0 : (isWeb ? safeBottom + 16 : 16),
           ...(isWeb && { maxWidth: 1100, alignSelf: "center" as const, width: "100%" }),
           ...(fullScreen && !fullscreenNeedsScroll && { flexGrow: 1, justifyContent: "center" as const }),
         }}
@@ -907,45 +948,54 @@ export default function HomeScreen() {
           />
         ))}
 
-        {!fullScreen && !isWeb && (
-          <View style={{ width: "100%", marginTop: 16, gap: 12 }}>
+      </ScrollView>
+
+      {/* Fixed bottom controls — mobile normal mode: 2-column action grid */}
+      {!isWeb && !fullScreen && (
+        <View
+          style={{
+            paddingHorizontal: 16,
+            paddingBottom: safeBottom,
+            paddingTop: 10,
+            borderTopWidth: 1,
+            borderTopColor: colors.surfaceBorder,
+            gap: 10,
+          }}
+        >
+          <View style={{ flexDirection: "row", gap: 10 }}>
             <Pressable
               onPress={addTargetBlock}
-              style={{ backgroundColor: colors.accent, borderColor: colors.accent, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+              style={{ flex: 1, backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 13, alignItems: "center" }}
             >
-              <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "600" }}>
-                + Add Target
-              </Text>
+              <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "600" }}>+ Add Target</Text>
             </Pressable>
             <Pressable
               onPress={resetAll}
-              style={{ backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+              style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceBorder, borderRadius: 12, paddingVertical: 13, alignItems: "center" }}
             >
-              <Text style={{ color: colors.danger, fontSize: 15, fontWeight: "500" }}>
-                Reset All
+              <Text style={{ color: colors.danger, fontSize: 14, fontWeight: "500" }}>Reset All</Text>
+            </Pressable>
+          </View>
+          {analyticsEnabled === false && (
+            <Pressable
+              onPress={() => setConsentModalVisible(true)}
+              style={{ backgroundColor: "#1e2110", borderWidth: 1, borderColor: "#a16207", borderRadius: 12, paddingVertical: 13, alignItems: "center" }}
+            >
+              <Text style={{ color: colors.countdown, fontSize: 14, fontWeight: "600" }}>
+                Help make this app better
               </Text>
             </Pressable>
-            {analyticsEnabled === false && (
-              <Pressable
-                onPress={() => setConsentModalVisible(true)}
-                style={{ backgroundColor: colors.accent, borderColor: colors.accent, borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
-              >
-                <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "600" }}>
-                  Help make this app better
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </View>
+      )}
 
-      {/* Full Screen toggle — fixed at bottom (mobile: always visible toggle; web: exit only when fullscreen) */}
-      {!isWeb ? (
-        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, opacity: fullScreen ? exitButtonOpacity : 1 }}>
+      {/* Fixed bottom — mobile fullscreen: fading exit button */}
+      {!isWeb && fullScreen && (
+        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, opacity: exitButtonOpacity }}>
           <Pressable
             onPress={toggleFullScreen}
             style={{
-              backgroundColor: fullScreen ? colors.surface : "transparent",
+              backgroundColor: colors.surface,
               borderColor: colors.surfaceBorder,
               borderWidth: 1,
               borderRadius: 12,
@@ -954,11 +1004,14 @@ export default function HomeScreen() {
             }}
           >
             <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
-              {fullScreen ? "Exit Full Screen" : "Full Screen"}
+              Exit Full Screen
             </Text>
           </Pressable>
         </View>
-      ) : fullScreen ? (
+      )}
+
+      {/* Fixed bottom — web fullscreen: exit button */}
+      {isWeb && fullScreen ? (
         <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, alignItems: "center" }}>
           <Pressable
             onPress={toggleFullScreen}
