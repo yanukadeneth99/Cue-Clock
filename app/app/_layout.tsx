@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
-import { Head, Stack } from "expo-router";
+import Head from "expo-router/head";
+import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -36,11 +37,14 @@ export default function RootLayout() {
         await analytics().setAnalyticsCollectionEnabled(enabled);
 
         if (enabled) {
-          const Clarity = await import("@microsoft/react-native-clarity");
-          Clarity.initialize("w2c5ecuzj5", { logLevel: Clarity.LogLevel.Verbose });
+          const clarityKey = process.env.EXPO_PUBLIC_CLARITY_KEY;
+          if (clarityKey) {
+            const Clarity = await import("@microsoft/react-native-clarity");
+            Clarity.initialize(clarityKey, { logLevel: Clarity.LogLevel.None });
+          }
         }
-      } catch {
-        // Analytics init failure is non-fatal — app continues normally
+      } catch (e) {
+        if (__DEV__) console.warn("[Analytics] _layout init failed:", e);
       }
     })();
   }, []);

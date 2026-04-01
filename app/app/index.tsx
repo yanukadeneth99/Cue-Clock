@@ -122,7 +122,7 @@ async function scheduleBlockNotification(block: TargetBlockType, zone: string): 
         sound: true,
         ...(Platform.OS === "android" ? { channelId: "default" } : {}),
       },
-      trigger: { date: fireDate } as any,
+      trigger: { type: "date", date: fireDate } as any,
     });
     return id;
   } catch {
@@ -452,14 +452,14 @@ export default function HomeScreen() {
               seconds === 0;
 
             if (shouldFire) {
-              // Web: use in-app queue (no background support); native: notification already scheduled
-              if (Platform.OS === "web" || !Notifications) {
-                alertQueueRef.current.push({
-                  id: block.id,
-                  name: block.name,
-                  minutes: block.alertMinutesBefore,
-                });
-              }
+              // Always queue alert: web uses in-app notification; native falls back to Alert.alert
+              // (the pre-scheduled notification handles it if app is in background, but if foregrounded
+              // expo-notifications may not show the banner — Alert.alert ensures the user sees it)
+              alertQueueRef.current.push({
+                id: block.id,
+                name: block.name,
+                minutes: block.alertMinutesBefore,
+              });
               updates.alertFired = true;
               updates.alertMinutesBefore = null;
               updates.notificationId = null;
@@ -680,11 +680,14 @@ export default function HomeScreen() {
         if (getApps().length === 0) initializeApp();
         await analytics().setAnalyticsCollectionEnabled(enabled);
         if (enabled) {
-          const Clarity = await import("@microsoft/react-native-clarity");
-          Clarity.initialize("w2c5ecuzj5", { logLevel: Clarity.LogLevel.Verbose });
+          const clarityKey = process.env.EXPO_PUBLIC_CLARITY_KEY;
+          if (clarityKey) {
+            const Clarity = await import("@microsoft/react-native-clarity");
+            Clarity.initialize(clarityKey, { logLevel: Clarity.LogLevel.None });
+          }
         }
-      } catch {
-        // silently fail
+      } catch (e) {
+        if (__DEV__) console.warn("[Analytics] applyAnalyticsChoice failed:", e);
       }
     }
   }, []);

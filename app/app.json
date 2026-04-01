@@ -4,7 +4,7 @@
     "slug": "cue-clock",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo_cropped.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "cueclock",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -13,7 +13,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo_cropped.png",
+        "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#0a0a0a"
       },
       "package": "com.yanukadeneth99.cueclock"
