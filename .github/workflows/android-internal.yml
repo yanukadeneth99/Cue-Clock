@@ -61,6 +61,11 @@ jobs:
           console.log('Updated version code to', versionCode);
           "
 
+      - name: Create .env with build-time secrets
+        working-directory: app
+        run: |
+          echo "EXPO_PUBLIC_CLARITY_KEY=${{ secrets.EXPO_PUBLIC_CLARITY_KEY }}" > .env
+
       - name: Generate Android native project
         working-directory: app
         run: npx expo prebuild --platform android --clean
