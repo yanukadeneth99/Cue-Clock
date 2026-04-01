@@ -23,8 +23,8 @@ jobs:
           # Parse semantic version (major.minor.patch)
           IFS='.' read -r major minor patch <<< "$VERSION"
 
-          # Calculate version code: (major * 1000) + (minor * 100) + patch
-          VERSION_CODE=$((major * 1000 + minor * 100 + patch))
+          # Calculate version code: (major * 1000000) + (minor * 1000) + patch
+          VERSION_CODE=$((major * 1000000 + minor * 1000 + patch))
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
@@ -85,17 +85,13 @@ jobs:
         run: |
           echo "EXPO_PUBLIC_CLARITY_KEY=${{ secrets.EXPO_PUBLIC_CLARITY_KEY }}" > .env
 
-      - name: Generate Android native project
-        working-directory: app
-        run: npx expo prebuild --platform android --clean
-
-      - name: Restrict build to arm64-v8a only
-        working-directory: app/android
-        run: echo "reactNativeArchitectures=arm64-v8a" >> gradle.properties
-
       - name: Decode Firebase config
         working-directory: app
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode > google-services.json
+
+      - name: Generate Android native project
+        working-directory: app
+        run: npx expo prebuild --platform android --clean
 
       - name: Decode keystore
         working-directory: app/android
