@@ -87,6 +87,39 @@ jobs:
             -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      - name: Generate Clean Release Notes
+        working-directory: app
+        env:
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          let notes = process.env.RELEASE_BODY;
+
+          // 1. Fallback for manual triggers
+          if (!notes || notes.trim() === '') {
+            notes = 'Bug fixes and performance improvements for Cue Clock.';
+          }
+
+          // 2. Strip Markdown Formatting
+          notes = notes.replace(/[#*_~\`>]/g, ''); // Removes headers, bold, italics, code blocks, quotes
+          notes = notes.replace(/\[([^\]]+)\]\([^)]+\)/g, '\$1'); // Converts [Link Text](https://...) to just 'Link Text'
+          notes = notes.replace(/^\s*[-+]\s+/gm, '• '); // Converts markdown dashes to nice readable bullets
+
+          // 3. Enforce Google Play 500-character limit safely (avoid cutting mid-word)
+          notes = notes.trim();
+          if (notes.length > 500) {
+            notes = notes.substring(0, 500).split(' ').slice(0, -1).join(' ') + '…';
+          }
+
+          // 4. Write to the Google Play directory structure
+          if (!fs.existsSync('whatsnew')) {
+            fs.mkdirSync('whatsnew');
+          }
+          fs.writeFileSync('whatsnew/en-US.txt', notes);
+          console.log('Generated whatsnew/en-US.txt (Length: ' + notes.length + ')');
+          "
+
       - name: Upload to Google Play (Closed Testing - Alpha track)
         uses: r0adkll/upload-google-play@v1
         with:
@@ -96,3 +129,4 @@ jobs:
           releaseName: cue-clock-${{ steps.version.outputs.version }}
           track: alpha
           status: completed
+          whatsNewDirectory: app/whatsnew
