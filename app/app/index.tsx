@@ -406,11 +406,13 @@ export default function HomeScreen() {
   // Countdown updater — returns same array reference if nothing changed
   useEffect(() => {
     const timer = setInterval(() => {
+      const nowZone1 = DateTime.now().setZone(zone1);
+      const nowZone2 = DateTime.now().setZone(zone2);
+
       setTargetBlocks((blocks) => {
         let anyChanged = false;
         const next = blocks.map((block) => {
-          const selectedZone = block.targetZone === "zone1" ? zone1 : zone2;
-          const nowInZone = DateTime.now().setZone(selectedZone);
+          const nowInZone = block.targetZone === "zone1" ? nowZone1 : nowZone2;
 
           let targetDT = nowInZone.set({
             hour: block.targetHour,
