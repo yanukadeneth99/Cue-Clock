@@ -105,7 +105,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/logo_cropped.png" />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
         />
       </head>
       <body className={`${spaceGrotesk.variable} ${inter.variable} font-body bg-surface text-on-surface antialiased`}>

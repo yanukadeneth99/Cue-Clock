@@ -345,6 +345,11 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 
 ## Codebase Edit History (2026)
 
+### 2026-04-01: JSON-LD XSS Vulnerability Fix
+- Addressed a potential stored XSS vulnerability via Next.js `dangerouslySetInnerHTML`.
+- Appended `.replace(/</g, '\\u003c')` to `JSON.stringify(jsonLd)` payload injection in `website/src/app/layout.tsx`.
+- Prevents script tags from prematurely closing if dynamic data is ever included.
+
 ### 2026-04-01: Preflight Verification & Linter Fixes
 - Fixed 9 ESLint errors: unescaped entities in privacy page (quotes/apostrophes), `<a>` → `<Link>` navigation fix.
 - Fixed 2 Next.js font warnings: added `display: "swap"` to Space Grotesk and Inter font initialization.
