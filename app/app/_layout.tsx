@@ -6,8 +6,6 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import "../global.css";
-
 /**
  * Root layout for the Expo Router stack.
  * Initializes fonts, conditionally initializes analytics based on user preference,

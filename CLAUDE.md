@@ -45,10 +45,8 @@ app/              # React Native (Expo) Mobile Application
   app.json        # Expo configuration (slug, bundle ID, plugins, EAS project)
   eas.json        # EAS build configs: development (internal), preview (APK), production
   package.json    # Mobile app dependencies and scripts
-  metro.config.js # Metro bundler with NativeWind integration
-  babel.config.js # Expo preset with NativeWind JSX
-  tailwind.config.js  # Custom broadcast color palette, NativeWind preset
-  global.css      # NativeWind integration CSS
+  metro.config.js # Metro bundler configuration
+  babel.config.js # Expo preset
 
 website/          # Next.js Landing Page & Documentation
   src/app/
@@ -84,7 +82,7 @@ scripts/
 | SDK             | Expo                                                | 55                   |
 | Navigation      | Expo Router                                         | 55 (file-based)      |
 | Language        | TypeScript                                          | ~5.9.2 (strict mode) |
-| Styling         | Inline Styles (primary) / NativeWind v4 (secondary) | NativeWind 4.1.23    |
+| Styling         | Inline Styles                                       | -                    |
 | Date/Time       | Luxon                                               | 3.7.1                |
 | Persistence     | @react-native-async-storage/async-storage           | 2.2.0                |
 | Notifications   | expo-notifications                                  | 55                   |
@@ -291,7 +289,7 @@ Custom Android build environment (not currently used by CI — CI uses `thyrlian
 
 ### 2. Styling Standards
 
-- **Inline Style Props** — Use for all layout and visual properties. NativeWind `className` is secondary due to inconsistent native Android rendering.
+- **Inline Style Props** — Use for all layout and visual properties.
 - **Color Scheme** — Strictly source colors from `app/constants/colors.ts`.
 - **Picker Rendering** — Never use fixed `height` or `overflow: hidden` on `@react-native-picker/picker` containers (fixes Android clipping).
 - **Safe Area** — Always use `useSafeAreaInsets()`; never hardcode platform offsets.
@@ -384,7 +382,7 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 ### 2026-03-10: Fullscreen Layout & Stability
 - Dynamic `countdownFontSize` (shrinks as block count increases).
 - Single-root `View` pattern to fix native crashes on fullscreen toggles.
-- Migrated from NativeWind `className` to inline styles (Android reliability).
+- Migrated to inline styles (Android reliability).
 - Created `HelpModal.tsx` explaining 11 UI controls.
 
 ---
