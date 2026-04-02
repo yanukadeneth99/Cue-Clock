@@ -27,18 +27,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: app/package-lock.json
 
-      - name: Free up disk space
-        run: |
-          echo "Disk space before cleanup:"
-          df -h
-          # Remove unnecessary SDK components and large unneeded packages
-          # (preserve /opt/hostedtoolcache for Java)
-          sudo rm -rf /usr/local/lib/android/sdk/ndk
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/share/swift
-          echo "Disk space after cleanup:"
-          df -h
-
       - name: Install dependencies
         working-directory: app
         run: npm ci
@@ -54,7 +42,7 @@ jobs:
           node -e "
           const fs = require('fs');
           const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-          const versionCode = ${{ github.run_number }};
+          const versionCode = Math.floor(Date.now() / 1000);
           app.expo.android.versionCode = versionCode;
           app.expo.ios.buildNumber = versionCode.toString();
           fs.writeFileSync('app.json', JSON.stringify(app, null, 2));
@@ -66,17 +54,13 @@ jobs:
         run: |
           echo "EXPO_PUBLIC_CLARITY_KEY=${{ secrets.EXPO_PUBLIC_CLARITY_KEY }}" > .env
 
-      - name: Generate Android native project
-        working-directory: app
-        run: npx expo prebuild --platform android --clean
-
-      - name: Restrict build to arm64-v8a only
-        working-directory: app/android
-        run: echo "reactNativeArchitectures=arm64-v8a" >> gradle.properties
-
       - name: Decode Firebase config
         working-directory: app
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode > google-services.json
+
+      - name: Generate Android native project
+        working-directory: app
+        run: npx expo prebuild --platform android --clean
 
       - name: Decode keystore
         working-directory: app/android
@@ -109,4 +93,4 @@ jobs:
           releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
           releaseName: cue-clock-${{ github.run_number }}
           track: internal
-          status: draft
+          status: completed

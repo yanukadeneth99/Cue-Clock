@@ -4,31 +4,19 @@ on:
   release:
     types: [published]
 
-# Allow manual trigger from Actions tab
-  workflow_dispatch:
-
 jobs:
   build-and-deploy:
     name: Build & Deploy to Google Play
     runs-on: ubuntu-latest
 
     steps:
-      - name: Extract version code from tag
+      - name: Extract version from tag
         id: version
         run: |
-          # Extract tag name (e.g., v1.0.33 -> 1.0.33)
           VERSION_TAG="${{ github.event.release.tag_name }}"
           VERSION="${VERSION_TAG#v}"
-
-          # Parse semantic version (major.minor.patch)
-          IFS='.' read -r major minor patch <<< "$VERSION"
-
-          # Calculate version code: (major * 1000000) + (minor * 1000) + patch
-          VERSION_CODE=$((major * 1000000 + minor * 1000 + patch))
-
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION, versionCode: $VERSION_CODE"
+          echo "Extracted version string: $VERSION"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,18 +34,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: app/package-lock.json
 
-      - name: Free up disk space
-        run: |
-          echo "Disk space before cleanup:"
-          df -h
-          # Remove unnecessary SDK components and large unneeded packages
-          # (preserve /opt/hostedtoolcache for Java)
-          sudo rm -rf /usr/local/lib/android/sdk/ndk
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/share/swift
-          echo "Disk space after cleanup:"
-          df -h
-
       - name: Install dependencies
         working-directory: app
         run: npm ci
@@ -67,17 +43,19 @@ jobs:
         run: npx expo-doctor
         continue-on-error: true
 
-      - name: Update version code for release
+      - name: Update version code and name for release
         working-directory: app
         run: |
+          VERSION="${{ steps.version.outputs.version }}"
           node -e "
           const fs = require('fs');
           const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-          const versionCode = ${{ steps.version.outputs.version_code }};
+          const versionCode = Math.floor(Date.now() / 1000);
           app.expo.android.versionCode = versionCode;
+          app.expo.version = '${VERSION}';
           app.expo.ios.buildNumber = versionCode.toString();
           fs.writeFileSync('app.json', JSON.stringify(app, null, 2));
-          console.log('Updated version code to', versionCode);
+          console.log('Updated version string to', '${VERSION}', 'and code to', versionCode);
           "
 
       - name: Create .env with build-time secrets
@@ -117,4 +95,4 @@ jobs:
           releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
           releaseName: cue-clock-${{ steps.version.outputs.version }}
           track: alpha
-          status: draft
+          status: completed
