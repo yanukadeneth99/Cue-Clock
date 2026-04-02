@@ -116,8 +116,8 @@ jobs:
           if (!fs.existsSync('whatsnew')) {
             fs.mkdirSync('whatsnew');
           }
-          fs.writeFileSync('whatsnew/en-US.txt', notes);
-          console.log('Generated whatsnew/en-US.txt (Length: ' + notes.length + ')');
+          fs.writeFileSync('whatsnew/whatsnew-en-US', notes);
+          console.log('Generated whatsnew/whatsnew-en-US (Length: ' + notes.length + ')');
           "
 
       - name: Upload to Google Play (Closed Testing - Alpha track)
