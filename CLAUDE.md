@@ -390,6 +390,15 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - Migrated to inline styles (Android reliability).
 - Created `HelpModal.tsx` explaining 11 UI controls.
 
+### 2026-04-01: Website Testing Improvements
+
+- **Website Testing:** Added new test cases to `website/__tests__/page.test.tsx` to improve coverage for `website/src/app/page.tsx`.
+- **Coverage Added:** Mocks and tests for `global.fetch` to cover the contributor fetching logic (success and failure cases).
+- **Coverage Added:** Tests for platform button interactions ensuring `selectedPlatform` updates.
+- **Coverage Added:** Tests for mobile menu toggles and clicking links inside the menu.
+- **Coverage Added:** Tests for external link calls by mocking `window.open` for "Start Now" and `scrollIntoView` for "Download Free Now".
+- **Result:** Line coverage for `website/src/app/page.tsx` improved from 37.09% to 50%, branch coverage improved from 64.7% to 82.35%.
+
 ---
 
 ## License & Security
