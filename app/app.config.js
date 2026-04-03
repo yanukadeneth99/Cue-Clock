@@ -4,19 +4,14 @@ export default ({ config }) => {
   const projectId = process.env.EAS_PROJECT_ID || "dev-local-open-source";
   const owner = process.env.EAS_OWNER || "open-source-contributor";
 
-  const expo = {
-    ...(config.expo || {}),
+  return {
+    ...config,
     owner,
     extra: {
-      ...(config.expo?.extra || {}),
+      ...(config.extra || {}),
       eas: {
         projectId,
       },
     },
-  };
-
-  return {
-    ...config,
-    expo,
   };
 };
