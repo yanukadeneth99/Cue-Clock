@@ -3,6 +3,7 @@
     "name": "cue-clock",
     "slug": "cue-clock",
     "version": "1.0.0",
+    "description": "A minimal, distraction-free clock app built specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously.",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "cueclock",
