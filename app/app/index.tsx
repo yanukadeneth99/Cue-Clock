@@ -11,6 +11,7 @@ import { DateTime } from "luxon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  AppState,
   Linking,
   LogBox,
   Platform,
@@ -252,12 +253,44 @@ export default function HomeScreen() {
   const nextIdRef = useRef(2);
   const isLoadedRef = useRef(false);
   const alertQueueRef = useRef<{ id: number; name: string; minutes: number }[]>([]);
+  // Holds notificationIds that must be cancelled before the in-app alert fires.
+  // We queue them here because the setTargetBlocks updater is a pure function and
+  // cannot perform async work (cancelBlockNotification) directly.
+  const pendingCancelRef = useRef<(string | null | undefined)[]>([]);
   const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirror of targetBlocks for use in async callbacks without stale closure issues
   const targetBlocksRef = useRef<TargetBlockType[]>([createDefaultBlock(1)]);
 
   // Keep ref in sync with state for use in async callbacks
   useEffect(() => { targetBlocksRef.current = targetBlocks; }, [targetBlocks]);
+
+  // Background-to-foreground guard: when the app returns to the foreground the JS
+  // setInterval was paused, so alertFired was never set while the native scheduled
+  // notification fired in the background. Without this, the interval would detect
+  // the same alert condition on the next tick and fire a second in-app notification.
+  // Fix: on 'active' transition, mark any block whose alert fire-time has already
+  // passed as fired WITHOUT queuing an in-app sendAlert (native already handled it).
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active") return;
+      setTargetBlocks((blocks) => {
+        let anyChanged = false;
+        const next = blocks.map((block) => {
+          if (block.alertMinutesBefore === null || block.alertFired) return block;
+          const zone = block.targetZone === "zone1" ? zone1 : zone2;
+          const fireDate = computeAlertFireDate(block, zone);
+          // fireDate === null means the fire time is in the past — native already fired
+          if (fireDate === null) {
+            anyChanged = true;
+            return { ...block, alertFired: true, alertMinutesBefore: null, notificationId: null };
+          }
+          return block;
+        });
+        return anyChanged ? next : blocks;
+      });
+    });
+    return () => subscription.remove();
+  }, [zone1, zone2]);
 
   // Request notification permissions on mount
   useEffect(() => {
@@ -406,8 +439,12 @@ export default function HomeScreen() {
   // Countdown updater — returns same array reference if nothing changed
   useEffect(() => {
     const timer = setInterval(() => {
-      const nowZone1 = DateTime.now().setZone(zone1);
-      const nowZone2 = DateTime.now().setZone(zone2);
+      // Capture a single instant so all blocks compute their "now" from the same
+      // millisecond. Two separate DateTime.now() calls can differ by microseconds
+      // and cause zone1 vs zone2 blocks to tick at visibly different times.
+      const now = DateTime.now();
+      const nowZone1 = now.setZone(zone1);
+      const nowZone2 = now.setZone(zone2);
 
       setTargetBlocks((blocks) => {
         let anyChanged = false;
@@ -454,9 +491,12 @@ export default function HomeScreen() {
               seconds === 0;
 
             if (shouldFire) {
-              // Always queue alert: web uses in-app notification; native falls back to Alert.alert
-              // (the pre-scheduled notification handles it if app is in background, but if foregrounded
-              // expo-notifications may not show the banner — Alert.alert ensures the user sees it)
+              // The app is foregrounded (setInterval is running), so we handle the
+              // alert in-app via sendAlert. We must cancel the pre-scheduled native
+              // notification first — otherwise both the date-triggered notification
+              // AND the immediate sendAlert notification fire at the same second,
+              // producing duplicate notifications.
+              pendingCancelRef.current.push(block.notificationId);
               alertQueueRef.current.push({
                 id: block.id,
                 name: block.name,
@@ -489,8 +529,15 @@ export default function HomeScreen() {
     return () => clearInterval(timer);
   }, [zone1, zone2]);
 
-  // Process queued alerts via push notification (or Alert.alert fallback)
+  // Process queued alerts via push notification (or Alert.alert fallback).
+  // We first drain pendingCancelRef so the pre-scheduled native notification is
+  // cancelled BEFORE sendAlert fires its own immediate notification — preventing
+  // the user from receiving two notifications for the same alert event.
   useEffect(() => {
+    if (pendingCancelRef.current.length > 0) {
+      const toCancel = pendingCancelRef.current.splice(0);
+      toCancel.forEach((id) => { if (id) cancelBlockNotification(id); });
+    }
     if (alertQueueRef.current.length > 0) {
       const alerts = alertQueueRef.current.splice(0);
       alerts.forEach((a) => {
