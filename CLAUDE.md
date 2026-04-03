@@ -86,7 +86,6 @@ scripts/
 | Date/Time       | Luxon                                               | 3.7.1                |
 | Persistence     | @react-native-async-storage/async-storage           | 2.2.0                |
 | Notifications   | expo-notifications                                  | 55                   |
-| Animations      | react-native-reanimated                             | ~4.2.1               |
 | Pickers         | @react-native-picker/picker                         | 2.11.4               |
 | DateTime Picker | react-native-modal-datetime-picker                  | 18.0.0               |
 | Analytics       | @microsoft/react-native-clarity                     | 4.5.3                |
