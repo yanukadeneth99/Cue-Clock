@@ -9,7 +9,7 @@ export default ({ config }) => {
     expo: {
       ...config.expo,
       extra: {
-        ...config.expo.extra,
+        ...(config.expo?.extra || {}),
         eas: {
           projectId,
         },
