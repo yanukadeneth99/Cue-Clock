@@ -810,6 +810,12 @@ export default function HomeScreen() {
   const fullscreenNeedsScroll = idealFontSize < FULLSCREEN_MIN_FONT;
 
   const isWeb = Platform.OS === "web";
+  const notifUnavailableReason =
+    !isWeb && isExpoGo
+      ? "Expo Go falls back to in-app alerts here, so alarms will not fire after you leave the app."
+      : (!isWeb && !Notifications
+          ? "Native notifications are unavailable in this build, so background alerts cannot be scheduled."
+          : null);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -824,6 +830,28 @@ export default function HomeScreen() {
             Cue Clock
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {!isWeb && notifUnavailableReason && (
+              <Pressable
+                onPress={() => {
+                  Alert.alert(
+                    "Background Alerts Need a Native Build",
+                    `${notifUnavailableReason}\n\nRun \`npx expo run:android\` or \`npx expo run:ios\` to test real background notifications.`
+                  );
+                }}
+                style={{
+                  backgroundColor: colors.background,
+                  borderColor: colors.countdown,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  paddingVertical: 4,
+                  paddingHorizontal: 10,
+                }}
+              >
+                <Text style={{ color: colors.countdown, fontSize: 11, fontWeight: "600" }}>
+                  Bell disabled in Expo Go
+                </Text>
+              </Pressable>
+            )}
             {isWeb && notifBlocked && (
               <Pressable
                 onPress={() => {
@@ -1031,6 +1059,7 @@ export default function HomeScreen() {
             fullScreen={fullScreen}
             countdownFontSize={fullScreen ? countdownFontSize : undefined}
             notifBlocked={notifBlocked}
+            notifUnavailableReason={notifUnavailableReason}
             onRequestNotifPermission={requestNotifPermission}
           />
         ))}
@@ -1150,6 +1179,7 @@ export default function HomeScreen() {
         analyticsEnabled={analyticsEnabled}
         onRequestOptOut={() => setOptOutModalVisible(true)}
         onOpenNotificationSettings={requestNotifPermission}
+        notificationRuntimeNote={notifUnavailableReason}
       />
 
       <AnalyticsConsentModal

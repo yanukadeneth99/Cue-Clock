@@ -8,6 +8,7 @@ interface HelpModalProps {
   analyticsEnabled: boolean | null;
   onRequestOptOut: () => void;
   onOpenNotificationSettings?: () => void;
+  notificationRuntimeNote?: string | null;
 }
 
 const helpItems: { label: string; description: string }[] = [
@@ -79,7 +80,14 @@ const helpItems: { label: string; description: string }[] = [
  * @param visible - Whether the modal is shown.
  * @param onClose - Callback to dismiss the modal.
  */
-export default function HelpModal({ visible, onClose, analyticsEnabled, onRequestOptOut, onOpenNotificationSettings }: HelpModalProps) {
+export default function HelpModal({
+  visible,
+  onClose,
+  analyticsEnabled,
+  onRequestOptOut,
+  onOpenNotificationSettings,
+  notificationRuntimeNote,
+}: HelpModalProps) {
   return (
     <Modal
       visible={visible}
@@ -110,6 +118,11 @@ export default function HelpModal({ visible, onClose, analyticsEnabled, onReques
 
             {Platform.OS !== "web" && onOpenNotificationSettings && (
               <View style={{ gap: 8, marginTop: 8, marginBottom: 4 }}>
+                {notificationRuntimeNote ? (
+                  <View style={styles.runtimeNote}>
+                    <Text style={styles.runtimeNoteText}>{notificationRuntimeNote}</Text>
+                  </View>
+                ) : null}
                 <Pressable
                   onPress={onOpenNotificationSettings}
                   style={styles.notifButton}
@@ -202,6 +215,19 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 13,
     fontWeight: "600",
+  },
+  runtimeNote: {
+    backgroundColor: colors.background,
+    borderColor: colors.surfaceBorder,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  runtimeNoteText: {
+    color: colors.countdown,
+    fontSize: 13,
+    lineHeight: 18,
   },
   optOutButton: {
     backgroundColor: colors.background,

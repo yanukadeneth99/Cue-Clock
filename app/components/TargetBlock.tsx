@@ -53,6 +53,7 @@ interface Props {
   fullScreen?: boolean;
   countdownFontSize?: number;
   notifBlocked?: boolean;
+  notifUnavailableReason?: string | null;
   onRequestNotifPermission?: () => void;
 }
 
@@ -92,6 +93,7 @@ function TargetBlockInner({
   handleAlertConfirm,
   handleAlertDelete,
   notifBlocked = false,
+  notifUnavailableReason,
   onRequestNotifPermission,
 }: Props) {
   const [bellHovered, setBellHovered] = React.useState(false);
@@ -175,15 +177,34 @@ function TargetBlockInner({
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Pressable
               onPress={() => {
-                if (notifBlocked && Platform.OS !== "web") {
+                if (notifUnavailableReason && Platform.OS !== "web") {
+                  Alert.alert(
+                    "Background Alerts Need a Native Build",
+                    `${notifUnavailableReason}\n\nUse \`npx expo run:android\` or \`npx expo run:ios\` to test real background notifications.`
+                  );
+                } else if (notifBlocked && Platform.OS !== "web") {
                   onRequestNotifPermission?.();
                 } else {
                   toggleAlertModal(block.id, true);
                 }
               }}
-              style={[styles.iconButton, notifBlocked && Platform.OS !== "web" ? { borderColor: colors.muted, opacity: 0.5 } : undefined]}
+              style={[
+                styles.iconButton,
+                (notifBlocked || !!notifUnavailableReason) && Platform.OS !== "web"
+                  ? { borderColor: colors.muted, opacity: 0.5 }
+                  : undefined,
+              ]}
             >
-              <Text style={{ color: notifBlocked && Platform.OS !== "web" ? colors.muted : (block.alertMinutesBefore !== null ? colors.countdown : colors.muted), fontSize: 16, textAlign: "center" }}>
+              <Text
+                style={{
+                  color:
+                    (notifBlocked || !!notifUnavailableReason) && Platform.OS !== "web"
+                      ? colors.muted
+                      : (block.alertMinutesBefore !== null ? colors.countdown : colors.muted),
+                  fontSize: 16,
+                  textAlign: "center",
+                }}
+              >
                 {block.alertMinutesBefore !== null ? "\u{1F514}" : "\u{1F515}"}
               </Text>
             </Pressable>
