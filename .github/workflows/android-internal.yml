@@ -5,6 +5,10 @@ on:
     branches:
       - master
 
+concurrency:
+  group: android-internal
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     name: Build & Deploy to Internal Testing

@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: android-release-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     name: Build & Deploy to Google Play
