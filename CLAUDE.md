@@ -404,3 +404,8 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
   - Original execution: ~14879 ms
   - Optimized execution: ~10811 ms
   - Speedup: ~27% improvement.
+
+### 2026-04-02: GitHub Actions CI/CD Security Patch
+- **Security:** Addressed Command/Script Injection Vulnerabilities in `.github/workflows/android-release.yml`.
+- **Why:** The original workflow directly interpolated GitHub event context variables (`${{ github.event.release.tag_name }}`) and step outputs (`${{ steps.version.outputs.version }}`) into inline bash and Node.js scripts. This allowed for arbitrary code execution if a malicious actor created a release with a specially crafted tag name (e.g. `v1.0"; rm -rf /; echo "`).
+- **Fix:** Refactored the inline scripts to securely pass dynamic values through the `env` block instead. They are now accessed safely inside scripts using `$VAR` (for bash) and `process.env.VAR` (for Node.js), closing the injection vector.
