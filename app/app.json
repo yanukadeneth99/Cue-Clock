@@ -19,7 +19,11 @@
         "backgroundColor": "#0a0a0a"
       },
       "package": "com.yanukadeneth99.cueclock",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
     },
     "web": {
       "bundler": "metro",

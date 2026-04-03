@@ -11,9 +11,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-// Conditionally load datetime picker — has no web implementation; would resolve to undefined on web
- 
+// Conditionally load datetime picker — has no web implementation; would crash on web if imported
+// at module load time. A dynamic require() is the only synchronous way to do this in React Native.
 const DateTimePickerModal: typeof import("react-native-modal-datetime-picker").default | null =
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   Platform.OS !== "web" ? require("react-native-modal-datetime-picker").default : null;
 
 export interface TargetBlockType {

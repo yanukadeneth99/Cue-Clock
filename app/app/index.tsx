@@ -123,7 +123,11 @@ async function scheduleBlockNotification(block: TargetBlockType, zone: string): 
         sound: true,
         ...(Platform.OS === "android" ? { channelId: "default" } : {}),
       },
-      trigger: { type: "date", date: fireDate } as any,
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: fireDate,
+        ...(Platform.OS === "android" ? { channelId: "default" } : {}),
+      },
     });
     return id;
   } catch {
@@ -279,8 +283,11 @@ export default function HomeScreen() {
           if (block.alertMinutesBefore === null || block.alertFired) return block;
           const zone = block.targetZone === "zone1" ? zone1 : zone2;
           const fireDate = computeAlertFireDate(block, zone);
-          // fireDate === null means the fire time is in the past — native already fired
+          // fireDate === null means the fire time is in the past — native already fired.
+          // Push the old notification ID to pendingCancelRef so the dangling scheduled
+          // notification is cancelled before it fires spuriously on the next interval tick.
           if (fireDate === null) {
+            pendingCancelRef.current.push(block.notificationId);
             anyChanged = true;
             return { ...block, alertFired: true, alertMinutesBefore: null, notificationId: null };
           }
@@ -310,11 +317,37 @@ export default function HomeScreen() {
     if (!Notifications) return;
     (async () => {
       try {
+        // Step 1: request the standard notification display permission
         const { status } = await Notifications!.getPermissionsAsync();
         if (status !== "granted") {
           const { status: newStatus } = await Notifications!.requestPermissionsAsync();
           if (newStatus !== "granted") {
             setNotifBlocked(true);
+            return;
+          }
+        }
+
+        // Step 2: on Android 12+ (API 31+), also check the SCHEDULE_EXACT_ALARM
+        // permission. Without it, date-triggered notifications fire late or not at all.
+        // canScheduleExactNotificationsAsync() is available in expo-notifications SDK 51+.
+        if (Platform.OS === "android" && typeof Notifications!.canScheduleExactNotificationsAsync === "function") {
+          const canExact = await Notifications!.canScheduleExactNotificationsAsync().catch(() => true);
+          if (!canExact) {
+            Alert.alert(
+              "Allow Exact Alarms",
+              "To receive countdown alerts at the precise moment, Cue Clock needs permission to schedule exact alarms.\n\nTap OK to open the Alarms & Reminders settings.",
+              [
+                { text: "Later", style: "cancel" },
+                {
+                  text: "OK",
+                  onPress: () => {
+                    Linking.sendIntent("android.settings.REQUEST_SCHEDULE_EXACT_ALARM").catch(() => {
+                      Linking.openSettings();
+                    });
+                  },
+                },
+              ]
+            );
           }
         }
       } catch {
@@ -1116,6 +1149,7 @@ export default function HomeScreen() {
         onClose={() => setHelpVisible(false)}
         analyticsEnabled={analyticsEnabled}
         onRequestOptOut={() => setOptOutModalVisible(true)}
+        onOpenNotificationSettings={requestNotifPermission}
       />
 
       <AnalyticsConsentModal

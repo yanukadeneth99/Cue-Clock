@@ -1,12 +1,13 @@
 import { colors } from "@/constants/colors";
 import React from "react";
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 interface HelpModalProps {
   visible: boolean;
   onClose: () => void;
   analyticsEnabled: boolean | null;
   onRequestOptOut: () => void;
+  onOpenNotificationSettings?: () => void;
 }
 
 const helpItems: { label: string; description: string }[] = [
@@ -65,6 +66,11 @@ const helpItems: { label: string; description: string }[] = [
     description:
       "Clears all saved data and returns the app to its default state with one countdown timer. A confirmation dialog will appear before resetting.",
   },
+  {
+    label: "\u{1F6D1}  Background Notifications Not Firing?",
+    description:
+      "If alerts don\u2019t fire when the app is in the background, your device may be blocking background activity.\n\nOn Android:\n\u2022 Open Settings \u2192 Apps \u2192 Cue Clock \u2192 Notifications and make sure notifications are enabled.\n\u2022 Open Settings \u2192 Apps \u2192 Cue Clock \u2192 Battery and set to \u201cUnrestricted\u201d.\n\u2022 On Android 12+, go to Settings \u2192 Apps \u2192 Special app access \u2192 Alarms & reminders and enable Cue Clock.\n\nTap the button below to open app settings directly.",
+  },
 ];
 
 /**
@@ -73,7 +79,7 @@ const helpItems: { label: string; description: string }[] = [
  * @param visible - Whether the modal is shown.
  * @param onClose - Callback to dismiss the modal.
  */
-export default function HelpModal({ visible, onClose, analyticsEnabled, onRequestOptOut }: HelpModalProps) {
+export default function HelpModal({ visible, onClose, analyticsEnabled, onRequestOptOut, onOpenNotificationSettings }: HelpModalProps) {
   return (
     <Modal
       visible={visible}
@@ -101,6 +107,23 @@ export default function HelpModal({ visible, onClose, analyticsEnabled, onReques
                 <Text style={styles.itemDesc}>{item.description}</Text>
               </View>
             ))}
+
+            {Platform.OS !== "web" && onOpenNotificationSettings && (
+              <View style={{ gap: 8, marginTop: 8, marginBottom: 4 }}>
+                <Pressable
+                  onPress={onOpenNotificationSettings}
+                  style={styles.notifButton}
+                >
+                  <Text style={styles.notifButtonText}>Open Notification Settings</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => Linking.openSettings()}
+                  style={styles.notifButton}
+                >
+                  <Text style={styles.notifButtonText}>Open App Settings</Text>
+                </Pressable>
+              </View>
+            )}
 
             {analyticsEnabled === true && (
               <Pressable
@@ -166,6 +189,19 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     lineHeight: 19,
+  },
+  notifButton: {
+    backgroundColor: colors.background,
+    borderColor: colors.accent,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  notifButtonText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "600",
   },
   optOutButton: {
     backgroundColor: colors.background,
