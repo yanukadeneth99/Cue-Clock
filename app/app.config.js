@@ -4,20 +4,19 @@ export default ({ config }) => {
   const projectId = process.env.EAS_PROJECT_ID || "dev-local-open-source";
   const owner = process.env.EAS_OWNER || "open-source-contributor";
 
-  // Safely inject EAS config without losing existing structure
-  const expo = config?.expo || {};
+  const expo = {
+    ...config.expo,
+    owner,
+    extra: {
+      ...(config.expo && config.expo.extra ? config.expo.extra : {}),
+      eas: {
+        projectId,
+      },
+    },
+  };
 
   return {
     ...config,
-    expo: {
-      ...expo,
-      owner,
-      extra: {
-        ...(expo.extra || {}),
-        eas: {
-          projectId,
-        },
-      },
-    },
+    expo,
   };
 };
