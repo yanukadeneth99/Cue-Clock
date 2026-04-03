@@ -404,3 +404,6 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
   - Original execution: ~14879 ms
   - Optimized execution: ~10811 ms
   - Speedup: ~27% improvement.
+
+### Performance Fixes
+* Replaced slow `luxon` `.diff` calculations inside `setInterval` interval hooks with fast ms timestamp differential arithmetics.

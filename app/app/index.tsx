@@ -428,15 +428,26 @@ export default function HomeScreen() {
 
           const deductionMs =
             (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
-          targetDT = targetDT.minus({ milliseconds: deductionMs });
 
-          const diff = targetDT
-            .diff(nowInZone, ["hours", "minutes", "seconds"])
-            .toObject();
-          const totalMinutes = Math.floor(
-            (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
-          );
-          const seconds = Math.floor(diff.seconds ?? 0);
+          const diffMs = targetDT.toMillis() - deductionMs - nowInZone.toMillis();
+
+          const isNegative = diffMs < 0;
+          const absDiffMs = Math.abs(diffMs);
+          const absSecondsTotal = absDiffMs / 1000;
+
+          let luxonHours = Math.trunc(absSecondsTotal / 3600);
+          let luxonMinutes = Math.trunc((absSecondsTotal % 3600) / 60);
+          let luxonSeconds = absSecondsTotal % 60;
+
+          if (isNegative) {
+            luxonHours = -luxonHours;
+            luxonMinutes = -luxonMinutes;
+            luxonSeconds = -luxonSeconds;
+          }
+
+          const totalMinutes = Math.floor(luxonHours * 60 + luxonMinutes);
+          const seconds = Math.floor(luxonSeconds);
+
           const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
           let changed = block.countdown !== newCountdown;
