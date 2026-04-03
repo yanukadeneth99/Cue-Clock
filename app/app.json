@@ -9,14 +9,16 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yanukadeneth99.cueclock"
+      "bundleIdentifier": "com.yanukadeneth99.cueclock",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#0a0a0a"
       },
-      "package": "com.yanukadeneth99.cueclock"
+      "package": "com.yanukadeneth99.cueclock",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -32,6 +34,8 @@
       "startUrl": "/"
     },
     "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
       "expo-router",
       [
         "expo-splash-screen",

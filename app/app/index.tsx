@@ -726,8 +726,10 @@ export default function HomeScreen() {
       try {
         const { initializeApp, getApps } = await import("@react-native-firebase/app");
         const { default: analytics } = await import("@react-native-firebase/analytics");
+        const { default: crashlytics } = await import("@react-native-firebase/crashlytics");
         if (getApps().length === 0) initializeApp();
         await analytics().setAnalyticsCollectionEnabled(enabled);
+        await crashlytics().setCrashlyticsCollectionEnabled(enabled);
         if (enabled) {
           const clarityKey = process.env.EXPO_PUBLIC_CLARITY_KEY;
           if (clarityKey) {

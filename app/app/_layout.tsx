@@ -30,9 +30,12 @@ export default function RootLayout() {
         const enabled = stored === "true";
         const { initializeApp, getApps } = await import("@react-native-firebase/app");
         const { default: analytics } = await import("@react-native-firebase/analytics");
+        const { default: crashlytics } = await import("@react-native-firebase/crashlytics");
 
         if (getApps().length === 0) initializeApp();
         await analytics().setAnalyticsCollectionEnabled(enabled);
+        // Crashlytics collection mirrors the analytics consent choice
+        await crashlytics().setCrashlyticsCollectionEnabled(enabled);
 
         if (enabled) {
           const clarityKey = process.env.EXPO_PUBLIC_CLARITY_KEY;
