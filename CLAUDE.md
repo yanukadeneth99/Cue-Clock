@@ -403,7 +403,10 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
   - Original execution: ~14879 ms
   - Optimized execution: ~10811 ms
   - Speedup: ~27% improvement.
-
+### 2026-04-02: GitHub Actions CI/CD Security Patch
+- **Security:** Addressed Command/Script Injection Vulnerabilities in `.github/workflows/android-release.yml`.
+- **Why:** The original workflow directly interpolated GitHub event context variables (`${{ github.event.release.tag_name }}`) and step outputs (`${{ steps.version.outputs.version }}`) into inline bash and Node.js scripts. This allowed for arbitrary code execution if a malicious actor created a release with a specially crafted tag name (e.g. `v1.0"; rm -rf /; echo "`).
+- **Fix:** Refactored the inline scripts to securely pass dynamic values through the `env` block instead. They are now accessed safely inside scripts using `$VAR` (for bash) and `process.env.VAR` (for Node.js), closing the injection vector.
 ### 2026-04-03: Alert & Sync Bug Fixes (Mobile App)
 - **Fix 1 — Timer Desync:** Two separate `DateTime.now()` calls in the interval (lines 409–410) could differ by microseconds, causing zone1 vs zone2 blocks to tick at visibly different times. Solution: capture a single `DateTime.now()` instance (line 445), then `.setZone()` both clocks from the same millisecond. Result: all countdown blocks now tick in perfect synchronization.
 - **Fix 2 — Duplicate Foreground Notifications:** When the app is foregrounded and an in-app alert fires via `sendAlert`, a pre-scheduled date-triggered native notification also fires at the same second. Solution: queue the notification ID in `pendingCancelRef` (line 499) before firing the in-app alert, then drain the cancellation queue in the alert-processing `useEffect` (lines 537–539) before calling `sendAlert`. Result: only one notification per alert event.

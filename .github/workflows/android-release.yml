@@ -12,8 +12,9 @@ jobs:
     steps:
       - name: Extract version from tag
         id: version
+        env:
+          VERSION_TAG: ${{ github.event.release.tag_name }}
         run: |
-          VERSION_TAG="${{ github.event.release.tag_name }}"
           VERSION="${VERSION_TAG#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version string: $VERSION"
@@ -45,17 +46,18 @@ jobs:
 
       - name: Update version code and name for release
         working-directory: app
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           node -e "
           const fs = require('fs');
           const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
           const versionCode = Math.floor(Date.now() / 1000);
           app.expo.android.versionCode = versionCode;
-          app.expo.version = '${VERSION}';
+          app.expo.version = process.env.VERSION;
           app.expo.ios.buildNumber = versionCode.toString();
           fs.writeFileSync('app.json', JSON.stringify(app, null, 2));
-          console.log('Updated version string to', '${VERSION}', 'and code to', versionCode);
+          console.log('Updated version string to', process.env.VERSION, 'and code to', versionCode);
           "
 
       - name: Create .env with build-time secrets
