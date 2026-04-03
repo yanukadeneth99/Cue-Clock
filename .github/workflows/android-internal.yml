@@ -38,7 +38,6 @@ jobs:
       - name: Run Expo Doctor
         working-directory: app
         run: npx expo-doctor
-        continue-on-error: true
 
       - name: Update version code for internal testing
         working-directory: app
