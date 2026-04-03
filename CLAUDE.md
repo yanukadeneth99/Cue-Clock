@@ -42,7 +42,9 @@ app/              # React Native (Expo) Mobile Application
     useColorScheme.ts  # Re-exports React Native's built-in hook
   assets/         # Icons, splash screens, fonts (SpaceMono-Regular.ttf)
   scripts/        # Maintenance and utility scripts
-  app.json        # Expo configuration (slug, bundle ID, plugins, EAS project)
+  .env.example    # Template for environment variables (safe, no secrets)
+  app.json        # Expo configuration (slug, bundle ID, plugins)
+  app.config.js   # Dynamic Expo config: injects EAS projectId/owner from env at build time
   eas.json        # EAS build configs: development (internal), preview (APK), production
   package.json    # Mobile app dependencies and scripts
   metro.config.js # Metro bundler configuration
@@ -68,6 +70,14 @@ scripts/
 .github/workflows/
   android-internal.yml # CI/CD: build + sign AAB + upload to Google Play internal track (master pushes)
   android-release.yml  # CI/CD: build + sign AAB + upload to Google Play beta track (GitHub releases)
+
+Root Documentation
+  DEVELOPMENT.md              # How to run the app locally (zero setup required)
+  GITHUB_SECRETS_SETUP.md     # How to configure GitHub Secrets for CI/CD
+  CONTRIBUTING.md             # Contributing guidelines
+  CODE_OF_CONDUCT.md          # Community standards
+  LICENSE                     # AGPL-3.0
+  SECURITY.md                 # Security vulnerability reporting
 ```
 
 ---
@@ -243,12 +253,15 @@ releaseNotes: ${{ github.event.release.body }}
 
 | Secret                             | Description                                             |
 | ---------------------------------- | ------------------------------------------------------- |
+| `EXPO_PUBLIC_CLARITY_KEY`          | Microsoft Clarity project ID                            |
 | `ANDROID_KEYSTORE_BASE64`          | Base64-encoded `.keystore` file                         |
 | `ANDROID_KEYSTORE_PASSWORD`        | Keystore password                                       |
 | `ANDROID_KEY_ALIAS`                | Key alias (`cue-clock-key`)                             |
 | `ANDROID_KEY_PASSWORD`             | Individual key password                                 |
 | `GOOGLE_SERVICES_JSON_BASE64`      | Base64-encoded `google-services.json` (Firebase config) |
 | `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Google Cloud service account JSON for Play API          |
+| `EAS_PROJECT_ID`                   | Expo EAS project ID for official builds                 |
+| `EAS_OWNER`                        | Expo account username                                   |
 
 **Package name**: `com.yanukadeneth99.cueclock` (must match `app.json` and Google Play Console app)
 
@@ -395,6 +408,22 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 
 - **License:** AGPL-3.0. Commercial licensing: hello@yashura.io.
 - **Security:** Not production-hardened. See `SECURITY.md` for reporting. Contact: hello@yashura.io.
+
+### 2026-04-04: Open-Source Hardening & Zero-Dependency Local Development
+- **Security:** Removed hardcoded `projectId` and `owner` from `app.json`; now injected via `app.config.js` at build time from GitHub Secrets.
+- **Local Dev:** App now runs with **zero environment variables required** — all credentials are optional with safe defaults.
+  - `EXPO_PUBLIC_CLARITY_KEY` (analytics) — gracefully skipped if missing
+  - `ANDROID_KEYSTORE_*` (signing) — only for release builds; debug uses auto-generated keystore
+  - `EAS_*` (build config) — defaults to `dev-local-open-source` / `open-source-contributor` locally
+  - `google-services.json` (Firebase) — gracefully handled if missing
+- **Documentation:**
+  - `DEVELOPMENT.md` — Step-by-step guide for contributors to run the app with zero setup
+  - `GITHUB_SECRETS_SETUP.md` — Instructions for configuring secrets before CI/CD deployment
+  - `app/.env.example` — Clarified which vars are optional, with links to obtain them
+- **CI/CD Updates:**
+  - Both workflows now inject `EAS_PROJECT_ID` and `EAS_OWNER` from GitHub Secrets
+  - No account identifiers exposed in public repository
+- **Ready for open-source:** All sensitive configuration is either `.gitignore`'d, environment-variable-driven, or optional with safe fallbacks.
 
 ### 2026-04-02: Countdown Interval Optimization
 - **Optimization:** Pre-computed Luxon `DateTime.now().setZone(...)` instances outside of the `blocks.map` loop within `setInterval` in `HomeScreen`.

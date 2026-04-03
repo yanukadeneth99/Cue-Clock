@@ -18,29 +18,38 @@ By participating, you agree to abide by the [Code of Conduct](./CODE_OF_CONDUCT.
 ### 1. Reporting Bugs & Features
 
 Open a [GitHub Issue](https://github.com/yanukadeneth99/Cue-Clock/issues) for:
+
 - **Bugs**: Provide steps to reproduce, expected vs actual behavior, and your platform (iOS/Android/Web).
 - **Features**: Describe the utility for broadcast professionals and any implementation ideas.
 
 ### 2. Development Setup
 
 1. **Fork** and **Clone** the repository.
-2. Choose the project you want to work on:
+2. **No environment variables required** — all optional features gracefully skip initialization. See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed setup instructions.
+3. Choose the project you want to work on:
 
 #### Working on the Mobile App (`app/`)
+
 ```bash
 cd app
-npm install
+npm ci
 npx expo start
+npx expo run:android  # or run:ios, or press 'w' for web
 ```
-*Note: We prioritize **inline styles** for layout to ensure reliability on Android native.*
+
+_Note: We prioritize **inline styles** for layout to ensure reliability on Android native._
+
+**No setup needed.** Skip analytics, Firebase, and signing credentials — they're all optional. The app just works.
 
 #### Working on the Website (`website/`)
+
 ```bash
 cd website
-npm install
+npm ci
 npm run dev
 ```
-*Note: Built with Next.js 16.2.1 and Tailwind CSS 4.*
+
+_Note: Built with Next.js 16.2.1 and Tailwind CSS 4._
 
 ### 3. Submitting Code
 

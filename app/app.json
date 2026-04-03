@@ -54,10 +54,7 @@
     },
     "extra": {
       "router": {},
-      "eas": {
-        "projectId": "de3c2a1d-42be-4f3a-a6d2-e022741a7fb2"
-      }
-    },
-    "owner": "yanukadeneth99"
+      "eas": {}
+    }
   }
 }
