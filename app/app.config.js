@@ -5,10 +5,10 @@ export default ({ config }) => {
   const owner = process.env.EAS_OWNER || "open-source-contributor";
 
   const expo = {
-    ...config.expo,
+    ...(config.expo || {}),
     owner,
     extra: {
-      ...(config.expo && config.expo.extra ? config.expo.extra : {}),
+      ...(config.expo?.extra || {}),
       eas: {
         projectId,
       },
