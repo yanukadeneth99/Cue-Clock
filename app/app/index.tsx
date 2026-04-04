@@ -479,10 +479,14 @@ export default function HomeScreen() {
       const nowZone1 = now.setZone(zone1);
       const nowZone2 = now.setZone(zone2);
 
+      const nowMsZone1 = nowZone1.toMillis();
+      const nowMsZone2 = nowZone2.toMillis();
+
       setTargetBlocks((blocks) => {
         let anyChanged = false;
         const next = blocks.map((block) => {
           const nowInZone = block.targetZone === "zone1" ? nowZone1 : nowZone2;
+          const nowMs = block.targetZone === "zone1" ? nowMsZone1 : nowMsZone2;
 
           let targetDT = nowInZone.set({
             hour: block.targetHour,
@@ -492,21 +496,27 @@ export default function HomeScreen() {
           });
 
           // Add 1 second so that target time rounds up to the next second
-          targetDT = targetDT.plus({ seconds: 1 });
+          let targetMs = targetDT.toMillis() + 1000;
 
-          if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
+          if (targetMs <= nowMs) {
+            targetDT = targetDT.plus({ days: 1 });
+            targetMs = targetDT.toMillis() + 1000;
+          }
 
           const deductionMs =
             (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
-          targetDT = targetDT.minus({ milliseconds: deductionMs });
+          targetMs -= deductionMs;
 
-          const diff = targetDT
-            .diff(nowInZone, ["hours", "minutes", "seconds"])
-            .toObject();
-          const totalMinutes = Math.floor(
-            (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
-          );
-          const seconds = Math.floor(diff.seconds ?? 0);
+          const diffMs = targetMs - nowMs;
+
+          const totalSecondsRaw = diffMs / 1000;
+          const hoursRaw = Math.trunc(totalSecondsRaw / 3600);
+          const minutesRaw = Math.trunc((totalSecondsRaw % 3600) / 60);
+          const secondsRaw = totalSecondsRaw % 60;
+
+          const totalMinutes = Math.floor(hoursRaw * 60 + minutesRaw);
+          const seconds = Math.floor(secondsRaw);
+
           const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
           let changed = block.countdown !== newCountdown;
