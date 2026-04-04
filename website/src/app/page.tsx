@@ -505,6 +505,7 @@ export default function Home() {
                 <a 
                   href="https://github.com/yanukadeneth99/Cue-Clock" 
                   target="_blank" 
+                  rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-primary font-label font-bold uppercase tracking-widest text-[0.6875rem] hover:underline"
                 >
                   View Source Code <span className="material-symbols-outlined text-sm">open_in_new</span>
@@ -519,6 +520,7 @@ export default function Home() {
                         key={c.id} 
                         href={c.html_url} 
                         target="_blank" 
+                        rel="noopener noreferrer"
                         title={c.login}
                         className="w-12 h-12 rounded-full overflow-hidden border-2 border-outline-variant/30 hover:border-primary transition-all group relative"
                       >
