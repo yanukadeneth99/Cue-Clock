@@ -51,7 +51,6 @@
           "backgroundColor": "#0a0a0a"
         }
       ],
-      "@react-native-community/datetimepicker",
       "expo-notifications"
     ],
     "experiments": {

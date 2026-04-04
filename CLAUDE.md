@@ -97,7 +97,6 @@ Root Documentation
 | Persistence     | @react-native-async-storage/async-storage           | 2.2.0                |
 | Notifications   | expo-notifications                                  | 55                   |
 | Pickers         | @react-native-picker/picker                         | 2.11.4               |
-| DateTime Picker | react-native-modal-datetime-picker                  | 18.0.0               |
 | Analytics       | @microsoft/react-native-clarity                     | 4.5.3                |
 
 ### Website (`website/`)
@@ -408,6 +407,11 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 
 - **License:** AGPL-3.0. Commercial licensing: hello@yashura.io.
 - **Security:** Not production-hardened. See `SECURITY.md` for reporting. Contact: hello@yashura.io.
+
+### 2026-04-04: Removal of `react-native-modal-datetime-picker`
+- **Optimization:** Replaced the heavyweight `react-native-modal-datetime-picker` with cross-platform native `TextInput` fields.
+- **Why:** The native date/time picker required a brittle dynamic require on web (`Platform.OS !== "web" ? require(...) : null`), increased bundle size, and led to an inconsistent user experience between web (where it fell back to HTML inputs) and mobile.
+- **Measured Improvement:** Reduced `node_modules` size, simplified component logic by removing conditional rendering, improved static analysis (no more dynamic requires), and provided a unified custom UI for entering time values across all platforms.
 
 ### 2026-04-04: Open-Source Hardening & Zero-Dependency Local Development
 - **Security:** Removed hardcoded `projectId` and `owner` from `app.json`; now injected via `app.config.js` at build time from GitHub Secrets.

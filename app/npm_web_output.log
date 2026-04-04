@@ -1,0 +1,36 @@
+
+> cue-clock@1.0.0 web
+> expo start --web
+
+Starting project at /app/app
+Starting Metro Bundler
+
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓░░░░░░░░░░░ 36.9% (119/196)
+λ node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js ▓▓░░░░░░░░░░░░░░ 18.7% (22/62)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 48.1% (268/392)
+λ node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js ▓▓▓▓▓░░░░░░░░░░░ 36.5% (167/364)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓░░░░░░░░ 55.1% (429/578)
+λ node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js ▓▓▓▓▓▓░░░░░░░░░░ 40.2% (381/601)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 74.0% (686/799)
+λ node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 63.4% (665/835)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 97.5% (924/936)
+λ node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 92.7% (1105/1151)
+Web Bundled 18321ms node_modules/expo-router/entry.js (936 modules)
+λ Bundled 18583ms node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js (1195 modules)
+Web node_modules/expo-router/entry.js ▓▓▓░░░░░░░░░░░░░ 24.7% (194/390)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 72.5% (670/787)
+Web Bundled 6534ms node_modules/expo-router/entry.js (938 modules)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 61ms node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js (1 module)
+Web Bundled 476ms node_modules/expo-router/entry.js (1 module)
+Web Bundled 43ms node_modules/expo-router/entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 58ms node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js (1 module)
+Web Bundled 523ms node_modules/expo-router/entry.js (1 module)
+Web Bundled 44ms node_modules/expo-router/entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console

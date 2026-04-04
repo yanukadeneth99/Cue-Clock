@@ -11,11 +11,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-// Conditionally load datetime picker — has no web implementation; would crash on web if imported
-// at module load time. A dynamic require() is the only synchronous way to do this in React Native.
-const DateTimePickerModal: typeof import("react-native-modal-datetime-picker").default | null =
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Platform.OS !== "web" ? require("react-native-modal-datetime-picker").default : null;
 
 export interface TargetBlockType {
   id: number;
@@ -245,59 +240,43 @@ function TargetBlockInner({
           <>
             <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "stretch", width: "100%", marginTop: 16, gap: 12 }}>
               {/* Target button / inline picker */}
-              {Platform.OS === "web" && block.isTargetPickerVisible ? (
+              {block.isTargetPickerVisible ? (
                 <View style={[styles.timeButton, { alignItems: "center" }]}>
                   <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
                     Target
                   </Text>
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    {React.createElement("input", {
-                      type: "number",
-                      min: "0",
-                      max: "23",
-                      value: String(block.targetHour).padStart(2, "0"),
-                      onChange: (e: any) => {
-                        const h = Math.min(23, Math.max(0, parseInt(e.target.value, 10) || 0));
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={String(block.targetHour).padStart(2, "0")}
+                      onChangeText={(text) => {
+                        const h = Math.min(23, Math.max(0, parseInt(text, 10) || 0));
                         updateTargetTime(block.id, h, block.targetMinute);
-                      },
-                      onFocus: (e: any) => e.target.select(),
-                      style: {
-                        backgroundColor: colors.pickerBg,
-                        color: colors.pickerText,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        padding: "6px 4px",
-                        fontSize: 20,
-                        fontFamily: "inherit",
-                        outline: "none",
-                        width: "52px",
-                        textAlign: "center",
-                      },
-                    } as any)}
-                    {React.createElement("span", { style: { color: colors.pickerText, fontSize: 20, fontWeight: "bold" } }, ":")}
-                    {React.createElement("input", {
-                      type: "number",
-                      min: "0",
-                      max: "59",
-                      value: String(block.targetMinute).padStart(2, "0"),
-                      onChange: (e: any) => {
-                        const m = Math.min(59, Math.max(0, parseInt(e.target.value, 10) || 0));
+                      }}
+                      onFocus={(e) => {
+                        // For web
+                        if (Platform.OS === 'web') {
+                          (e.target as HTMLInputElement).select();
+                        }
+                      }}
+                      style={styles.timeInput}
+                    />
+                    <Text style={{ color: colors.pickerText, fontSize: 20, fontWeight: "bold" }}>:</Text>
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={String(block.targetMinute).padStart(2, "0")}
+                      onChangeText={(text) => {
+                        const m = Math.min(59, Math.max(0, parseInt(text, 10) || 0));
                         updateTargetTime(block.id, block.targetHour, m);
-                      },
-                      onFocus: (e: any) => e.target.select(),
-                      style: {
-                        backgroundColor: colors.pickerBg,
-                        color: colors.pickerText,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        padding: "6px 4px",
-                        fontSize: 20,
-                        fontFamily: "inherit",
-                        outline: "none",
-                        width: "52px",
-                        textAlign: "center",
-                      },
-                    } as any)}
+                      }}
+                      onFocus={(e) => {
+                        // For web
+                        if (Platform.OS === 'web') {
+                          (e.target as HTMLInputElement).select();
+                        }
+                      }}
+                      style={styles.timeInput}
+                    />
                   </View>
                   <Pressable onPress={() => toggleTargetPicker(block.id, false)} style={{ marginTop: 8 }}>
                     <Text style={{ color: colors.accent, fontSize: 13 }}>Done</Text>
@@ -315,59 +294,43 @@ function TargetBlockInner({
               )}
 
               {/* Deduct button / inline picker */}
-              {Platform.OS === "web" && block.isDeductPickerVisible ? (
+              {block.isDeductPickerVisible ? (
                 <View style={[styles.timeButton, { alignItems: "center" }]}>
                   <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
                     Deduct
                   </Text>
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    {React.createElement("input", {
-                      type: "number",
-                      min: "0",
-                      max: "23",
-                      value: String(block.deductHour).padStart(2, "0"),
-                      onChange: (e: any) => {
-                        const h = Math.min(23, Math.max(0, parseInt(e.target.value, 10) || 0));
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={String(block.deductHour).padStart(2, "0")}
+                      onChangeText={(text) => {
+                        const h = Math.min(23, Math.max(0, parseInt(text, 10) || 0));
                         updateDeductTime(block.id, h, block.deductMinute);
-                      },
-                      onFocus: (e: any) => e.target.select(),
-                      style: {
-                        backgroundColor: colors.pickerBg,
-                        color: colors.pickerText,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        padding: "6px 4px",
-                        fontSize: 20,
-                        fontFamily: "inherit",
-                        outline: "none",
-                        width: "52px",
-                        textAlign: "center",
-                      },
-                    } as any)}
-                    {React.createElement("span", { style: { color: colors.pickerText, fontSize: 20, fontWeight: "bold" } }, ":")}
-                    {React.createElement("input", {
-                      type: "number",
-                      min: "0",
-                      max: "59",
-                      value: String(block.deductMinute).padStart(2, "0"),
-                      onChange: (e: any) => {
-                        const m = Math.min(59, Math.max(0, parseInt(e.target.value, 10) || 0));
+                      }}
+                      onFocus={(e) => {
+                        // For web
+                        if (Platform.OS === 'web') {
+                          (e.target as HTMLInputElement).select();
+                        }
+                      }}
+                      style={styles.timeInput}
+                    />
+                    <Text style={{ color: colors.pickerText, fontSize: 20, fontWeight: "bold" }}>:</Text>
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={String(block.deductMinute).padStart(2, "0")}
+                      onChangeText={(text) => {
+                        const m = Math.min(59, Math.max(0, parseInt(text, 10) || 0));
                         updateDeductTime(block.id, block.deductHour, m);
-                      },
-                      onFocus: (e: any) => e.target.select(),
-                      style: {
-                        backgroundColor: colors.pickerBg,
-                        color: colors.pickerText,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        padding: "6px 4px",
-                        fontSize: 20,
-                        fontFamily: "inherit",
-                        outline: "none",
-                        width: "52px",
-                        textAlign: "center",
-                      },
-                    } as any)}
+                      }}
+                      onFocus={(e) => {
+                        // For web
+                        if (Platform.OS === 'web') {
+                          (e.target as HTMLInputElement).select();
+                        }
+                      }}
+                      style={styles.timeInput}
+                    />
                   </View>
                   <Pressable onPress={() => toggleDeductPicker(block.id, false)} style={{ marginTop: 8 }}>
                     <Text style={{ color: colors.accent, fontSize: 13 }}>Done</Text>
@@ -409,35 +372,6 @@ function TargetBlockInner({
                 </Picker>
               </View>
             </View>
-
-            {Platform.OS !== "web" && (
-              <>
-                <DateTimePickerModal
-                  isVisible={block.isTargetPickerVisible}
-                  mode="time"
-                  date={(() => {
-                    const d = new Date();
-                    d.setHours(block.targetHour, block.targetMinute, 0, 0);
-                    return d;
-                  })()}
-                  onConfirm={(date) => handleTargetConfirm(block.id, date)}
-                  onCancel={() => toggleTargetPicker(block.id, false)}
-                  is24Hour={true}
-                />
-                <DateTimePickerModal
-                  isVisible={block.isDeductPickerVisible}
-                  mode="time"
-                  date={(() => {
-                    const d = new Date();
-                    d.setHours(block.deductHour, block.deductMinute, 0, 0);
-                    return d;
-                  })()}
-                  onConfirm={(date) => handleDeductConfirm(block.id, date)}
-                  onCancel={() => toggleDeductPicker(block.id, false)}
-                  is24Hour={true}
-                />
-              </>
-            )}
           </>
         )}
 
@@ -504,5 +438,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: "center",
+  },
+  timeInput: {
+    backgroundColor: colors.pickerBg,
+    color: colors.pickerText,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    fontSize: 20,
+    width: 52,
+    textAlign: "center",
   },
 });
