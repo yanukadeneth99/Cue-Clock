@@ -1,4 +1,5 @@
 import { colors } from "@/constants/colors";
+import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -8,10 +9,13 @@ interface HelpModalProps {
   analyticsEnabled: boolean | null;
   onRequestOptOut: () => void;
   onOpenNotificationSettings?: () => void;
+  onOpenAppSettings?: () => void;
+  onOpenBatterySettings?: () => void;
+  onOpenExactAlarmSettings?: () => void;
   notificationRuntimeNote?: string | null;
 }
 
-const helpItems: { label: string; description: string }[] = [
+const baseHelpItems: { label: string; description: string }[] = [
   {
     label: "Zone 1 / Zone 2",
     description:
@@ -68,11 +72,23 @@ const helpItems: { label: string; description: string }[] = [
       "Clears all saved data and returns the app to its default state with one countdown timer. A confirmation dialog will appear before resetting.",
   },
   {
-    label: "\u{1F6D1}  Background Notifications Not Firing?",
+    label: "About the Developer",
     description:
-      "If alerts don\u2019t fire when the app is in the background, your device may be blocking background activity.\n\nOn Android:\n\u2022 Open Settings \u2192 Apps \u2192 Cue Clock \u2192 Notifications and make sure notifications are enabled.\n\u2022 Open Settings \u2192 Apps \u2192 Cue Clock \u2192 Battery and set to \u201cUnrestricted\u201d.\n\u2022 On Android 12+, go to Settings \u2192 Apps \u2192 Special app access \u2192 Alarms & reminders and enable Cue Clock.\n\nTap the button below to open app settings directly.",
+      "Cue Clock is built by YASHURA. It started from a simple need during live broadcast production: a timing tool that is dependable, fast to read, and not overloaded with extra complexity.\n\nI kept Cue Clock free because tools like this should be available across the industry, whether you are producing independently or running larger broadcast operations. The app is intended to stay free and ad-free.",
   },
 ];
+
+const webNotificationHelpItem = {
+  label: "\u{1F514}  Notifications on Web",
+  description:
+    "Cue Clock can send browser notifications when alerts fire, but your browser and device must allow them.\n\nChrome:\n\u2022 Click the site settings icon near the address bar.\n\u2022 Open Site settings and set Notifications to Allow.\n\u2022 If Focus mode or Do Not Disturb is on at system level, notifications may stay hidden.\n\nSafari:\n\u2022 Open Safari Settings, then Websites \u2192 Notifications.\n\u2022 Find Cue Clock and set permission to Allow.\n\u2022 On macOS, also check System Settings \u2192 Notifications \u2192 Safari and make sure alerts are enabled.\n\nFirefox:\n\u2022 Click the permission icon in the address bar or open Settings \u2192 Privacy & Security.\n\u2022 Under Permissions \u2192 Notifications, make sure Cue Clock is allowed.\n\u2022 If you blocked notifications earlier, remove the block and refresh the page before trying again.",
+};
+
+const nativeNotificationHelpItem = {
+  label: "\u{1F6D1}  Background Notifications Not Firing?",
+  description:
+    "If alerts don\u2019t fire when the app is in the background, your device may be blocking background activity.\n\nOn Android:\n\u2022 Open Settings \u2192 Apps \u2192 Cue Clock \u2192 Notifications and make sure notifications are enabled.\n\u2022 Open Settings \u2192 Apps \u2192 Cue Clock \u2192 Battery and set to \u201cUnrestricted\u201d.\n\u2022 On Android 12+, go to Settings \u2192 Apps \u2192 Special app access \u2192 Alarms & reminders and enable Cue Clock.\n\nTap the button below to open app settings directly.",
+};
 
 /**
  * Scrollable help overlay explaining all app controls.
@@ -86,8 +102,17 @@ export default function HelpModal({
   analyticsEnabled,
   onRequestOptOut,
   onOpenNotificationSettings,
+  onOpenAppSettings,
+  onOpenBatterySettings,
+  onOpenExactAlarmSettings,
   notificationRuntimeNote,
 }: HelpModalProps) {
+  const helpItems = [
+    ...baseHelpItems.slice(0, -1),
+    Platform.OS === "web" ? webNotificationHelpItem : nativeNotificationHelpItem,
+    baseHelpItems[baseHelpItems.length - 1],
+  ];
+
   return (
     <Modal
       visible={visible}
@@ -116,6 +141,22 @@ export default function HelpModal({
               </View>
             ))}
 
+            <View style={{ gap: 8, marginTop: 8, marginBottom: 4 }}>
+              <Pressable
+                onPress={() => Linking.openURL("https://yashura.io")}
+                style={styles.notifButton}
+              >
+                <Text style={styles.notifButtonText}>Visit yashura.io</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => Linking.openURL("https://github.com/yanukadeneth99/Cue-Clock")}
+                style={styles.repoButton}
+              >
+                <FontAwesome name="github" size={16} color={colors.header} />
+                <Text style={styles.repoButtonText}>View Open-Source Codebase</Text>
+              </Pressable>
+            </View>
+
             {Platform.OS !== "web" && onOpenNotificationSettings && (
               <View style={{ gap: 8, marginTop: 8, marginBottom: 4 }}>
                 {notificationRuntimeNote ? (
@@ -129,12 +170,43 @@ export default function HelpModal({
                 >
                   <Text style={styles.notifButtonText}>Open Notification Settings</Text>
                 </Pressable>
-                <Pressable
-                  onPress={() => Linking.openSettings()}
-                  style={styles.notifButton}
-                >
-                  <Text style={styles.notifButtonText}>Open App Settings</Text>
-                </Pressable>
+                {onOpenAppSettings ? (
+                  <Pressable onPress={onOpenAppSettings} style={styles.notifButton}>
+                    <Text style={styles.notifButtonText}>Open App Settings</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={() => Linking.openSettings()}
+                    style={styles.notifButton}
+                  >
+                    <Text style={styles.notifButtonText}>Open App Settings</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+
+            {Platform.OS === "android" && (onOpenAppSettings || onOpenBatterySettings || onOpenExactAlarmSettings) && (
+              <View style={{ gap: 8, marginTop: 8, marginBottom: 4 }}>
+                <View style={styles.runtimeNote}>
+                  <Text style={styles.runtimeNoteText}>
+                    If alerts stop when you switch apps, Android is usually restricting Cue Clock in the background. Disable &quot;Pause app activity if unused&quot;, set battery usage to &quot;No restrictions&quot; or &quot;Unrestricted&quot;, and allow exact alarms when available.
+                  </Text>
+                </View>
+                {onOpenAppSettings ? (
+                  <Pressable onPress={onOpenAppSettings} style={styles.notifButton}>
+                    <Text style={styles.notifButtonText}>Open App Permissions</Text>
+                  </Pressable>
+                ) : null}
+                {onOpenBatterySettings ? (
+                  <Pressable onPress={onOpenBatterySettings} style={styles.notifButton}>
+                    <Text style={styles.notifButtonText}>Open Battery Settings</Text>
+                  </Pressable>
+                ) : null}
+                {onOpenExactAlarmSettings ? (
+                  <Pressable onPress={onOpenExactAlarmSettings} style={styles.notifButton}>
+                    <Text style={styles.notifButtonText}>Open Alarms & Reminders</Text>
+                  </Pressable>
+                ) : null}
               </View>
             )}
 
@@ -213,6 +285,22 @@ const styles = StyleSheet.create({
   },
   notifButtonText: {
     color: colors.accent,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  repoButton: {
+    backgroundColor: colors.background,
+    borderColor: colors.surfaceBorder,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  repoButtonText: {
+    color: colors.header,
     fontSize: 13,
     fontWeight: "600",
   },
