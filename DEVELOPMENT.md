@@ -94,6 +94,28 @@ To test a release-signed APK locally, you'll need signing credentials. Follow th
 
 **Note:** For local testing, debug builds are sufficient and don't require signing.
 
+### Docker Dry-Run For Release Builds
+
+If you want to validate the Android release pipeline locally without installing the Android toolchain on your machine, use Docker:
+
+```bash
+bash scripts/android-release-dry-run-docker.sh v0.0.24
+```
+
+What it does:
+
+- Builds a dedicated Android build container
+- Reproduces the release version stamping flow used by GitHub Actions
+- Generates a temporary local keystore for signing
+- Builds a release `.aab`
+- Verifies that the built bundle contains the expected Android `versionName`
+
+Notes:
+
+- If `app/google-services.json` is missing, the dry-run creates a placeholder file so the build can still proceed
+- The output bundle is copied to `.artifacts/android-release-dry-run/`
+- You can override the generated version code with `VERSION_CODE=123456 bash scripts/android-release-dry-run-docker.sh v0.0.24`
+
 ---
 
 ## Optional: Use Custom EAS Configuration
@@ -211,3 +233,5 @@ The GitHub Actions workflows automatically build and deploy to Google Play. See 
 - **Beta Release**: Triggered on GitHub Release creation
 
 These workflows securely inject credentials via GitHub Secrets — they are never committed to the repository.
+
+There is also a pull request validation workflow at `.github/workflows/android-release-verify.yml` that dry-runs the Android release build and checks the produced bundle version metadata without uploading to Google Play.

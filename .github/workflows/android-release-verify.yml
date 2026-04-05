@@ -1,0 +1,56 @@
+name: Android Release Verify
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/android-release.yml'
+      - '.github/workflows/android-release-verify.yml'
+      - 'app/**'
+      - 'app/scripts/prepare-android-release.js'
+      - 'scripts/android-release-dry-run.sh'
+      - 'scripts/android-release-dry-run-docker.sh'
+      - 'docker/Dockerfile.android'
+
+concurrency:
+  group: android-release-verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-release-build:
+    name: Verify Android Release Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.1.12297006" \
+            "cmake;3.22.1"
+
+      - name: Dry-run Android release build
+        env:
+          VERSION_TAG: v0.0.24
+        run: bash scripts/android-release-dry-run.sh

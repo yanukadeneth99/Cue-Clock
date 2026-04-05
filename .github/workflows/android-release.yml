@@ -23,6 +23,13 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version string: $VERSION"
 
+      - name: Generate version code
+        id: version_code
+        run: |
+          VERSION_CODE="$(date +%s)"
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "Generated version code: $VERSION_CODE"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -52,17 +59,9 @@ jobs:
         working-directory: app
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          VERSION_CODE: ${{ steps.version_code.outputs.version_code }}
         run: |
-          node -e "
-          const fs = require('fs');
-          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-          const versionCode = Math.floor(Date.now() / 1000);
-          app.expo.android.versionCode = versionCode;
-          app.expo.version = process.env.VERSION;
-          app.expo.ios.buildNumber = versionCode.toString();
-          fs.writeFileSync('app.json', JSON.stringify(app, null, 2));
-          console.log('Updated version string to', process.env.VERSION, 'and code to', versionCode);
-          "
+          node scripts/prepare-android-release.js
 
       - name: Create .env with build-time secrets
         working-directory: app
@@ -82,6 +81,14 @@ jobs:
           export EAS_OWNER=${{ secrets.EAS_OWNER }}
           export EXPO_PUBLIC_CLARITY_KEY=${{ secrets.EXPO_PUBLIC_CLARITY_KEY }}
           npx expo prebuild --platform android --clean
+
+      - name: Sync Android native version after prebuild
+        working-directory: app
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          VERSION_CODE: ${{ steps.version_code.outputs.version_code }}
+        run: |
+          node scripts/prepare-android-release.js --sync-native
 
       - name: Decode keystore
         working-directory: app/android
