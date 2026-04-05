@@ -113,10 +113,20 @@ jobs:
             notes = 'Bug fixes and performance improvements for Cue Clock.';
           }
 
-          // 2. Strip Markdown Formatting
-          notes = notes.replace(/[#*_~\`>]/g, ''); // Removes headers, bold, italics, code blocks, quotes
+          // 2. Convert markdown into plain text while preserving line breaks for Google Play
+          notes = notes.replace(/\r\n/g, '\n');
           notes = notes.replace(/\[([^\]]+)\]\([^)]+\)/g, '\$1'); // Converts [Link Text](https://...) to just 'Link Text'
-          notes = notes.replace(/^\s*[-+]\s+/gm, '• '); // Converts markdown dashes to nice readable bullets
+          notes = notes.replace(/^\s{0,3}#{1,6}\s*/gm, ''); // Removes markdown heading markers only
+          notes = notes.replace(/^\s*[*+-]\s+/gm, '• '); // Converts markdown bullets to readable bullets
+          notes = notes.replace(/^\s*\d+\.\s+/gm, '• '); // Converts numbered lists to readable bullets
+          notes = notes.replace(/\*\*([^*]+)\*\*/g, '\$1'); // Removes bold markers while keeping text
+          notes = notes.replace(/__([^_]+)__/g, '\$1');
+          notes = notes.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '\$1'); // Removes italic markers without touching bullets
+          notes = notes.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '\$1');
+          notes = notes.replace(/[~\`>]/g, ''); // Removes remaining markdown syntax
+          notes = notes.replace(/^\s*--\s*$/gm, ''); // Drops manual separators
+          notes = notes.replace(/[ \t]+\n/g, '\n');
+          notes = notes.replace(/\n{3,}/g, '\n\n');
 
           // 3. Enforce Google Play 500-character limit safely (avoid cutting mid-word)
           notes = notes.trim();
