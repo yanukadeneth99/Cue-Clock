@@ -470,12 +470,7 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - **Class Creation**: Functional components and hooks are used exclusively instead of ES6 classes.
 - **Export/Import Styles**: Default exports are preferred for main components and screens. Imports use absolute aliasing (e.g., `@/components/`, `@/constants/`).
 
-### 3. Testing Conventions
-- **Test Presence**: Tests are present, using `.test.tsx` extension in `__tests__` directories.
-- **Tooling**: Jest and React Testing Library (`@testing-library/react`).
-- **Test Structure**: Tests are organized with `describe` and `it` blocks. Extensive use of `jest.mock` for external dependencies (like GSAP or React Native APIs). Follows the Arrange-Act-Assert pattern.
-
-### 4. Coding Paradigms & Quirks
+### 3. Coding Paradigms & Quirks
 - **Error Handling**: Uses `try/catch` with empty or comment-only `catch` blocks for production-safe silence (`} catch { // silently fail }`). Promise `.catch(() => {})` chains are also common. No `console.log` in production.
 - **Control Flow**: Extensive use of early returns (guard clauses) to avoid deeply nested `if/else` statements.
 - **State & Rendering**: All state is lifted to parent components. Heavy reliance on `useRef` for mutable state that shouldn't trigger re-renders, and `useCallback`/`React.memo` for performance optimization.

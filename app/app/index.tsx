@@ -358,14 +358,20 @@ export default function HomeScreen() {
     })();
   }, []);
 
-  /** Reset exit-button opacity to 1 and restart the 3-second fade timer. */
+  /**
+   * Keep the fullscreen view visually focused on the clocks/timers.
+   * The exit control becomes prominent on interaction, then fades back so the
+   * display is less distracting for people watching the screen on-air/in-studio.
+   */
   const resetOpacityTimer = useCallback(() => {
     setExitButtonOpacity(1);
     if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
     exitButtonTimerRef.current = setTimeout(() => setExitButtonOpacity(0.3), 3000);
   }, []);
 
-  // Fullscreen exit button opacity: fade to 30% after 3 seconds
+  // In fullscreen on web and Android, prioritize the time display over controls.
+  // The button stays accessible, but fades after inactivity so viewers are not
+  // distracted by persistent UI chrome.
   useEffect(() => {
     if (!fullScreen) {
       setExitButtonOpacity(1);
@@ -506,6 +512,10 @@ export default function HomeScreen() {
             (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
           targetDT = targetDT.minus({ milliseconds: deductionMs });
 
+          // Keep Luxon's component diff here instead of replacing it with raw
+          // millisecond division. The countdown intentionally preserves
+          // Luxon's signed minute/second behavior for overdue or deducted
+          // timers, and naive Math.floor/% math changes the displayed value.
           const diff = targetDT
             .diff(nowInZone, ["hours", "minutes", "seconds"])
             .toObject();

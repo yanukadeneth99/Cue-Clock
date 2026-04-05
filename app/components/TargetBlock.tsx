@@ -11,8 +11,9 @@ import {
   TextInput,
   View,
 } from "react-native";
-// Conditionally load datetime picker — has no web implementation; would crash on web if imported
-// at module load time. A dynamic require() is the only synchronous way to do this in React Native.
+// Keep the native modal picker on mobile, but avoid importing it on web where it
+// has no implementation. Web uses custom-built inputs instead because the timer
+// controls need to match the app's broadcast-oriented visual design.
 const DateTimePickerModal: typeof import("react-native-modal-datetime-picker").default | null =
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Platform.OS !== "web" ? require("react-native-modal-datetime-picker").default : null;
@@ -245,7 +246,8 @@ function TargetBlockInner({
         {!block.isCollapsed && (
           <>
             <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "stretch", width: "100%", marginTop: 16, gap: 12 }}>
-              {/* Target button / inline picker */}
+              {/* Web uses a custom-built inline picker here so the time controls can
+                  follow the app's exact visual design instead of browser defaults. */}
               {Platform.OS === "web" && block.isTargetPickerVisible ? (
                 <View style={[styles.timeButton, { alignItems: "center" }]}>
                   <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
@@ -315,7 +317,8 @@ function TargetBlockInner({
                 </Pressable>
               )}
 
-              {/* Deduct button / inline picker */}
+              {/* Same design rationale as Target: keep the web editing UI visually
+                  consistent with the rest of the countdown card. */}
               {Platform.OS === "web" && block.isDeductPickerVisible ? (
                 <View style={[styles.timeButton, { alignItems: "center" }]}>
                   <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
@@ -411,6 +414,9 @@ function TargetBlockInner({
               </View>
             </View>
 
+            {/* Mobile keeps the native modal time picker because it is the best
+                touch interaction model there; the custom-built picker is a web-only
+                design choice rather than a replacement for native mobile UX. */}
             {Platform.OS !== "web" && (
               <>
                 <DateTimePickerModal
