@@ -244,7 +244,6 @@ export default function HomeScreen() {
   const [fullScreen, setFullScreen] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const [resetModalVisible, setResetModalVisible] = useState(false);
-  const [exitButtonOpacity, setExitButtonOpacity] = useState(1);
   const [notifBlocked, setNotifBlocked] = useState(false);
   const [addTargetHovered, setAddTargetHovered] = useState(false);
   // null = first launch (consent not yet given); true/false = user's explicit choice
@@ -261,7 +260,6 @@ export default function HomeScreen() {
   // We queue them here because the setTargetBlocks updater is a pure function and
   // cannot perform async work (cancelBlockNotification) directly.
   const pendingCancelRef = useRef<(string | null | undefined)[]>([]);
-  const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirror of targetBlocks for use in async callbacks without stale closure issues
   const targetBlocksRef = useRef<TargetBlockType[]>([createDefaultBlock(1)]);
 
@@ -355,26 +353,6 @@ export default function HomeScreen() {
       }
     })();
   }, []);
-
-  /** Reset exit-button opacity to 1 and restart the 3-second fade timer. */
-  const resetOpacityTimer = useCallback(() => {
-    setExitButtonOpacity(1);
-    if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-    exitButtonTimerRef.current = setTimeout(() => setExitButtonOpacity(0.3), 3000);
-  }, []);
-
-  // Fullscreen exit button opacity: fade to 30% after 3 seconds
-  useEffect(() => {
-    if (!fullScreen) {
-      setExitButtonOpacity(1);
-      if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-      return;
-    }
-    resetOpacityTimer();
-    return () => {
-      if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-    };
-  }, [fullScreen, resetOpacityTimer]);
 
   // Inject web-specific styles for select elements and time inputs
   useEffect(() => {
@@ -821,7 +799,6 @@ export default function HomeScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
     <View
       style={{ flex: 1, paddingTop: safeTop, width: "100%" }}
-      onTouchStart={fullScreen ? resetOpacityTimer : undefined}
     >
       {/* Header — normal mode only */}
       {!fullScreen && (
@@ -1107,7 +1084,7 @@ export default function HomeScreen() {
 
       {/* Fixed bottom — mobile fullscreen: fading exit button */}
       {!isWeb && fullScreen && (
-        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, opacity: exitButtonOpacity }}>
+        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4 }}>
           <Pressable
             onPress={toggleFullScreen}
             style={{
@@ -1131,17 +1108,6 @@ export default function HomeScreen() {
         <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, alignItems: "center" }}>
           <Pressable
             onPress={toggleFullScreen}
-            {...({
-              onHoverIn: () => {
-                setExitButtonOpacity(1);
-                if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-              },
-              onHoverOut: () => {
-                exitButtonTimerRef.current = setTimeout(() => {
-                  setExitButtonOpacity(0.3);
-                }, 3000);
-              },
-            } as any)}
             style={{
               backgroundColor: colors.surface,
               borderColor: colors.surfaceBorder,
@@ -1149,7 +1115,6 @@ export default function HomeScreen() {
               borderRadius: 12,
               paddingVertical: 14,
               alignItems: "center",
-              opacity: exitButtonOpacity,
               width: "50%",
               minWidth: 200,
             }}

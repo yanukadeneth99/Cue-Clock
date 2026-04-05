@@ -355,6 +355,11 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 
 ## Codebase Edit History (2026)
 
+### 2026-04-05: Remove Unnecessary Feature - Fullscreen Exit Button Auto-Dimming
+- **Removal:** Removed the auto-dimming functionality of the "Exit Full Screen" button in `app/app/index.tsx`.
+- **Why:** The feature (which dimmed the button to 30% opacity after 3 seconds of inactivity) added unnecessary complexity (refs, state, timeouts, and multiple event handlers) without providing core functionality to the broadcast countdown timer.
+- **Measured Improvement:** Simplified state management and UI event handling in the main component. Removed `exitButtonOpacity`, `exitButtonTimerRef`, `resetOpacityTimer`, and `onTouchStart`/`onHoverIn`/`onHoverOut` related logic, resulting in cleaner and more maintainable code.
+
 ### 2026-04-01: Security Patch for Reverse Tabnabbing
 - **Vulnerability Fix:** Added `rel="noopener noreferrer"` to external `target="_blank"` anchor tags in `website/src/app/page.tsx` (GitHub repository and Contributors links).
   - Fixes a potential Reverse Tabnabbing exploit where newly opened tabs could access `window.opener` and maliciously redirect the original landing page.
