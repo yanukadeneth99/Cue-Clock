@@ -451,3 +451,10 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
   - All comments explain the **problem first**, then the **solution**.
   - Audited: Complexity ✓, Documentation ✓, Security ✓. No console.log, no secrets, no injection vectors.
 - **Root Cause Analysis:** The O(1) countdown interval optimization from 2026-04-02 exposed these pre-existing notification bugs because the interval now runs reliably every second, making sync/duplicate issues visible where they were previously masked by heavier computation.
+
+### 2026-04-05: Test Coverage Improvements
+- **Objective:** Add initial test coverage to the app to protect key UI components from regression.
+- **Setup:** Configured `jest-expo` and `@testing-library/react-native` for unit testing the React Native application. Set up `jest.config.js` to handle module resolving and transformations for React Native dependencies.
+- **Implementation:** Added unit tests for `TargetBlock.tsx` (`app/components/__tests__/TargetBlock.test.tsx`), a core UI element.
+- **Coverage:** Tested rendering behavior for normal/fullscreen modes, state toggles (expanding/collapsing controls), and confirmation modal popups when performing destructive actions like deleting a block.
+- **Mocking Strategy:** Safely mocked native modules (`@react-native-picker/picker`, `react-native-modal-datetime-picker`, and `expo-constants`) to execute seamlessly in a Node.js test environment.
