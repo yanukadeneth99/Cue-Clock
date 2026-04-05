@@ -496,17 +496,17 @@ export default function HomeScreen() {
 
           if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
 
+          const nowMs = nowInZone.toMillis();
+          let targetMs = targetDT.toMillis();
+
           const deductionMs =
             (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
-          targetDT = targetDT.minus({ milliseconds: deductionMs });
+          targetMs -= deductionMs;
 
-          const diff = targetDT
-            .diff(nowInZone, ["hours", "minutes", "seconds"])
-            .toObject();
-          const totalMinutes = Math.floor(
-            (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
-          );
-          const seconds = Math.floor(diff.seconds ?? 0);
+          const diffMs = targetMs - nowMs;
+          const totalSeconds = Math.floor(diffMs / 1000);
+          const totalMinutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
           const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
           let changed = block.countdown !== newCountdown;

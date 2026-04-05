@@ -143,10 +143,11 @@ All state is lifted to `HomeScreen` and persisted via AsyncStorage (`multiSet`/`
 1. Get current time in the block's selected timezone (Luxon `DateTime`).
 2. Construct a target `DateTime` for today at the block's `targetHour:targetMinute`.
 3. If the target is already past, add 1 day (next occurrence).
-4. Subtract the deduction (`deductHour:deductMinute`).
-5. Compute the difference → format as `HH:MM:SS`.
-6. Recalculate every 1 second via `setInterval` in `HomeScreen`.
-7. Optimization: Skip object spread/React reconciliation if the formatted countdown string hasn't changed.
+4. Convert both to milliseconds via `.toMillis()` to avoid expensive Luxon math allocations (`.diff`).
+5. Subtract the deduction (`deductHour:deductMinute`) in milliseconds.
+6. Compute the difference in milliseconds → format as `HH:MM:SS`.
+7. Recalculate every 1 second via `setInterval` in `HomeScreen`.
+8. Optimization: Skip object spread/React reconciliation if the formatted countdown string hasn't changed.
 
 ### Alert System
 
