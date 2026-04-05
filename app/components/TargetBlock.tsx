@@ -165,6 +165,7 @@ function TargetBlockInner({
             style={styles.nameInput}
             placeholder={`Target #${block.id}`}
             placeholderTextColor={colors.muted}
+            maxLength={50}
             value={block.name ?? ""}
             onChangeText={(text) =>
               setTargetBlocks((blocks) =>

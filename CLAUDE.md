@@ -451,6 +451,9 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
   - All comments explain the **problem first**, then the **solution**.
   - Audited: Complexity ✓, Documentation ✓, Security ✓. No console.log, no secrets, no injection vectors.
 - **Root Cause Analysis:** The O(1) countdown interval optimization from 2026-04-02 exposed these pre-existing notification bugs because the interval now runs reliably every second, making sync/duplicate issues visible where they were previously masked by heavier computation.
+### 2026-04-05: TextInput Security Enhancement
+- **Security:** Added `maxLength={50}` to the `TextInput` component in `app/components/TargetBlock.tsx`.
+- **Why:** To prevent potential exploit or performance issues (like crashing the app) due to extreme text lengths in the user input. This sets a reasonable maximum length for a target block's name.
 
 ---
 
