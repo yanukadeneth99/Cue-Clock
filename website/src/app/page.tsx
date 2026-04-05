@@ -295,13 +295,13 @@ export default function Home() {
               <div className="flex flex-wrap justify-center lg:justify-start gap-4">
                 <button 
                   onClick={() => document.getElementById('download')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-label font-bold uppercase tracking-widest px-6 md:px-8 py-3 md:py-4 rounded-sm flex items-center gap-3 hover:brightness-110 transition-all shadow-xl shadow-primary/10 text-xs md:text-sm"
+                  className="bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-label font-bold uppercase tracking-widest px-6 md:px-8 py-3 md:py-4 rounded-sm flex items-center gap-3 hover:brightness-110 transition-all shadow-xl shadow-primary/10 text-xs md:text-sm cursor-pointer"
                 >
                   Download Free Now <span className="material-symbols-outlined text-sm">download</span>
                 </button>
                 <button
                   onClick={() => window.open('https://live.cueclock.app', '_blank')}
-                  className="bg-surface-bright/10 border border-primary/20 text-on-surface font-label font-bold uppercase tracking-widest px-6 md:px-8 py-3 md:py-4 rounded-sm hover:bg-surface-bright/20 transition-all text-xs md:text-sm"
+                  className="bg-surface-bright/10 border border-primary/20 text-on-surface font-label font-bold uppercase tracking-widest px-6 md:px-8 py-3 md:py-4 rounded-sm hover:bg-surface-bright/20 transition-all text-xs md:text-sm cursor-pointer"
                 >
                   Start Now
                 </button>
