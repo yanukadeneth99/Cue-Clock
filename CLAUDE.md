@@ -381,17 +381,14 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - Updated llms.txt with correct branding, license (AGPL-3.0), and tech stack.
 - Build: 0 vulnerabilities; Next.js production build 10.2s (Turbopack, all routes static).
 
-### 2026-03-31: GDPR Analytics & Dual CI/CD Pipeline
-- Analytics consent modal (first-launch, non-dismissable) with three-state system (null/true/false).
-- Privacy policy page (/privacy) with GDPR/CCPA compliance.
+### 2026-03-31: Dual CI/CD Pipeline
 - Dual-track CI/CD: internal testing (master push) + beta release (GitHub Release) pipelines.
-- Firebase config in secrets; Gradle caching (50→10-15 min build time).
+- Gradle caching (50→10-15 min build time).
 
-### 2026-03-27: Web UX & Clarity Analytics
+### 2026-03-27: Web UX
 - Delete confirmation modal (`ConfirmModal`) added to `TargetBlock`.
 - Web Notifications API with `window.alert` fallback; "Notifications blocked" header tag.
 - Added circular "+Add Target" button in web header; improved layout & scrollbar positioning.
-- Integrated Microsoft Clarity analytics (project ID w2c5ecuzj5).
 - Fixed 4 npm audit vulnerabilities (dev tooling only); corrected CSS `@import` order.
 - Fixed 5 ESLint errors in website page.tsx.
 

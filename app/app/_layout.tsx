@@ -1,8 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
 import Head from "expo-router/head";
 import { Stack } from "expo-router";
-import { useEffect } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -15,40 +13,6 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
-
-  // Initialize analytics on mount, respecting the user's consent.
-  // null  → first launch, consent not yet given — skip init entirely (no tracking before consent).
-  // "true"  → user accepted — init Clarity and enable Firebase.
-  // "false" → user declined — init Firebase app (SDK requirement) but disable collection.
-  useEffect(() => {
-    if (Platform.OS !== "ios" && Platform.OS !== "android") return;
-    (async () => {
-      try {
-        const stored = await AsyncStorage.getItem("analyticsEnabled");
-        if (stored === null) return; // consent not yet given — HomeScreen will show the consent modal
-
-        const enabled = stored === "true";
-        const { initializeApp, getApps } = await import("@react-native-firebase/app");
-        const { default: analytics } = await import("@react-native-firebase/analytics");
-        const { default: crashlytics } = await import("@react-native-firebase/crashlytics");
-
-        if (getApps().length === 0) initializeApp();
-        await analytics().setAnalyticsCollectionEnabled(enabled);
-        // Crashlytics collection mirrors the analytics consent choice
-        await crashlytics().setCrashlyticsCollectionEnabled(enabled);
-
-        if (enabled) {
-          const clarityKey = process.env.EXPO_PUBLIC_CLARITY_KEY;
-          if (clarityKey) {
-            const Clarity = await import("@microsoft/react-native-clarity");
-            Clarity.initialize(clarityKey, { logLevel: Clarity.LogLevel.None });
-          }
-        }
-      } catch (e) {
-        if (__DEV__) console.warn("[Analytics] _layout init failed:", e);
-      }
-    })();
-  }, []);
 
   if (!loaded) {
     // Async font loading only occurs in development.

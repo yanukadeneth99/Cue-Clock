@@ -6,8 +6,6 @@ import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View
 interface HelpModalProps {
   visible: boolean;
   onClose: () => void;
-  analyticsEnabled: boolean | null;
-  onRequestOptOut: () => void;
   onOpenNotificationSettings?: () => void;
   onOpenAppSettings?: () => void;
   onOpenBatterySettings?: () => void;
@@ -99,8 +97,6 @@ const nativeNotificationHelpItem = {
 export default function HelpModal({
   visible,
   onClose,
-  analyticsEnabled,
-  onRequestOptOut,
   onOpenNotificationSettings,
   onOpenAppSettings,
   onOpenBatterySettings,
@@ -209,18 +205,6 @@ export default function HelpModal({
                 ) : null}
               </View>
             )}
-
-            {analyticsEnabled === true && (
-              <Pressable
-                onPress={() => {
-                  onClose();
-                  onRequestOptOut();
-                }}
-                style={[styles.optOutButton, { marginTop: 8, marginBottom: 4 }]}
-              >
-                <Text style={styles.optOutText}>Turn Off Analytics</Text>
-              </Pressable>
-            )}
           </ScrollView>
 
           <Pressable onPress={onClose} style={styles.closeButton}>
@@ -316,20 +300,6 @@ const styles = StyleSheet.create({
     color: colors.countdown,
     fontSize: 13,
     lineHeight: 18,
-  },
-  optOutButton: {
-    backgroundColor: colors.background,
-    borderColor: colors.surfaceBorder,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  optOutText: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: "400",
   },
   closeButton: {
     backgroundColor: colors.background,
