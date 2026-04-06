@@ -314,6 +314,7 @@ Custom Android build environment (not currently used by CI — CI uses `thyrlian
 - **Documentation** — Exported components and functions must have JSDoc describing props/parameters.
 - **Interaction** — Use `Pressable` instead of `Button` for custom-styled elements.
 - **`any` Type Pattern** — `(window as any).Notification` and `onHoverIn/Out as any` spreads are intentional RN-Web escape hatches where no typed API exists. Do not remove these.
+- **Security** — Always sanitize and validate external data (especially URLs from third-party APIs) before rendering them or using them in attributes like `href`.
 
 ### 4. Git Conventions
 

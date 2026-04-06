@@ -26,7 +26,15 @@ export default function Home() {
         const response = await fetch('https://api.github.com/repos/yanukadeneth99/Cue-Clock/contributors');
         if (response.ok) {
           const data = await response.json();
-          setContributors(data);
+          const validData = data.filter((c: { html_url: string; [key: string]: unknown }) => {
+            try {
+              const url = new URL(c.html_url);
+              return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+              return false;
+            }
+          });
+          setContributors(validData);
         }
       } catch {
         // Non-critical: contributors section degrades gracefully on fetch failure
