@@ -499,30 +499,23 @@ export default function HomeScreen() {
           let targetDT = nowInZone.set({
             hour: block.targetHour,
             minute: block.targetMinute,
-            second: 0,
+            second: 1,
             millisecond: 0,
           });
-
-          // Add 1 second so that target time rounds up to the next second
-          targetDT = targetDT.plus({ seconds: 1 });
 
           if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
 
           const deductionMs =
             (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
-          targetDT = targetDT.minus({ milliseconds: deductionMs });
 
-          // Keep Luxon's component diff here instead of replacing it with raw
-          // millisecond division. The countdown intentionally preserves
-          // Luxon's signed minute/second behavior for overdue or deducted
-          // timers, and naive Math.floor/% math changes the displayed value.
-          const diff = targetDT
-            .diff(nowInZone, ["hours", "minutes", "seconds"])
-            .toObject();
-          const totalMinutes = Math.floor(
-            (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
-          );
-          const seconds = Math.floor(diff.seconds ?? 0);
+          const diffMs = targetDT.valueOf() - deductionMs - nowInZone.valueOf();
+
+          const h = Math.trunc(diffMs / 3600000);
+          const m = Math.trunc((diffMs % 3600000) / 60000);
+          const s = (diffMs % 60000) / 1000;
+
+          const totalMinutes = Math.floor(h * 60 + m);
+          const seconds = Math.floor(s);
           const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
           let changed = block.countdown !== newCountdown;
