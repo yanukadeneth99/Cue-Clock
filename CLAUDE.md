@@ -455,6 +455,10 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - **Security:** Added `maxLength={50}` to the `TextInput` component in `app/components/TargetBlock.tsx`.
 - **Why:** To prevent potential exploit or performance issues (like crashing the app) due to extreme text lengths in the user input. This sets a reasonable maximum length for a target block's name.
 
+### 2026-04-05: Removal of AndroidBackgroundHelpModal
+- **Optimization/Cleanup:** Removed `AndroidBackgroundHelpModal.tsx` and its references from `app/app/index.tsx`.
+- **Why:** The modal provided guidance on Android battery and notification settings that is already available within the generic `HelpModal.tsx` on native platforms. Also, it was previously triggered upon analytics consent which caused an odd user flow. Keeping this information only in the Help section simplifies the codebase and prevents redundant logic.
+
 ---
 
 ## Codebase Flavor & Conventions
