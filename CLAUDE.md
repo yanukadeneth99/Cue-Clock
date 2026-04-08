@@ -355,6 +355,11 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 
 ## Codebase Edit History (2026)
 
+### 2026-04-06: Remove Analytics Subsystem
+- **Feature Removal:** Removed third-party analytics implementation, including `@microsoft/react-native-clarity`, `@react-native-firebase/analytics`, `@react-native-firebase/app`, and `@react-native-firebase/crashlytics`.
+- **Why:** To minimize the codebase overhead, lower dependency maintenance, and keep the application tightly focused on its core countdown and dual-timezone tracking functionalities.
+- **Measured Improvement:** Codebase is leaner, bundle size is reduced, and React components like `HomeScreen` and `HelpModal` have simpler state logic now that analytics consent tracking is no longer needed.
+
 ### 2026-04-01: Security Patch for Reverse Tabnabbing
 - **Vulnerability Fix:** Added `rel="noopener noreferrer"` to external `target="_blank"` anchor tags in `website/src/app/page.tsx` (GitHub repository and Contributors links).
   - Fixes a potential Reverse Tabnabbing exploit where newly opened tabs could access `window.opener` and maliciously redirect the original landing page.

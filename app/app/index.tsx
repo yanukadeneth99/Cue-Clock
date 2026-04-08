@@ -1,6 +1,4 @@
 import AndroidBackgroundHelpModal from "@/components/AndroidBackgroundHelpModal";
-import AnalyticsConsentModal from "@/components/AnalyticsConsentModal";
-import AnalyticsOptOutModal from "@/components/AnalyticsOptOutModal";
 import ClockPicker from "@/components/ClockPicker";
 import ConfirmModal from "@/components/ConfirmModal";
 import HelpModal from "@/components/HelpModal";
@@ -248,11 +246,7 @@ export default function HomeScreen() {
   const [exitButtonOpacity, setExitButtonOpacity] = useState(1);
   const [notifBlocked, setNotifBlocked] = useState(false);
   const [addTargetHovered, setAddTargetHovered] = useState(false);
-  // null = first launch (consent not yet given); true/false = user's explicit choice
-  const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean | null>(null);
-  const [consentModalVisible, setConsentModalVisible] = useState(false);
   const [androidBackgroundHelpVisible, setAndroidBackgroundHelpVisible] = useState(false);
-  const [optOutModalVisible, setOptOutModalVisible] = useState(false);
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     createDefaultBlock(1),
   ]);
@@ -438,24 +432,17 @@ export default function HomeScreen() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [storedZone1, storedZone2, storedTargets, storedAnalytics, storedAndroidBackgroundHelp] = await AsyncStorage.multiGet([
+        const [storedZone1, storedZone2, storedTargets, storedAndroidBackgroundHelp] = await AsyncStorage.multiGet([
           "zone1",
           "zone2",
           "targetBlocks",
-          "analyticsEnabled",
           "androidBackgroundHelpSeen",
         ]);
 
         if (storedZone1[1]) setZone1(storedZone1[1]);
         if (storedZone2[1]) setZone2(storedZone2[1]);
-        if (storedAnalytics[1] === null) {
-          // First launch — show consent modal
-          setConsentModalVisible(true);
-        } else {
-          setAnalyticsEnabled(storedAnalytics[1] === "true");
-          if (Platform.OS === "android" && storedAndroidBackgroundHelp[1] !== "true") {
-            setAndroidBackgroundHelpVisible(true);
-          }
+        if (Platform.OS === "android" && storedAndroidBackgroundHelp[1] !== "true") {
+          setAndroidBackgroundHelpVisible(true);
         }
         if (storedTargets[1]) {
           const parsed: TargetBlockType[] = JSON.parse(storedTargets[1]);
@@ -471,7 +458,7 @@ export default function HomeScreen() {
     loadData();
   }, []);
 
-  // Save changes (batched); analyticsEnabled is saved explicitly in its handlers
+  // Save changes (batched)
   useEffect(() => {
     if (!isLoadedRef.current) return;
     AsyncStorage.multiSet([
@@ -767,40 +754,6 @@ export default function HomeScreen() {
     }
   }, []);
 
-  /** Apply an analytics consent choice: persist it, update Firebase, and init Clarity if accepted. */
-  const applyAnalyticsChoice = useCallback(async (enabled: boolean) => {
-    setAnalyticsEnabled(enabled);
-    await AsyncStorage.setItem("analyticsEnabled", String(enabled)).catch(() => {});
-    if (Platform.OS === "ios" || Platform.OS === "android") {
-      try {
-        const { initializeApp, getApps } = await import("@react-native-firebase/app");
-        const { default: analytics } = await import("@react-native-firebase/analytics");
-        const { default: crashlytics } = await import("@react-native-firebase/crashlytics");
-        if (getApps().length === 0) initializeApp();
-        await analytics().setAnalyticsCollectionEnabled(enabled);
-        await crashlytics().setCrashlyticsCollectionEnabled(enabled);
-        if (enabled) {
-          const clarityKey = process.env.EXPO_PUBLIC_CLARITY_KEY;
-          if (clarityKey) {
-            const Clarity = await import("@microsoft/react-native-clarity");
-            Clarity.initialize(clarityKey, { logLevel: Clarity.LogLevel.None });
-          }
-        }
-      } catch (e) {
-        if (__DEV__) console.warn("[Analytics] applyAnalyticsChoice failed:", e);
-      }
-    }
-  }, []);
-
-  const handleAnalyticsConsent = useCallback(async (accepted: boolean) => {
-    setConsentModalVisible(false);
-    await applyAnalyticsChoice(accepted);
-    if (Platform.OS === "android") {
-      await AsyncStorage.setItem("androidBackgroundHelpSeen", "true").catch(() => {});
-      setAndroidBackgroundHelpVisible(true);
-    }
-  }, [applyAnalyticsChoice]);
-
   const openAppSettings = useCallback(() => {
     Linking.openSettings().catch(() => {});
   }, []);
@@ -974,23 +927,6 @@ export default function HomeScreen() {
                 </View>
                 <HeaderIconButton icon="⛶" label="Full Screen" onPress={toggleFullScreen} />
                 <HeaderIconButton icon="↺" label="Reset All" onPress={resetAll} danger />
-                {analyticsEnabled === false && (
-                  <Pressable
-                    onPress={() => setConsentModalVisible(true)}
-                    style={{
-                      backgroundColor: colors.accent,
-                      borderRadius: 8,
-                      paddingVertical: 6,
-                      paddingHorizontal: 12,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "600" }}>
-                      Help make this app better
-                    </Text>
-                  </Pressable>
-                )}
               </>
             )}
             {isWeb ? (
@@ -1137,16 +1073,6 @@ export default function HomeScreen() {
               <Text style={{ color: colors.danger, fontSize: 14, fontWeight: "500" }}>Reset All</Text>
             </Pressable>
           </View>
-          {analyticsEnabled === false && (
-            <Pressable
-              onPress={() => setConsentModalVisible(true)}
-              style={{ backgroundColor: "#1e2110", borderWidth: 1, borderColor: "#a16207", borderRadius: 12, paddingVertical: 13, alignItems: "center" }}
-            >
-              <Text style={{ color: colors.countdown, fontSize: 14, fontWeight: "600" }}>
-                Help make this app better
-              </Text>
-            </Pressable>
-          )}
         </View>
       )}
 
@@ -1221,19 +1147,11 @@ export default function HomeScreen() {
       <HelpModal
         visible={helpVisible}
         onClose={() => setHelpVisible(false)}
-        analyticsEnabled={analyticsEnabled}
-        onRequestOptOut={() => setOptOutModalVisible(true)}
         onOpenNotificationSettings={requestNotifPermission}
         onOpenAppSettings={openAppSettings}
         onOpenBatterySettings={openBatterySettings}
         onOpenExactAlarmSettings={openExactAlarmSettings}
         notificationRuntimeNote={notifUnavailableReason}
-      />
-
-      <AnalyticsConsentModal
-        visible={consentModalVisible}
-        onAccept={() => handleAnalyticsConsent(true)}
-        onDecline={() => handleAnalyticsConsent(false)}
       />
 
       <AndroidBackgroundHelpModal
@@ -1242,15 +1160,6 @@ export default function HomeScreen() {
         onOpenAppSettings={openAppSettings}
         onOpenBatterySettings={openBatterySettings}
         onOpenExactAlarmSettings={openExactAlarmSettings}
-      />
-
-      <AnalyticsOptOutModal
-        visible={optOutModalVisible}
-        onConfirmOptOut={() => {
-          setOptOutModalVisible(false);
-          applyAnalyticsChoice(false);
-        }}
-        onCancel={() => setOptOutModalVisible(false)}
       />
     </View>
     </View>
