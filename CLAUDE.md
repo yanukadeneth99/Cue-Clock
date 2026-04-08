@@ -455,6 +455,10 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - **Security:** Added `maxLength={50}` to the `TextInput` component in `app/components/TargetBlock.tsx`.
 - **Why:** To prevent potential exploit or performance issues (like crashing the app) due to extreme text lengths in the user input. This sets a reasonable maximum length for a target block's name.
 
+### 2026-04-05: XSS Prevention for External URLs
+- **Security:** Added `.startsWith('http')` check to `href` attributes in `website/src/app/page.tsx`.
+- **Why:** To prevent potential Cross-Site Scripting (XSS) via `javascript:` URIs if the GitHub API response containing contributor `html_url` fields were ever compromised or manipulated.
+
 ---
 
 ## Codebase Flavor & Conventions

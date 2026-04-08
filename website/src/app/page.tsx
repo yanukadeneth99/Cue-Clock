@@ -518,7 +518,7 @@ export default function Home() {
                     contributors.map((c) => (
                       <a 
                         key={c.id} 
-                        href={c.html_url} 
+                        href={c.html_url?.startsWith('http') ? c.html_url : '#'}
                         target="_blank" 
                         rel="noopener noreferrer"
                         title={c.login}
