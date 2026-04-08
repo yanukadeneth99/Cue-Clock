@@ -490,39 +490,53 @@ export default function HomeScreen() {
       const now = DateTime.now();
       const nowZone1 = now.setZone(zone1);
       const nowZone2 = now.setZone(zone2);
+      const msZone1 = nowZone1.toMillis();
+      const msZone2 = nowZone2.toMillis();
 
       setTargetBlocks((blocks) => {
         let anyChanged = false;
         const next = blocks.map((block) => {
-          const nowInZone = block.targetZone === "zone1" ? nowZone1 : nowZone2;
+          const isZone1 = block.targetZone === "zone1";
+          const nowInZone = isZone1 ? nowZone1 : nowZone2;
+          const nowMs = isZone1 ? msZone1 : msZone2;
 
+          // Fold the +1 second directly into the set call to avoid an extra DateTime allocation
           let targetDT = nowInZone.set({
             hour: block.targetHour,
             minute: block.targetMinute,
-            second: 0,
+            second: 1,
             millisecond: 0,
           });
 
-          // Add 1 second so that target time rounds up to the next second
-          targetDT = targetDT.plus({ seconds: 1 });
+          let targetMs = targetDT.toMillis();
 
-          if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
+          if (targetMs <= nowMs) {
+            targetDT = targetDT.plus({ days: 1 });
+            targetMs = targetDT.toMillis();
+          }
 
           const deductionMs =
             (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
-          targetDT = targetDT.minus({ milliseconds: deductionMs });
+          targetMs -= deductionMs;
 
-          // Keep Luxon's component diff here instead of replacing it with raw
-          // millisecond division. The countdown intentionally preserves
-          // Luxon's signed minute/second behavior for overdue or deducted
-          // timers, and naive Math.floor/% math changes the displayed value.
-          const diff = targetDT
-            .diff(nowInZone, ["hours", "minutes", "seconds"])
-            .toObject();
-          const totalMinutes = Math.floor(
-            (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
-          );
-          const seconds = Math.floor(diff.seconds ?? 0);
+          // Replicate Luxon's diff math with raw timestamp subtraction.
+          // This avoids creating new DateTime objects and calling `.diff()`.
+          const diffMs = targetMs - nowMs;
+          const isNegative = diffMs < 0;
+          const absMs = Math.abs(diffMs);
+
+          let diffHours = Math.trunc(absMs / 3600000);
+          let diffMinutes = Math.trunc((absMs % 3600000) / 60000);
+          let diffSeconds = (absMs % 60000) / 1000;
+
+          if (isNegative) {
+            diffHours = -diffHours;
+            diffMinutes = -diffMinutes;
+            diffSeconds = -diffSeconds;
+          }
+
+          const totalMinutes = Math.floor(diffHours * 60 + diffMinutes);
+          const seconds = Math.floor(diffSeconds);
           const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
           let changed = block.countdown !== newCountdown;
