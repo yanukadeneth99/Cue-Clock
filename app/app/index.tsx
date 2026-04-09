@@ -491,38 +491,70 @@ export default function HomeScreen() {
       const nowZone1 = now.setZone(zone1);
       const nowZone2 = now.setZone(zone2);
 
+      const nowMsZone1 = nowZone1.toMillis();
+      const nowMsZone2 = nowZone2.toMillis();
+
+      // Cache target base times for unique hour/minute/zone combinations
+      // to avoid instantiating Luxon DateTimes in a tight loop.
+      const cacheZone1 = new Map<number, number>();
+      const cacheZone2 = new Map<number, number>();
+
       setTargetBlocks((blocks) => {
         let anyChanged = false;
         const next = blocks.map((block) => {
-          const nowInZone = block.targetZone === "zone1" ? nowZone1 : nowZone2;
+          const isZone1 = block.targetZone === "zone1";
+          const nowMs = isZone1 ? nowMsZone1 : nowMsZone2;
+          const cache = isZone1 ? cacheZone1 : cacheZone2;
 
-          let targetDT = nowInZone.set({
-            hour: block.targetHour,
-            minute: block.targetMinute,
-            second: 0,
-            millisecond: 0,
-          });
+          const cacheKey = (block.targetHour * 60) + block.targetMinute;
+          let targetMs: number;
 
-          // Add 1 second so that target time rounds up to the next second
-          targetDT = targetDT.plus({ seconds: 1 });
+          if (cache.has(cacheKey)) {
+            targetMs = cache.get(cacheKey)!;
+          } else {
+            const nowInZone = isZone1 ? nowZone1 : nowZone2;
+            let targetDT = nowInZone.set({
+              hour: block.targetHour,
+              minute: block.targetMinute,
+              second: 0,
+              millisecond: 0,
+            });
 
-          if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
+            // Add 1 second so that target time rounds up to the next second
+            targetDT = targetDT.plus({ seconds: 1 });
+
+            if (targetDT.toMillis() <= nowMs) {
+              targetDT = targetDT.plus({ days: 1 });
+            }
+
+            targetMs = targetDT.toMillis();
+            cache.set(cacheKey, targetMs);
+          }
 
           const deductionMs =
             (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
-          targetDT = targetDT.minus({ milliseconds: deductionMs });
+          const finalTargetMs = targetMs - deductionMs;
 
-          // Keep Luxon's component diff here instead of replacing it with raw
-          // millisecond division. The countdown intentionally preserves
-          // Luxon's signed minute/second behavior for overdue or deducted
-          // timers, and naive Math.floor/% math changes the displayed value.
-          const diff = targetDT
-            .diff(nowInZone, ["hours", "minutes", "seconds"])
-            .toObject();
-          const totalMinutes = Math.floor(
-            (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
-          );
-          const seconds = Math.floor(diff.seconds ?? 0);
+          const diffMs = finalTargetMs - nowMs;
+
+          // Replace Luxon's component diff with raw millisecond division.
+          // The countdown intentionally preserves Luxon's signed minute/second
+          // behavior for overdue or deducted timers by correctly rounding negative
+          // decimal seconds toward negative infinity (Math.floor(-exactSeconds)).
+          const isNegative = diffMs < 0;
+          const absDiff = Math.abs(diffMs);
+          const totalMinutesAbs = Math.floor(absDiff / 60000);
+
+          let totalMinutes, seconds;
+          if (isNegative) {
+            totalMinutes = -totalMinutesAbs;
+            const exactSeconds = (absDiff % 60000) / 1000;
+            seconds = Math.floor(-exactSeconds);
+          } else {
+            totalMinutes = totalMinutesAbs;
+            seconds = Math.floor((absDiff % 60000) / 1000);
+          }
+
           const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
           let changed = block.countdown !== newCountdown;
