@@ -38,8 +38,6 @@ app/              # React Native (Expo) Mobile Application
   constants/      # App-wide constants
     colors.ts     # 14-color dark broadcast palette
     timezones.ts  # 18 broadcast timezone definitions
-  hooks/          # Shared hooks
-    useColorScheme.ts  # Re-exports React Native's built-in hook
   assets/         # Icons, splash screens, fonts (SpaceMono-Regular.ttf)
   scripts/        # Maintenance and utility scripts
   .env.example    # Template for environment variables (safe, no secrets)
