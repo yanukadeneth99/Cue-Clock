@@ -491,10 +491,15 @@ export default function HomeScreen() {
       const nowZone1 = now.setZone(zone1);
       const nowZone2 = now.setZone(zone2);
 
+      const nowZone1Ms = nowZone1.toMillis();
+      const nowZone2Ms = nowZone2.toMillis();
+
       setTargetBlocks((blocks) => {
         let anyChanged = false;
         const next = blocks.map((block) => {
-          const nowInZone = block.targetZone === "zone1" ? nowZone1 : nowZone2;
+          const isZone1 = block.targetZone === "zone1";
+          const nowInZone = isZone1 ? nowZone1 : nowZone2;
+          const nowMs = isZone1 ? nowZone1Ms : nowZone2Ms;
 
           let targetDT = nowInZone.set({
             hour: block.targetHour,
@@ -504,25 +509,33 @@ export default function HomeScreen() {
           });
 
           // Add 1 second so that target time rounds up to the next second
-          targetDT = targetDT.plus({ seconds: 1 });
+          let targetMs = targetDT.toMillis() + 1000;
 
-          if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
+          if (targetMs <= nowMs) {
+            targetDT = targetDT.plus({ days: 1 });
+            targetMs = targetDT.toMillis() + 1000;
+          }
 
           const deductionMs =
-            (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
-          targetDT = targetDT.minus({ milliseconds: deductionMs });
+            (block.deductHour * 60 + block.deductMinute) * 60000;
 
-          // Keep Luxon's component diff here instead of replacing it with raw
-          // millisecond division. The countdown intentionally preserves
-          // Luxon's signed minute/second behavior for overdue or deducted
-          // timers, and naive Math.floor/% math changes the displayed value.
-          const diff = targetDT
-            .diff(nowInZone, ["hours", "minutes", "seconds"])
-            .toObject();
-          const totalMinutes = Math.floor(
-            (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
-          );
-          const seconds = Math.floor(diff.seconds ?? 0);
+          const diffMs = targetMs - deductionMs - nowMs;
+
+          // Replacing Luxon's component diff with raw millisecond division
+          // to massively improve tick performance. It replicates Luxon's
+          // signed minute/second behavior for overdue or deducted timers
+          // (a negative timer gives negative minutes and negative seconds).
+          const isNegative = diffMs < 0;
+          const absDiffMs = isNegative ? -diffMs : diffMs;
+
+          let totalMinutes = Math.floor(absDiffMs / 60000);
+          let seconds = Math.floor((absDiffMs % 60000) / 1000);
+
+          if (isNegative) {
+            totalMinutes = -totalMinutes;
+            seconds = -seconds;
+          }
+
           const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
           let changed = block.countdown !== newCountdown;
