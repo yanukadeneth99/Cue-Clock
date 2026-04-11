@@ -355,6 +355,12 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 
 ## Codebase Edit History (2026)
 
+### 2026-04-11: Removed Redundant AndroidBackgroundHelpModal
+- **Removal:** Removed `app/components/AndroidBackgroundHelpModal.tsx` and all references in `app/app/index.tsx`.
+  - 💡 What: Removed the modal that only appeared on Android's first launch to warn about background permissions.
+  - 🎯 Why: The app already has a permanent `HelpModal` overlay with the exact same warnings and settings links accessible anytime. Removing this extra modal simplifies the first-time user flow and eliminates a redundant component.
+  - 📊 Measured Improvement: Reduced codebase size, simplified state management in `index.tsx`, and removed redundant components.
+
 ### 2026-04-01: Security Patch for Reverse Tabnabbing
 - **Vulnerability Fix:** Added `rel="noopener noreferrer"` to external `target="_blank"` anchor tags in `website/src/app/page.tsx` (GitHub repository and Contributors links).
   - Fixes a potential Reverse Tabnabbing exploit where newly opened tabs could access `window.opener` and maliciously redirect the original landing page.

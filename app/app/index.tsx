@@ -1,4 +1,3 @@
-import AndroidBackgroundHelpModal from "@/components/AndroidBackgroundHelpModal";
 import AnalyticsConsentModal from "@/components/AnalyticsConsentModal";
 import AnalyticsOptOutModal from "@/components/AnalyticsOptOutModal";
 import ClockPicker from "@/components/ClockPicker";
@@ -251,7 +250,6 @@ export default function HomeScreen() {
   // null = first launch (consent not yet given); true/false = user's explicit choice
   const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean | null>(null);
   const [consentModalVisible, setConsentModalVisible] = useState(false);
-  const [androidBackgroundHelpVisible, setAndroidBackgroundHelpVisible] = useState(false);
   const [optOutModalVisible, setOptOutModalVisible] = useState(false);
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     createDefaultBlock(1),
@@ -438,12 +436,11 @@ export default function HomeScreen() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [storedZone1, storedZone2, storedTargets, storedAnalytics, storedAndroidBackgroundHelp] = await AsyncStorage.multiGet([
+        const [storedZone1, storedZone2, storedTargets, storedAnalytics] = await AsyncStorage.multiGet([
           "zone1",
           "zone2",
           "targetBlocks",
           "analyticsEnabled",
-          "androidBackgroundHelpSeen",
         ]);
 
         if (storedZone1[1]) setZone1(storedZone1[1]);
@@ -453,9 +450,6 @@ export default function HomeScreen() {
           setConsentModalVisible(true);
         } else {
           setAnalyticsEnabled(storedAnalytics[1] === "true");
-          if (Platform.OS === "android" && storedAndroidBackgroundHelp[1] !== "true") {
-            setAndroidBackgroundHelpVisible(true);
-          }
         }
         if (storedTargets[1]) {
           const parsed: TargetBlockType[] = JSON.parse(storedTargets[1]);
@@ -795,10 +789,6 @@ export default function HomeScreen() {
   const handleAnalyticsConsent = useCallback(async (accepted: boolean) => {
     setConsentModalVisible(false);
     await applyAnalyticsChoice(accepted);
-    if (Platform.OS === "android") {
-      await AsyncStorage.setItem("androidBackgroundHelpSeen", "true").catch(() => {});
-      setAndroidBackgroundHelpVisible(true);
-    }
   }, [applyAnalyticsChoice]);
 
   const openAppSettings = useCallback(() => {
@@ -819,11 +809,6 @@ export default function HomeScreen() {
     Linking.sendIntent("android.settings.REQUEST_SCHEDULE_EXACT_ALARM").catch(() => {
       Linking.openSettings().catch(() => {});
     });
-  }, []);
-
-  const dismissAndroidBackgroundHelp = useCallback(() => {
-    setAndroidBackgroundHelpVisible(false);
-    AsyncStorage.setItem("androidBackgroundHelpSeen", "true").catch(() => {});
   }, []);
 
   const resetAll = useCallback(() => {
@@ -1234,14 +1219,6 @@ export default function HomeScreen() {
         visible={consentModalVisible}
         onAccept={() => handleAnalyticsConsent(true)}
         onDecline={() => handleAnalyticsConsent(false)}
-      />
-
-      <AndroidBackgroundHelpModal
-        visible={androidBackgroundHelpVisible}
-        onClose={dismissAndroidBackgroundHelp}
-        onOpenAppSettings={openAppSettings}
-        onOpenBatterySettings={openBatterySettings}
-        onOpenExactAlarmSettings={openExactAlarmSettings}
       />
 
       <AnalyticsOptOutModal
