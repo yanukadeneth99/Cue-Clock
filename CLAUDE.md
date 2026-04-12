@@ -355,6 +355,12 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 
 ## Codebase Edit History (2026)
 
+### 2026-04-12: Unused Boilerplate File Removal
+- **Refactoring:** Removed unused default Expo template files to clean up the codebase.
+- **Removed Files:**
+  - `app/hooks/useColorScheme.ts` (Unused custom hook).
+  - `app/scripts/reset-project.js` (Initial Expo template script no longer needed).
+
 ### 2026-04-01: Security Patch for Reverse Tabnabbing
 - **Vulnerability Fix:** Added `rel="noopener noreferrer"` to external `target="_blank"` anchor tags in `website/src/app/page.tsx` (GitHub repository and Contributors links).
   - Fixes a potential Reverse Tabnabbing exploit where newly opened tabs could access `window.opener` and maliciously redirect the original landing page.
