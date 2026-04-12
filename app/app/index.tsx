@@ -503,14 +503,20 @@ export default function HomeScreen() {
             millisecond: 0,
           });
 
-          // Add 1 second so that target time rounds up to the next second
-          targetDT = targetDT.plus({ seconds: 1 });
-
-          if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
-
           const deductionMs =
             (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
-          targetDT = targetDT.minus({ milliseconds: deductionMs });
+
+          // Add 1 second so that target time rounds up to the next second, minus deduction
+          const offsetMs = 1000 - deductionMs;
+
+          // Check if target is in the past (using the 1 second addition)
+          if (targetDT.toMillis() + 1000 <= nowInZone.toMillis()) {
+            // Luxon's plus({ days: 1 }) is required to correctly handle local DST transitions
+            targetDT = targetDT.plus({ days: 1 });
+          }
+
+          // Apply millisecond-level offsets directly to avoid slow Luxon object allocations
+          targetDT = DateTime.fromMillis(targetDT.toMillis() + offsetMs, { zone: nowInZone.zone });
 
           // Keep Luxon's component diff here instead of replacing it with raw
           // millisecond division. The countdown intentionally preserves

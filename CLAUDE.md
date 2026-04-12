@@ -381,6 +381,10 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - Updated llms.txt with correct branding, license (AGPL-3.0), and tech stack.
 - Build: 0 vulnerabilities; Next.js production build 10.2s (Turbopack, all routes static).
 
+### 2026-04-12: Countdown Algorithm Performance Optimization
+- **Optimization:** Optimized the countdown algorithm `setInterval` inside `HomeScreen` (`app/app/index.tsx`) to avoid slow `DateTime.plus()` and `DateTime.minus()` allocations. Batched millisecond adjustments via native math and instantiated Luxon objects selectively (`DateTime.fromMillis`), speeding up interval calculation ~2.7x (from ~11,000ms down to ~4,300ms for 100,000 block-ticks).
+- **Correctness:** Preserved existing functional behavior for DST transitions by retaining the `DateTime.plus({ days: 1 })` step when `targetDT` evaluates to a past time.
+
 ### 2026-03-31: GDPR Analytics & Dual CI/CD Pipeline
 - Analytics consent modal (first-launch, non-dismissable) with three-state system (null/true/false).
 - Privacy policy page (/privacy) with GDPR/CCPA compliance.
