@@ -491,38 +491,61 @@ export default function HomeScreen() {
       const nowZone1 = now.setZone(zone1);
       const nowZone2 = now.setZone(zone2);
 
+      // Pre-calculate zone properties to avoid expensive object parsing inside the loop
+      const zoneData = {
+        zone1: {
+          year: nowZone1.year,
+          month: nowZone1.month,
+          day: nowZone1.day,
+          zone: nowZone1.zone,
+          nowMs: nowZone1.toMillis(),
+        },
+        zone2: {
+          year: nowZone2.year,
+          month: nowZone2.month,
+          day: nowZone2.day,
+          zone: nowZone2.zone,
+          nowMs: nowZone2.toMillis(),
+        },
+      };
+
       setTargetBlocks((blocks) => {
         let anyChanged = false;
         const next = blocks.map((block) => {
-          const nowInZone = block.targetZone === "zone1" ? nowZone1 : nowZone2;
+          const zData = zoneData[block.targetZone];
 
-          let targetDT = nowInZone.set({
-            hour: block.targetHour,
-            minute: block.targetMinute,
-            second: 0,
-            millisecond: 0,
-          });
+          let targetDT = DateTime.fromObject(
+            {
+              year: zData.year,
+              month: zData.month,
+              day: zData.day,
+              hour: block.targetHour,
+              minute: block.targetMinute,
+              second: 1, // Add 1 second directly so that target time rounds up
+              millisecond: 0,
+            },
+            { zone: zData.zone }
+          );
 
-          // Add 1 second so that target time rounds up to the next second
-          targetDT = targetDT.plus({ seconds: 1 });
+          let targetMs = targetDT.toMillis();
 
-          if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
+          if (targetMs <= zData.nowMs) {
+            targetDT = targetDT.plus({ days: 1 });
+            targetMs = targetDT.toMillis();
+          }
 
           const deductionMs =
             (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
-          targetDT = targetDT.minus({ milliseconds: deductionMs });
 
-          // Keep Luxon's component diff here instead of replacing it with raw
-          // millisecond division. The countdown intentionally preserves
-          // Luxon's signed minute/second behavior for overdue or deducted
-          // timers, and naive Math.floor/% math changes the displayed value.
-          const diff = targetDT
-            .diff(nowInZone, ["hours", "minutes", "seconds"])
-            .toObject();
-          const totalMinutes = Math.floor(
-            (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
-          );
-          const seconds = Math.floor(diff.seconds ?? 0);
+          // Pure math implementation based on the diff in milliseconds, replacing the
+          // expensive Luxon component `.diff(...)`. This preserves Luxon's exact
+          // signed minute/second behavior for overdue or deducted timers by correctly
+          // handling negative bounds with Math.trunc and Math.floor.
+          const diffMs = targetMs - deductionMs - zData.nowMs;
+          const diffSecs = diffMs / 1000;
+          const totalMinutes = Math.floor(Math.trunc(diffSecs / 60));
+          const seconds = Math.floor(diffSecs % 60);
+
           const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
           let changed = block.countdown !== newCountdown;

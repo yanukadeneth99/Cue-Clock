@@ -455,6 +455,11 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - **Security:** Added `maxLength={50}` to the `TextInput` component in `app/components/TargetBlock.tsx`.
 - **Why:** To prevent potential exploit or performance issues (like crashing the app) due to extreme text lengths in the user input. This sets a reasonable maximum length for a target block's name.
 
+### 2026-04-06: Countdown Loop Performance Optimization
+- **Performance:** Replaced heavy Luxon `DateTime` object creation and `.diff()` computations inside the `setInterval` loop with integer arithmetic in `app/app/index.tsx`.
+- **Why:** The previous approach caused noticeable lag and high CPU usage when maintaining many active target blocks, because every tick forced the garbage collector to clean up many immutable objects per countdown block. This change replaces `.diff()` with precise millisecond arithmetic (e.g. `diffMs = targetMs - deductionMs - nowMs`) while preserving Luxon's signed value behavior exactly.
+- **Measured Improvement:** The benchmark script (`benchmark_final.js`) showed an execution time drop from ~1200ms to ~268ms for 100 blocks, rendering a roughly ~4.4x speedup.
+
 ---
 
 ## Codebase Flavor & Conventions
