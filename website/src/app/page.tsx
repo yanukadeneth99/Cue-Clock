@@ -515,10 +515,15 @@ export default function Home() {
                 <h3 className="font-headline text-xl font-bold mb-8 text-on-surface">Contributors</h3>
                 <div className="flex flex-wrap gap-4">
                   {contributors.length > 0 ? (
-                    contributors.map((c) => (
+                    contributors.map((c) => {
+                      // Prevent potential XSS via javascript: URLs
+                      const safeUrl = c.html_url.startsWith('https://') || c.html_url.startsWith('http://')
+                        ? c.html_url
+                        : '#';
+                      return (
                       <a 
                         key={c.id} 
-                        href={c.html_url} 
+                        href={safeUrl}
                         target="_blank" 
                         rel="noopener noreferrer"
                         title={c.login}
@@ -526,7 +531,7 @@ export default function Home() {
                       >
                         <Image src={c.avatar_url} alt={c.login} className="w-full h-full object-cover" width={48} height={48} />
                       </a>
-                    ))
+                    )})
                   ) : (
                     <div className="flex gap-4">
                       <div className="w-12 h-12 rounded-full bg-surface-container-high animate-pulse"></div>

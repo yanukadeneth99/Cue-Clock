@@ -355,6 +355,10 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 
 ## Codebase Edit History (2026)
 
+### 2026-04-13: Next.js DoS Vulnerability Fix & XSS Prevention
+- **Dependency Update:** Bumped `next` from `16.2.1` to `16.2.3` in `website/package.json` to resolve a high-severity Denial of Service (DoS) vulnerability in Next.js Server Components (GHSA-q4gf-8mx6-v5v3).
+- **Vulnerability Fix:** Added defensive URL sanitization in `website/src/app/page.tsx` for contributor links fetched from the GitHub API. This ensures that the `html_url` must start with `http://` or `https://` before being placed in an `href` attribute, preventing potential Stored XSS vectors (e.g., `javascript:` URLs) if the data source is ever compromised.
+
 ### 2026-04-01: Security Patch for Reverse Tabnabbing
 - **Vulnerability Fix:** Added `rel="noopener noreferrer"` to external `target="_blank"` anchor tags in `website/src/app/page.tsx` (GitHub repository and Contributors links).
   - Fixes a potential Reverse Tabnabbing exploit where newly opened tabs could access `window.opener` and maliciously redirect the original landing page.
