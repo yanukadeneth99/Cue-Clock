@@ -476,3 +476,7 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - **State & Rendering**: All state is lifted to parent components. Heavy reliance on `useRef` for mutable state that shouldn't trigger re-renders, and `useCallback`/`React.memo` for performance optimization.
 - **Comment Style**: JSDoc is used for exported functions and components. Inline comments explain "why" specific edge cases or platform quirks are handled.
 - **Styling**: Relies heavily on inline styles in the React Native app, combined with platform-specific checks (`Platform.OS === "web"`). The Next.js website uses Tailwind CSS.
+
+### 2026-04-13: Removal of Initialization Scripts
+- **Security & Minimization:** Removed `app/scripts/reset-project.js`.
+- **Why:** The file was an unused setup/initialization template script leftover from Expo setup, explicitly stating it can be safely deleted. Removing it reduces repository size, limits execution surface, and focuses the codebase strictly on the application's runtime and build-time requirements.
