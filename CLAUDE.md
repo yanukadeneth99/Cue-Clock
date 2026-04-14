@@ -355,6 +355,17 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 
 ## Codebase Edit History (2026)
 
+### 2026-04-14: AsyncStorage Data Validation & Deserialization Security
+- **Security:** Added runtime validation for AsyncStorage-persisted `targetBlocks` data in `app/app/index.tsx`.
+- **Vulnerability:** Previously, `JSON.parse()` was called directly on untrusted data from AsyncStorage without validation. On rooted/jailbroken Android devices, an attacker could inject maliciously-crafted JSON with invalid field types or out-of-range values (e.g., `targetHour: 99`, `alertMinutesBefore: -100`, or non-boolean flags), causing runtime errors, unexpected behavior, or potential crashes.
+- **Fix:** Added `validateTargetBlock()` function that enforces strict type and range validation:
+  - Numeric ranges: `targetHour`/`deductHour` ∈ [0, 23], minutes ∈ [0, 59], `id` > 0
+  - Enum validation: `targetZone` ∈ {"zone1", "zone2"}
+  - Type validation: All boolean/string fields verified at runtime
+  - Alert validation: `alertMinutesBefore` must be null or non-negative
+  - Invalid blocks are silently filtered; valid blocks are reconstructed with strict type casts
+- **Impact:** Protects against data tampering attacks while maintaining graceful degradation (invalid blocks are skipped; app continues with valid data).
+
 ### 2026-04-01: Security Patch for Reverse Tabnabbing
 - **Vulnerability Fix:** Added `rel="noopener noreferrer"` to external `target="_blank"` anchor tags in `website/src/app/page.tsx` (GitHub repository and Contributors links).
   - Fixes a potential Reverse Tabnabbing exploit where newly opened tabs could access `window.opener` and maliciously redirect the original landing page.

@@ -164,6 +164,64 @@ function createDefaultBlock(id: number): TargetBlockType {
 }
 
 /**
+ * Validate and sanitize a TargetBlockType loaded from AsyncStorage.
+ * Returns a valid block or null if validation fails.
+ * Ensures all fields are within expected ranges and correct types.
+ */
+function validateTargetBlock(block: unknown): TargetBlockType | null {
+  if (!block || typeof block !== "object") return null;
+
+  const b = block as Record<string, unknown>;
+
+  // Required field validation with type and range checks
+  const isValidId = typeof b.id === "number" && Number.isInteger(b.id) && b.id > 0;
+  const isValidHour = (hour: unknown) => typeof hour === "number" && hour >= 0 && hour <= 23;
+  const isValidMinute = (minute: unknown) => typeof minute === "number" && minute >= 0 && minute <= 59;
+  const isValidZone = b.targetZone === "zone1" || b.targetZone === "zone2";
+  const isValidString = (field: unknown) => typeof field === "string";
+  const isValidBoolean = (field: unknown) => typeof field === "boolean";
+  const isValidAlertMinutes =
+    b.alertMinutesBefore === null || (typeof b.alertMinutesBefore === "number" && b.alertMinutesBefore >= 0);
+
+  if (
+    !isValidId ||
+    !isValidHour(b.targetHour) ||
+    !isValidMinute(b.targetMinute) ||
+    !isValidHour(b.deductHour) ||
+    !isValidMinute(b.deductMinute) ||
+    !isValidZone ||
+    !isValidString(b.countdown) ||
+    !isValidBoolean(b.isTargetPickerVisible) ||
+    !isValidBoolean(b.isDeductPickerVisible) ||
+    !isValidBoolean(b.isCollapsed) ||
+    !isValidString(b.name) ||
+    !isValidBoolean(b.isAlertModalVisible) ||
+    !isValidBoolean(b.alertFired) ||
+    !isValidAlertMinutes
+  ) {
+    return null;
+  }
+
+  return {
+    id: b.id as number,
+    targetHour: b.targetHour as number,
+    targetMinute: b.targetMinute as number,
+    deductHour: b.deductHour as number,
+    deductMinute: b.deductMinute as number,
+    targetZone: b.targetZone as "zone1" | "zone2",
+    countdown: b.countdown as string,
+    isTargetPickerVisible: b.isTargetPickerVisible as boolean,
+    isDeductPickerVisible: b.isDeductPickerVisible as boolean,
+    isCollapsed: b.isCollapsed as boolean,
+    name: b.name as string,
+    alertMinutesBefore: b.alertMinutesBefore as number | null,
+    isAlertModalVisible: b.isAlertModalVisible as boolean,
+    alertFired: b.alertFired as boolean,
+    notificationId: typeof b.notificationId === "string" ? (b.notificationId as string) : null,
+  };
+}
+
+/**
  * Icon button with tooltip for the header (web only).
  */
 function HeaderIconButton({
@@ -458,10 +516,18 @@ export default function HomeScreen() {
           }
         }
         if (storedTargets[1]) {
-          const parsed: TargetBlockType[] = JSON.parse(storedTargets[1]);
-          setTargetBlocks(parsed);
-          const maxId = parsed.reduce((max, b) => Math.max(max, b.id), 0);
-          nextIdRef.current = maxId + 1;
+          const parsed: unknown = JSON.parse(storedTargets[1]);
+          if (Array.isArray(parsed)) {
+            const validated = parsed
+              .map((block) => validateTargetBlock(block))
+              .filter((block): block is TargetBlockType => block !== null);
+
+            if (validated.length > 0) {
+              setTargetBlocks(validated);
+              const maxId = validated.reduce((max, b) => Math.max(max, b.id), 0);
+              nextIdRef.current = maxId + 1;
+            }
+          }
         }
       } catch {
         // silently fail — app defaults will be used
