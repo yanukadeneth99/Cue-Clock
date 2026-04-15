@@ -44,3 +44,7 @@ release.keystore
 .env
 !.env.example
 .artifacts/
+
+# Editor & tool configs
+.vscode/
+.claude/

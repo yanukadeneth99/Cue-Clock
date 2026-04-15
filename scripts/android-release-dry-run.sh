@@ -84,6 +84,7 @@ EXPO_PUBLIC_CLARITY_KEY=${EXPO_PUBLIC_CLARITY_KEY:-}
 EOF
 
 if [[ ! -f "$KEYSTORE_PATH" ]]; then
+  mkdir -p "$(dirname "$KEYSTORE_PATH")"
   keytool -genkeypair \
     -alias androidreleasekey \
     -keyalg RSA \
@@ -106,6 +107,7 @@ echo "Running Expo prebuild..."
 export EAS_PROJECT_ID="${EAS_PROJECT_ID:-dev-local-open-source}"
 export EAS_OWNER="${EAS_OWNER:-open-source-contributor}"
 export EXPO_PUBLIC_CLARITY_KEY="${EXPO_PUBLIC_CLARITY_KEY:-}"
+export NODE_ENV="${NODE_ENV:-production}"
 npx expo prebuild --platform android --clean
 
 echo "Syncing native Gradle version..."
