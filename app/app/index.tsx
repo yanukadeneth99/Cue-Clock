@@ -1098,8 +1098,6 @@ export default function HomeScreen() {
             handleAlertConfirm={handleAlertConfirm}
             handleAlertDelete={handleAlertDelete}
             setTargetBlocks={setTargetBlocks}
-            zone1={zone1}
-            zone2={zone2}
             removeBlock={removeBlock}
             fullScreen={fullScreen}
             countdownFontSize={fullScreen ? countdownFontSize : undefined}
