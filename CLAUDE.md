@@ -455,6 +455,16 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - **Security:** Added `maxLength={50}` to the `TextInput` component in `app/components/TargetBlock.tsx`.
 - **Why:** To prevent potential exploit or performance issues (like crashing the app) due to extreme text lengths in the user input. This sets a reasonable maximum length for a target block's name.
 
+### 2026-04-14: Removal of Unused EAS Configuration
+- **Removal:** Deleted `app/eas.json` (Expo Application Services cloud build configuration).
+- **Why:** The build pipeline uses `expo prebuild` + Gradle directly for native Android builds; EAS cloud builds (`eas build`) are never invoked. The eas.json file contained unused build profiles (development, preview, production) specific to the EAS cloud service, which the project does not use.
+- **Impact:** 
+  - CI/CD continues to work unchanged (uses Gradle directly via `./gradlew bundleRelease`)
+  - Local development unaffected (uses fallback env values with zero-setup requirement)
+  - Removes 31 lines of unused infrastructure configuration
+  - Eliminates unnecessary complexity for contributors; if EAS cloud builds are needed in the future, eas.json can be recreated
+- **No breaking changes:** The app is designed to work with optional `EAS_PROJECT_ID` / `EAS_OWNER` values (fallback to safe defaults per app.config.js).
+
 ---
 
 ## Codebase Flavor & Conventions
