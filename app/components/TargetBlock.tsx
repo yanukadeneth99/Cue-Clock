@@ -48,8 +48,6 @@ interface Props {
   handleAlertConfirm: (id: number, minutes: number) => void;
   handleAlertDelete: (id: number) => void;
   setTargetBlocks: React.Dispatch<React.SetStateAction<TargetBlockType[]>>;
-  zone1: string;
-  zone2: string;
   removeBlock: (id: number) => void;
   fullScreen?: boolean;
   countdownFontSize?: number;
