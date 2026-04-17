@@ -257,6 +257,7 @@ export default function HomeScreen() {
     createDefaultBlock(1),
   ]);
   const nextIdRef = useRef(2);
+  const scrollViewRef = useRef<ScrollView | null>(null);
   const isLoadedRef = useRef(false);
   const alertQueueRef = useRef<{ id: number; name: string; minutes: number }[]>([]);
   // Holds notificationIds that must be cancelled before the in-app alert fires.
@@ -459,7 +460,14 @@ export default function HomeScreen() {
         }
         if (storedTargets[1]) {
           const parsed: TargetBlockType[] = JSON.parse(storedTargets[1]);
-          setTargetBlocks(parsed);
+          setTargetBlocks(
+            parsed.map((b) => ({
+              ...b,
+              isTargetPickerVisible: false,
+              isDeductPickerVisible: false,
+              isAlertModalVisible: false,
+            }))
+          );
           const maxId = parsed.reduce((max, b) => Math.max(max, b.id), 0);
           nextIdRef.current = maxId + 1;
         }
@@ -726,7 +734,19 @@ export default function HomeScreen() {
 
   const addTargetBlock = useCallback(() => {
     const newId = nextIdRef.current++;
-    setTargetBlocks((blocks) => [...blocks, createDefaultBlock(newId)]);
+    setTargetBlocks((blocks) => [
+      ...blocks.map((b) => ({
+        ...b,
+        isTargetPickerVisible: false,
+        isDeductPickerVisible: false,
+      })),
+      { ...createDefaultBlock(newId), isTargetPickerVisible: true },
+    ]);
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 0);
+    });
   }, []);
 
   const removeBlock = useCallback(async (id: number) => {
@@ -1063,6 +1083,7 @@ export default function HomeScreen() {
 
       {/* Scrollable content */}
       <ScrollView
+        ref={scrollViewRef}
         scrollEnabled={fullScreen ? fullscreenNeedsScroll : true}
         style={{ flex: 1 }}
         contentContainerStyle={{

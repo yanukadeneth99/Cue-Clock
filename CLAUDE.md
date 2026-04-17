@@ -86,19 +86,19 @@ Root Documentation
 
 ### Mobile (`app/`)
 
-| Layer           | Technology                                          | Version              |
-| --------------- | --------------------------------------------------- | -------------------- |
-| Framework       | React Native                                        | 0.83.2               |
-| SDK             | Expo                                                | 55                   |
-| Navigation      | Expo Router                                         | 55 (file-based)      |
-| Language        | TypeScript                                          | ~5.9.2 (strict mode) |
-| Styling         | Inline Styles                                       | -                    |
-| Date/Time       | Luxon                                               | 3.7.1                |
-| Persistence     | @react-native-async-storage/async-storage           | 2.2.0                |
-| Notifications   | expo-notifications                                  | 55                   |
-| Pickers         | @react-native-picker/picker                         | 2.11.4               |
-| DateTime Picker | react-native-modal-datetime-picker                  | 18.0.0               |
-| Analytics       | @microsoft/react-native-clarity                     | 4.5.3                |
+| Layer           | Technology                                | Version              |
+| --------------- | ----------------------------------------- | -------------------- |
+| Framework       | React Native                              | 0.83.2               |
+| SDK             | Expo                                      | 55                   |
+| Navigation      | Expo Router                               | 55 (file-based)      |
+| Language        | TypeScript                                | ~5.9.2 (strict mode) |
+| Styling         | Inline Styles                             | -                    |
+| Date/Time       | Luxon                                     | 3.7.1                |
+| Persistence     | @react-native-async-storage/async-storage | 2.2.0                |
+| Notifications   | expo-notifications                        | 55                   |
+| Pickers         | @react-native-picker/picker               | 2.11.4               |
+| DateTime Picker | react-native-modal-datetime-picker        | 18.0.0               |
+| Analytics       | @microsoft/react-native-clarity           | 4.5.3                |
 
 ### Website (`website/`)
 
@@ -356,15 +356,18 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 ## Codebase Edit History (2026)
 
 ### 2026-04-01: Security Patch for Reverse Tabnabbing
+
 - **Vulnerability Fix:** Added `rel="noopener noreferrer"` to external `target="_blank"` anchor tags in `website/src/app/page.tsx` (GitHub repository and Contributors links).
   - Fixes a potential Reverse Tabnabbing exploit where newly opened tabs could access `window.opener` and maliciously redirect the original landing page.
 
 ### 2026-04-01: JSON-LD XSS Vulnerability Fix
+
 - Addressed a potential stored XSS vulnerability via Next.js `dangerouslySetInnerHTML`.
 - Appended `.replace(/</g, '\\u003c')` to `JSON.stringify(jsonLd)` payload injection in `website/src/app/layout.tsx`.
 - Prevents script tags from prematurely closing if dynamic data is ever included.
 
 ### 2026-04-01: Preflight Verification & Linter Fixes
+
 - Fixed 9 ESLint errors: unescaped entities in privacy page (quotes/apostrophes), `<a>` → `<Link>` navigation fix.
 - Fixed 2 Next.js font warnings: added `display: "swap"` to Space Grotesk and Inter font initialization.
 - All 5 modified code files audited: Complexity ✓, Security ✓, Documentation ✓.
@@ -372,6 +375,7 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - Hygiene clean: no console.log/debugger in production code; intentional logs in build scripts only.
 
 ### 2026-04-01: Website Redesign & YASHURA Rebranding
+
 - Material Symbols icon font loading fixed (HTML link + preconnect, display=block).
 - Footer rebranded: "Yanuka Deneth" → "YASHURA" (https://yashura.io) with X & LinkedIn social icons.
 - Web platform button: "Coming Soon" → "Start Now" (https://live.cueclock.app); hero CTA updated.
@@ -382,12 +386,14 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - Build: 0 vulnerabilities; Next.js production build 10.2s (Turbopack, all routes static).
 
 ### 2026-03-31: GDPR Analytics & Dual CI/CD Pipeline
+
 - Analytics consent modal (first-launch, non-dismissable) with three-state system (null/true/false).
 - Privacy policy page (/privacy) with GDPR/CCPA compliance.
 - Dual-track CI/CD: internal testing (master push) + beta release (GitHub Release) pipelines.
 - Firebase config in secrets; Gradle caching (50→10-15 min build time).
 
 ### 2026-03-27: Web UX & Clarity Analytics
+
 - Delete confirmation modal (`ConfirmModal`) added to `TargetBlock`.
 - Web Notifications API with `window.alert` fallback; "Notifications blocked" header tag.
 - Added circular "+Add Target" button in web header; improved layout & scrollbar positioning.
@@ -396,11 +402,13 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - Fixed 5 ESLint errors in website page.tsx.
 
 ### 2026-03-11: Performance, Notifications & Timezones
+
 - `React.memo` on `TargetBlock`; reference-stable countdown interval (15+ blocks lag-free).
 - `expo-notifications` with `Alert.alert` fallback; "Reset All" confirmation UX.
 - Expanded timezones: 8 → 18 broadcast zones.
 
 ### 2026-03-10: Fullscreen Layout & Stability
+
 - Dynamic `countdownFontSize` (shrinks as block count increases).
 - Single-root `View` pattern to fix native crashes on fullscreen toggles.
 - Migrated to inline styles (Android reliability).
@@ -414,6 +422,7 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - **Security:** Not production-hardened. See `SECURITY.md` for reporting. Contact: hello@yashura.io.
 
 ### 2026-04-04: Open-Source Hardening & Zero-Dependency Local Development
+
 - **Security:** Removed hardcoded `projectId` and `owner` from `app.json`; now injected via `app.config.js` at build time from GitHub Secrets.
 - **Local Dev:** App now runs with **zero environment variables required** — all credentials are optional with safe defaults.
   - `EXPO_PUBLIC_CLARITY_KEY` (analytics) — gracefully skipped if missing
@@ -430,17 +439,22 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - **Ready for open-source:** All sensitive configuration is either `.gitignore`'d, environment-variable-driven, or optional with safe fallbacks.
 
 ### 2026-04-02: Countdown Interval Optimization
+
 - **Optimization:** Pre-computed Luxon `DateTime.now().setZone(...)` instances outside of the `blocks.map` loop within `setInterval` in `HomeScreen`.
-- **Why:** The original implementation invoked `DateTime.now()` for *every* block during each 1-second interval tick, causing redundant allocations and time parsing. By extracting this to O(1) outside the loop, we avoid unnecessary work. This also correctly makes the `setTargetBlocks` React state updater a pure function.
+- **Why:** The original implementation invoked `DateTime.now()` for _every_ block during each 1-second interval tick, causing redundant allocations and time parsing. By extracting this to O(1) outside the loop, we avoid unnecessary work. This also correctly makes the `setTargetBlocks` React state updater a pure function.
 - **Measured Improvement:** Measured with 100 iterations over 1000 blocks in a synthetic benchmark script.
   - Original execution: ~14879 ms
   - Optimized execution: ~10811 ms
   - Speedup: ~27% improvement.
+
 ### 2026-04-02: GitHub Actions CI/CD Security Patch
+
 - **Security:** Addressed Command/Script Injection Vulnerabilities in `.github/workflows/android-release.yml`.
 - **Why:** The original workflow directly interpolated GitHub event context variables (`${{ github.event.release.tag_name }}`) and step outputs (`${{ steps.version.outputs.version }}`) into inline bash and Node.js scripts. This allowed for arbitrary code execution if a malicious actor created a release with a specially crafted tag name (e.g. `v1.0"; rm -rf /; echo "`).
 - **Fix:** Refactored the inline scripts to securely pass dynamic values through the `env` block instead. They are now accessed safely inside scripts using `$VAR` (for bash) and `process.env.VAR` (for Node.js), closing the injection vector.
+
 ### 2026-04-03: Alert & Sync Bug Fixes (Mobile App)
+
 - **Fix 1 — Timer Desync:** Two separate `DateTime.now()` calls in the interval (lines 409–410) could differ by microseconds, causing zone1 vs zone2 blocks to tick at visibly different times. Solution: capture a single `DateTime.now()` instance (line 445), then `.setZone()` both clocks from the same millisecond. Result: all countdown blocks now tick in perfect synchronization.
 - **Fix 2 — Duplicate Foreground Notifications:** When the app is foregrounded and an in-app alert fires via `sendAlert`, a pre-scheduled date-triggered native notification also fires at the same second. Solution: queue the notification ID in `pendingCancelRef` (line 499) before firing the in-app alert, then drain the cancellation queue in the alert-processing `useEffect` (lines 537–539) before calling `sendAlert`. Result: only one notification per alert event.
 - **Fix 3 — Background-to-Foreground Re-Alert:** When the app backgrounds, the JS `setInterval` is paused; the native scheduled notification fires. When the app returns to the foreground, the interval resumes, finds `alertMinutesBefore` still set (state never updated while paused), and fires a second in-app notification. Solution: added `AppState.addEventListener('change')` listener (lines 273–293) that silently marks alerts as fired (without `sendAlert`) if their fire time is already in the past — native already notified the user. Result: no duplicate notifications on background/foreground transitions.
@@ -451,14 +465,17 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
   - All comments explain the **problem first**, then the **solution**.
   - Audited: Complexity ✓, Documentation ✓, Security ✓. No console.log, no secrets, no injection vectors.
 - **Root Cause Analysis:** The O(1) countdown interval optimization from 2026-04-02 exposed these pre-existing notification bugs because the interval now runs reliably every second, making sync/duplicate issues visible where they were previously masked by heavier computation.
+
 ### 2026-04-05: TextInput Security Enhancement
+
 - **Security:** Added `maxLength={50}` to the `TextInput` component in `app/components/TargetBlock.tsx`.
 - **Why:** To prevent potential exploit or performance issues (like crashing the app) due to extreme text lengths in the user input. This sets a reasonable maximum length for a target block's name.
 
 ### 2026-04-14: Removal of Unused EAS Configuration
+
 - **Removal:** Deleted `app/eas.json` (Expo Application Services cloud build configuration).
 - **Why:** The build pipeline uses `expo prebuild` + Gradle directly for native Android builds; EAS cloud builds (`eas build`) are never invoked. The eas.json file contained unused build profiles (development, preview, production) specific to the EAS cloud service, which the project does not use.
-- **Impact:** 
+- **Impact:**
   - CI/CD continues to work unchanged (uses Gradle directly via `./gradlew bundleRelease`)
   - Local development unaffected (uses fallback env values with zero-setup requirement)
   - Removes 31 lines of unused infrastructure configuration
@@ -470,17 +487,20 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 ## Codebase Flavor & Conventions
 
 ### 1. Naming Conventions
+
 - **Variables**: `camelCase` (e.g., `targetBlocks`, `fullScreen`). Booleans often use prefixes like `is` or suffixes indicating state (e.g., `isCollapsed`, `notifBlocked`, `analyticsEnabled`).
 - **Constants**: Global/magic constants are written in `UPPER_SNAKE_CASE` (e.g., `FULLSCREEN_CLOCK_HEIGHT`, `BLOCK_OVERHEAD`).
 - **Functions**: `camelCase` using action verbs (e.g., `toggleFullScreen`, `handleTargetConfirm`, `updateTargetTime`, `computeAlertFireDate`).
-- **Classes/Types**: `PascalCase` for TypeScript Interfaces and Types (e.g., `TargetBlockType`, `Props`). 
+- **Classes/Types**: `PascalCase` for TypeScript Interfaces and Types (e.g., `TargetBlockType`, `Props`).
 
 ### 2. Function & Class Structures
+
 - **Function Creation**: React components use standard function declarations (`export default function ComponentName()`). Internal component handlers and callbacks use Arrow Functions wrapped in `useCallback` (`const handler = useCallback(() => {}, [])`).
 - **Class Creation**: Functional components and hooks are used exclusively instead of ES6 classes.
 - **Export/Import Styles**: Default exports are preferred for main components and screens. Imports use absolute aliasing (e.g., `@/components/`, `@/constants/`).
 
 ### 3. Coding Paradigms & Quirks
+
 - **Error Handling**: Uses `try/catch` with empty or comment-only `catch` blocks for production-safe silence (`} catch { // silently fail }`). Promise `.catch(() => {})` chains are also common. No `console.log` in production.
 - **Control Flow**: Extensive use of early returns (guard clauses) to avoid deeply nested `if/else` statements.
 - **State & Rendering**: All state is lifted to parent components. Heavy reliance on `useRef` for mutable state that shouldn't trigger re-renders, and `useCallback`/`React.memo` for performance optimization.

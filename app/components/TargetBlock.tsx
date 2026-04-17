@@ -256,6 +256,7 @@ function TargetBlockInner({
                       type: "number",
                       min: "0",
                       max: "23",
+                      autoFocus: true,
                       value: String(block.targetHour).padStart(2, "0"),
                       onChange: (e: any) => {
                         const h = Math.min(23, Math.max(0, parseInt(e.target.value, 10) || 0));
@@ -415,34 +416,39 @@ function TargetBlockInner({
             {/* Mobile keeps the native modal time picker because it is the best
                 touch interaction model there; the custom-built picker is a web-only
                 design choice rather than a replacement for native mobile UX. */}
-            {Platform.OS !== "web" && (
-              <>
-                <DateTimePickerModal
-                  isVisible={block.isTargetPickerVisible}
-                  mode="time"
-                  date={(() => {
-                    const d = new Date();
-                    d.setHours(block.targetHour, block.targetMinute, 0, 0);
-                    return d;
-                  })()}
-                  onConfirm={(date) => handleTargetConfirm(block.id, date)}
-                  onCancel={() => toggleTargetPicker(block.id, false)}
-                  is24Hour={true}
-                />
-                <DateTimePickerModal
-                  isVisible={block.isDeductPickerVisible}
-                  mode="time"
-                  date={(() => {
-                    const d = new Date();
-                    d.setHours(block.deductHour, block.deductMinute, 0, 0);
-                    return d;
-                  })()}
-                  onConfirm={(date) => handleDeductConfirm(block.id, date)}
-                  onCancel={() => toggleDeductPicker(block.id, false)}
-                  is24Hour={true}
-                />
-              </>
-            )}
+            {Platform.OS !== "web" &&
+              DateTimePickerModal != null &&
+              (() => {
+                const NativeDateTimePicker = DateTimePickerModal;
+                return (
+                  <>
+                    <NativeDateTimePicker
+                      isVisible={block.isTargetPickerVisible}
+                      mode="time"
+                      date={(() => {
+                        const d = new Date();
+                        d.setHours(block.targetHour, block.targetMinute, 0, 0);
+                        return d;
+                      })()}
+                      onConfirm={(date) => handleTargetConfirm(block.id, date)}
+                      onCancel={() => toggleTargetPicker(block.id, false)}
+                      is24Hour={true}
+                    />
+                    <NativeDateTimePicker
+                      isVisible={block.isDeductPickerVisible}
+                      mode="time"
+                      date={(() => {
+                        const d = new Date();
+                        d.setHours(block.deductHour, block.deductMinute, 0, 0);
+                        return d;
+                      })()}
+                      onConfirm={(date) => handleDeductConfirm(block.id, date)}
+                      onCancel={() => toggleDeductPicker(block.id, false)}
+                      is24Hour={true}
+                    />
+                  </>
+                );
+              })()}
           </>
         )}
 
