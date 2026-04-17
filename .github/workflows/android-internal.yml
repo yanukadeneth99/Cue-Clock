@@ -39,6 +39,9 @@ jobs:
         working-directory: app
         run: npx expo-doctor
 
+      # Only versionCode (integer) is updated here — app.expo.version (semver string) is intentionally
+      # left as-is. Play Store only enforces versionCode uniqueness; versionName is cosmetic and only
+      # needs to be accurate on the release track (handled by prepare-android-release.js in android-release.yml).
       - name: Update version code for internal testing
         working-directory: app
         run: |

@@ -8,7 +8,6 @@ on:
       - 'app/**'
       - 'app/scripts/prepare-android-release.js'
       - 'scripts/android-release-dry-run.sh'
-      - 'scripts/android-release-dry-run-docker.sh'
       - 'docker/Dockerfile.android'
 
 concurrency:

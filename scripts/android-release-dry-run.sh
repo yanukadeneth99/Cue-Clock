@@ -1,4 +1,22 @@
 #!/usr/bin/env bash
+# android-release-dry-run.sh
+#
+# Validates the full Android release build pipeline without publishing anything.
+#
+# Used by:
+#   - CI: .github/workflows/android-release-verify.yml (runs on PRs that touch app/ or build infra)
+#   - Locally: docker/Dockerfile.android provides an isolated environment to run this script
+#
+# What it does:
+#   1. Copies source to a temp dir (never modifies your working tree)
+#   2. Generates stub google-services.json and .env if missing
+#   3. Generates a throwaway keystore for signing
+#   4. Runs: npm ci → expo prebuild → gradlew bundleRelease
+#   5. Verifies versionName and versionCode in the built AAB's AndroidManifest via aapt2
+#   6. Copies the verified AAB + manifest dump to OUTPUT_DIR (.artifacts/ by default)
+#
+# Required env: ANDROID_HOME must be set (Android SDK root)
+# Optional env: VERSION_TAG, VERSION_CODE, EAS_PROJECT_ID, EAS_OWNER, EXPO_PUBLIC_CLARITY_KEY, OUTPUT_DIR
 
 set -euo pipefail
 
