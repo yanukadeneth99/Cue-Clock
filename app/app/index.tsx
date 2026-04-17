@@ -91,8 +91,8 @@ const FULLSCREEN_CLOCK_HEIGHT = 100; // estimated height of ClockPicker in fulls
 const FULLSCREEN_EXIT_BTN_HEIGHT = 60; // height of exit button + margins
 const FULLSCREEN_MAX_FONT = 40;
 const FULLSCREEN_MIN_FONT = 24;
-// per-block height overhead beyond font size (marginVertical + line-height overhead)
-const BLOCK_OVERHEAD = 42;
+// per-block height overhead beyond font size (marginVertical + name + target time line)
+const BLOCK_OVERHEAD = 52;
 
 /**
  * Compute the Date at which a block's alert should fire.

@@ -14,9 +14,13 @@ import {
 // Keep the native modal picker on mobile, but avoid importing it on web where it
 // has no implementation. Web uses custom-built inputs instead because the timer
 // controls need to match the app's broadcast-oriented visual design.
-const DateTimePickerModal: typeof import("react-native-modal-datetime-picker").default | null =
+const DateTimePickerModal:
+  | typeof import("react-native-modal-datetime-picker").default
+  | null =
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Platform.OS !== "web" ? require("react-native-modal-datetime-picker").default : null;
+  Platform.OS !== "web"
+    ? require("react-native-modal-datetime-picker").default
+    : null;
 
 export interface TargetBlockType {
   id: number;
@@ -60,7 +64,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 /**
  * Renders a single countdown timer block.
- * In fullscreen mode shows a compact row with name and countdown at dynamic font size.
+ * In fullscreen mode shows a compact row with name, set target time, and countdown at dynamic font size.
  * In normal mode shows a card with editable controls (target time, deduction, zone, alert).
  *
  * @param block - The countdown block data.
@@ -100,13 +104,45 @@ function TargetBlockInner({
 
   if (fullScreen) {
     const labelFontSize = Math.max(12, Math.round(countdownFontSize * 0.28));
+    const targetTimeFontSize = Math.max(11, labelFontSize - 1);
     return (
-      <View style={{ width: "100%", maxWidth: 700, alignSelf: "center", flexDirection: "row", alignItems: "center", marginVertical: 6 }}>
-        <Text style={{ color: colors.muted, fontSize: labelFontSize, fontWeight: "500", textAlign: "right", flex: 1, marginRight: 24 }}>
-          {block.name.length > 12
-            ? block.name.substring(0, 12) + "..."
-            : block.name}
-        </Text>
+      <View
+        style={{
+          width: "100%",
+          maxWidth: 700,
+          alignSelf: "center",
+          flexDirection: "row",
+          alignItems: "center",
+          marginVertical: 6,
+        }}
+      >
+        <View style={{ flex: 1, marginRight: 24, alignItems: "flex-end" }}>
+          <Text
+            style={{
+              color: colors.muted,
+              fontSize: labelFontSize,
+              fontWeight: "500",
+              textAlign: "right",
+            }}
+          >
+            {block.name.length > 12
+              ? block.name.substring(0, 12) + "..."
+              : block.name}
+          </Text>
+          <Text
+            style={{
+              color: colors.muted,
+              fontSize: targetTimeFontSize,
+              fontWeight: "500",
+              textAlign: "right",
+              marginTop: 2,
+              opacity: 0.85,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {pad(block.targetHour)}:{pad(block.targetMinute)}
+          </Text>
+        </View>
         <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
           {block.alertMinutesBefore !== null && (
             <View
@@ -118,7 +154,13 @@ function TargetBlockInner({
                   }
                 : {})}
             >
-              <Text style={{ color: colors.countdown, fontSize: labelFontSize, marginRight: 12 }}>
+              <Text
+                style={{
+                  color: colors.countdown,
+                  fontSize: labelFontSize,
+                  marginRight: 12,
+                }}
+              >
                 {"\u{1F514}"}
               </Text>
               {Platform.OS === "web" && bellHovered && (
@@ -140,14 +182,30 @@ function TargetBlockInner({
                     alignItems: "center",
                   }}
                 >
-                  <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "500", textAlign: "center" }}>
-                    Alert: {block.alertMinutesBefore} minute{block.alertMinutesBefore !== 1 ? "s" : ""} before
+                  <Text
+                    style={{
+                      color: colors.muted,
+                      fontSize: 12,
+                      fontWeight: "500",
+                      textAlign: "center",
+                    }}
+                  >
+                    Alert: {block.alertMinutesBefore} minute
+                    {block.alertMinutesBefore !== 1 ? "s" : ""} before
                   </Text>
                 </View>
               )}
             </View>
           )}
-          <Text style={{ color: colors.countdown, fontSize: countdownFontSize, fontWeight: "bold", paddingVertical: 8, fontVariant: ["tabular-nums"] }}>
+          <Text
+            style={{
+              color: colors.countdown,
+              fontSize: countdownFontSize,
+              fontWeight: "bold",
+              paddingVertical: 8,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
             {block.countdown}
           </Text>
         </View>
@@ -159,7 +217,13 @@ function TargetBlockInner({
     <View style={{ width: "100%", marginVertical: 8 }}>
       <View style={styles.card}>
         {/* Header: name, alert, collapse, delete */}
-        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 12,
+          }}
+        >
           <TextInput
             style={styles.nameInput}
             placeholder={`Target #${block.id}`}
@@ -169,8 +233,8 @@ function TargetBlockInner({
             onChangeText={(text) =>
               setTargetBlocks((blocks) =>
                 blocks.map((b) =>
-                  b.id === block.id ? { ...b, name: text } : b
-                )
+                  b.id === block.id ? { ...b, name: text } : b,
+                ),
               )
             }
           />
@@ -180,7 +244,7 @@ function TargetBlockInner({
                 if (notifUnavailableReason && Platform.OS !== "web") {
                   Alert.alert(
                     "Background Alerts Need a Native Build",
-                    `${notifUnavailableReason}\n\nUse \`npx expo run:android\` or \`npx expo run:ios\` to test real background notifications.`
+                    `${notifUnavailableReason}\n\nUse \`npx expo run:android\` or \`npx expo run:ios\` to test real background notifications.`,
                   );
                 } else if (notifBlocked && Platform.OS !== "web") {
                   onRequestNotifPermission?.();
@@ -190,7 +254,8 @@ function TargetBlockInner({
               }}
               style={[
                 styles.iconButton,
-                (notifBlocked || !!notifUnavailableReason) && Platform.OS !== "web"
+                (notifBlocked || !!notifUnavailableReason) &&
+                Platform.OS !== "web"
                   ? { borderColor: colors.muted, opacity: 0.5 }
                   : undefined,
               ]}
@@ -198,9 +263,12 @@ function TargetBlockInner({
               <Text
                 style={{
                   color:
-                    (notifBlocked || !!notifUnavailableReason) && Platform.OS !== "web"
+                    (notifBlocked || !!notifUnavailableReason) &&
+                    Platform.OS !== "web"
                       ? colors.muted
-                      : (block.alertMinutesBefore !== null ? colors.countdown : colors.muted),
+                      : block.alertMinutesBefore !== null
+                        ? colors.countdown
+                        : colors.muted,
                   fontSize: 16,
                   textAlign: "center",
                 }}
@@ -214,13 +282,20 @@ function TargetBlockInner({
                   blocks.map((b) =>
                     b.id === block.id
                       ? { ...b, isCollapsed: !b.isCollapsed }
-                      : b
-                  )
+                      : b,
+                  ),
                 )
               }
               style={styles.iconButton}
             >
-              <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "bold", textAlign: "center" }}>
+              <Text
+                style={{
+                  color: colors.muted,
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
                 {block.isCollapsed ? "+" : "\u2013"}
               </Text>
             </Pressable>
@@ -228,7 +303,14 @@ function TargetBlockInner({
               onPress={() => setConfirmDeleteVisible(true)}
               style={styles.iconButton}
             >
-              <Text style={{ color: colors.danger, fontSize: 14, fontWeight: "bold", textAlign: "center" }}>
+              <Text
+                style={{
+                  color: colors.danger,
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
                 X
               </Text>
             </Pressable>
@@ -236,22 +318,55 @@ function TargetBlockInner({
         </View>
 
         {/* Countdown - always visible */}
-        <Text style={{ fontSize: 40, fontWeight: "bold", color: colors.countdown, textAlign: "center", paddingVertical: 8, fontVariant: ["tabular-nums"] }}>
+        <Text
+          style={{
+            fontSize: 40,
+            fontWeight: "bold",
+            color: colors.countdown,
+            textAlign: "center",
+            paddingVertical: 8,
+            fontVariant: ["tabular-nums"],
+          }}
+        >
           {block.countdown}
         </Text>
 
         {/* Expanded controls */}
         {!block.isCollapsed && (
           <>
-            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "stretch", width: "100%", marginTop: 16, gap: 12 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "stretch",
+                width: "100%",
+                marginTop: 16,
+                gap: 12,
+              }}
+            >
               {/* Web uses a custom-built inline picker here so the time controls can
                   follow the app's exact visual design instead of browser defaults. */}
               {Platform.OS === "web" && block.isTargetPickerVisible ? (
                 <View style={[styles.timeButton, { alignItems: "center" }]}>
-                  <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                  <Text
+                    style={{
+                      color: colors.muted,
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                      marginBottom: 8,
+                    }}
+                  >
                     Target
                   </Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
+                  >
                     {React.createElement("input", {
                       type: "number",
                       min: "0",
@@ -259,7 +374,10 @@ function TargetBlockInner({
                       autoFocus: true,
                       value: String(block.targetHour).padStart(2, "0"),
                       onChange: (e: any) => {
-                        const h = Math.min(23, Math.max(0, parseInt(e.target.value, 10) || 0));
+                        const h = Math.min(
+                          23,
+                          Math.max(0, parseInt(e.target.value, 10) || 0),
+                        );
                         updateTargetTime(block.id, h, block.targetMinute);
                       },
                       onFocus: (e: any) => e.target.select(),
@@ -276,14 +394,27 @@ function TargetBlockInner({
                         textAlign: "center",
                       },
                     } as any)}
-                    {React.createElement("span", { style: { color: colors.pickerText, fontSize: 20, fontWeight: "bold" } }, ":")}
+                    {React.createElement(
+                      "span",
+                      {
+                        style: {
+                          color: colors.pickerText,
+                          fontSize: 20,
+                          fontWeight: "bold",
+                        },
+                      },
+                      ":",
+                    )}
                     {React.createElement("input", {
                       type: "number",
                       min: "0",
                       max: "59",
                       value: String(block.targetMinute).padStart(2, "0"),
                       onChange: (e: any) => {
-                        const m = Math.min(59, Math.max(0, parseInt(e.target.value, 10) || 0));
+                        const m = Math.min(
+                          59,
+                          Math.max(0, parseInt(e.target.value, 10) || 0),
+                        );
                         updateTargetTime(block.id, block.targetHour, m);
                       },
                       onFocus: (e: any) => e.target.select(),
@@ -301,16 +432,38 @@ function TargetBlockInner({
                       },
                     } as any)}
                   </View>
-                  <Pressable onPress={() => toggleTargetPicker(block.id, false)} style={{ marginTop: 8 }}>
-                    <Text style={{ color: colors.accent, fontSize: 13 }}>Done</Text>
+                  <Pressable
+                    onPress={() => toggleTargetPicker(block.id, false)}
+                    style={{ marginTop: 8 }}
+                  >
+                    <Text style={{ color: colors.accent, fontSize: 13 }}>
+                      Done
+                    </Text>
                   </Pressable>
                 </View>
               ) : (
-                <Pressable onPress={() => toggleTargetPicker(block.id, true)} style={styles.timeButton}>
-                  <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                <Pressable
+                  onPress={() => toggleTargetPicker(block.id, true)}
+                  style={styles.timeButton}
+                >
+                  <Text
+                    style={{
+                      color: colors.muted,
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                      marginBottom: 4,
+                    }}
+                  >
                     Target
                   </Text>
-                  <Text style={{ color: colors.header, fontSize: 18, fontWeight: "600" }}>
+                  <Text
+                    style={{
+                      color: colors.header,
+                      fontSize: 18,
+                      fontWeight: "600",
+                    }}
+                  >
                     {pad(block.targetHour)}:{pad(block.targetMinute)}
                   </Text>
                 </Pressable>
@@ -320,17 +473,35 @@ function TargetBlockInner({
                   consistent with the rest of the countdown card. */}
               {Platform.OS === "web" && block.isDeductPickerVisible ? (
                 <View style={[styles.timeButton, { alignItems: "center" }]}>
-                  <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                  <Text
+                    style={{
+                      color: colors.muted,
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                      marginBottom: 8,
+                    }}
+                  >
                     Deduct
                   </Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
+                  >
                     {React.createElement("input", {
                       type: "number",
                       min: "0",
                       max: "23",
                       value: String(block.deductHour).padStart(2, "0"),
                       onChange: (e: any) => {
-                        const h = Math.min(23, Math.max(0, parseInt(e.target.value, 10) || 0));
+                        const h = Math.min(
+                          23,
+                          Math.max(0, parseInt(e.target.value, 10) || 0),
+                        );
                         updateDeductTime(block.id, h, block.deductMinute);
                       },
                       onFocus: (e: any) => e.target.select(),
@@ -347,14 +518,27 @@ function TargetBlockInner({
                         textAlign: "center",
                       },
                     } as any)}
-                    {React.createElement("span", { style: { color: colors.pickerText, fontSize: 20, fontWeight: "bold" } }, ":")}
+                    {React.createElement(
+                      "span",
+                      {
+                        style: {
+                          color: colors.pickerText,
+                          fontSize: 20,
+                          fontWeight: "bold",
+                        },
+                      },
+                      ":",
+                    )}
                     {React.createElement("input", {
                       type: "number",
                       min: "0",
                       max: "59",
                       value: String(block.deductMinute).padStart(2, "0"),
                       onChange: (e: any) => {
-                        const m = Math.min(59, Math.max(0, parseInt(e.target.value, 10) || 0));
+                        const m = Math.min(
+                          59,
+                          Math.max(0, parseInt(e.target.value, 10) || 0),
+                        );
                         updateDeductTime(block.id, block.deductHour, m);
                       },
                       onFocus: (e: any) => e.target.select(),
@@ -372,16 +556,38 @@ function TargetBlockInner({
                       },
                     } as any)}
                   </View>
-                  <Pressable onPress={() => toggleDeductPicker(block.id, false)} style={{ marginTop: 8 }}>
-                    <Text style={{ color: colors.accent, fontSize: 13 }}>Done</Text>
+                  <Pressable
+                    onPress={() => toggleDeductPicker(block.id, false)}
+                    style={{ marginTop: 8 }}
+                  >
+                    <Text style={{ color: colors.accent, fontSize: 13 }}>
+                      Done
+                    </Text>
                   </Pressable>
                 </View>
               ) : (
-                <Pressable onPress={() => toggleDeductPicker(block.id, true)} style={styles.timeButton}>
-                  <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+                <Pressable
+                  onPress={() => toggleDeductPicker(block.id, true)}
+                  style={styles.timeButton}
+                >
+                  <Text
+                    style={{
+                      color: colors.muted,
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                      marginBottom: 4,
+                    }}
+                  >
                     Deduct
                   </Text>
-                  <Text style={{ color: colors.header, fontSize: 18, fontWeight: "600" }}>
+                  <Text
+                    style={{
+                      color: colors.header,
+                      fontSize: 18,
+                      fontWeight: "600",
+                    }}
+                  >
                     {pad(block.deductHour)}:{pad(block.deductMinute)}
                   </Text>
                 </Pressable>
@@ -390,25 +596,62 @@ function TargetBlockInner({
 
             {/* Zone selector — full width */}
             <View style={{ marginTop: 12 }}>
-              <Text style={{ color: colors.muted, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, textAlign: "center" }}>
+              <Text
+                style={{
+                  color: colors.muted,
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  marginBottom: 6,
+                  textAlign: "center",
+                }}
+              >
                 Zone
               </Text>
-              <View style={{ backgroundColor: colors.pickerBg, borderRadius: 8, borderColor: colors.border, borderWidth: 1 }}>
+              fullScreen
+              <View
+                style={{
+                  backgroundColor: colors.pickerBg,
+                  borderRadius: 8,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                }}
+              >
                 <Picker
                   selectedValue={block.targetZone}
                   onValueChange={(val) =>
                     setTargetBlocks((blocks) =>
                       blocks.map((b) =>
-                        b.id === block.id ? { ...b, targetZone: val } : b
-                      )
+                        b.id === block.id ? { ...b, targetZone: val } : b,
+                      ),
                     )
                   }
                   mode={Platform.OS === "android" ? "dropdown" : undefined}
-                  style={{ width: "100%", color: colors.pickerText, backgroundColor: colors.pickerBg }}
+                  style={{
+                    width: "100%",
+                    color: colors.pickerText,
+                    backgroundColor: colors.pickerBg,
+                  }}
                   dropdownIconColor={colors.muted}
                 >
-                  <Picker.Item label="Zone 1" value="zone1" style={{ backgroundColor: colors.pickerBg, color: colors.pickerText, fontSize: 14 }} />
-                  <Picker.Item label="Zone 2" value="zone2" style={{ backgroundColor: colors.pickerBg, color: colors.pickerText, fontSize: 14 }} />
+                  <Picker.Item
+                    label="Zone 1"
+                    value="zone1"
+                    style={{
+                      backgroundColor: colors.pickerBg,
+                      color: colors.pickerText,
+                      fontSize: 14,
+                    }}
+                  />
+                  <Picker.Item
+                    label="Zone 2"
+                    value="zone2"
+                    style={{
+                      backgroundColor: colors.pickerBg,
+                      color: colors.pickerText,
+                      fontSize: 14,
+                    }}
+                  />
                 </Picker>
               </View>
             </View>
