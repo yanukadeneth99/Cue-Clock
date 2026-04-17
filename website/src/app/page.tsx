@@ -25,8 +25,21 @@ export default function Home() {
       try {
         const response = await fetch('https://api.github.com/repos/yanukadeneth99/Cue-Clock/contributors');
         if (response.ok) {
-          const data = await response.json();
-          setContributors(data);
+          const data: unknown = await response.json();
+          // Validate the response is an array and each entry has a safe HTTPS GitHub URL.
+          // Defense-in-depth: API responses are untrusted data; html_url is rendered as an
+          // anchor href, so we reject any non-GitHub or non-HTTPS URL before it reaches the DOM.
+          if (Array.isArray(data)) {
+            setContributors(
+              data.filter(
+                (c): c is { id: number; login: string; avatar_url: string; html_url: string; contributions: number } =>
+                  c !== null &&
+                  typeof c === 'object' &&
+                  typeof (c as Record<string, unknown>).html_url === 'string' &&
+                  ((c as Record<string, unknown>).html_url as string).startsWith('https://github.com/')
+              )
+            );
+          }
         }
       } catch {
         // Non-critical: contributors section degrades gracefully on fetch failure
