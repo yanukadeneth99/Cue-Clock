@@ -1088,7 +1088,9 @@ export default function HomeScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: isWeb ? 32 : 16,
-          alignItems: "center",
+          // Fullscreen only lists TargetBlocks: stretch so each row gets full width (avoids
+          // shrink-wrapped rows hugging the wrong edge on Android). Normal mode keeps center.
+          alignItems: fullScreen ? ("stretch" as const) : "center",
           paddingBottom: fullScreen ? 0 : (isWeb ? safeBottom + 16 : 16),
           ...(isWeb && { maxWidth: 1100, alignSelf: "center" as const, width: "100%" }),
           ...(fullScreen && !fullscreenNeedsScroll && { flexGrow: 1, justifyContent: "center" as const }),

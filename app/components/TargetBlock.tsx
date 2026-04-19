@@ -64,7 +64,8 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 /**
  * Renders a single countdown timer block.
- * In fullscreen mode shows a compact row with name, set target time, and countdown at dynamic font size.
+ * In fullscreen mode shows name with target time below on the left, bell + countdown on the right
+ * (space-between row, full-width stretch) at dynamic font size.
  * In normal mode shows a card with editable controls (target time, deduction, zone, alert).
  *
  * @param block - The countdown block data.
@@ -106,108 +107,117 @@ function TargetBlockInner({
     const labelFontSize = Math.max(12, Math.round(countdownFontSize * 0.28));
     const targetTimeFontSize = Math.max(11, labelFontSize - 1);
     return (
-      <View
-        style={{
-          width: "100%",
-          maxWidth: 700,
-          alignSelf: "center",
-          flexDirection: "row",
-          alignItems: "center",
-          marginVertical: 6,
-        }}
-      >
-        <View style={{ flex: 1, marginRight: 24, alignItems: "flex-end" }}>
-          <Text
+      <View style={{ width: "100%", alignSelf: "stretch", marginVertical: 6 }}>
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 700,
+            alignSelf: "center",
+          }}
+        >
+          <View
             style={{
-              color: colors.muted,
-              fontSize: labelFontSize,
-              fontWeight: "500",
-              textAlign: "right",
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
             }}
           >
-            {block.name.length > 12
-              ? block.name.substring(0, 12) + "..."
-              : block.name}
-          </Text>
-          <Text
-            style={{
-              color: colors.muted,
-              fontSize: targetTimeFontSize,
-              fontWeight: "500",
-              textAlign: "right",
-              marginTop: 2,
-              opacity: 0.85,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {pad(block.targetHour)}:{pad(block.targetMinute)}
-          </Text>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-          {block.alertMinutesBefore !== null && (
-            <View
-              style={{ position: "relative" }}
-              {...(Platform.OS === "web"
-                ? {
-                    onMouseEnter: () => setBellHovered(true),
-                    onMouseLeave: () => setBellHovered(false),
-                  }
-                : {})}
-            >
+            <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
               <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
                 style={{
-                  color: colors.countdown,
+                  color: colors.muted,
                   fontSize: labelFontSize,
-                  marginRight: 12,
+                  fontWeight: "500",
+                  textAlign: "left",
                 }}
               >
-                {"\u{1F514}"}
+                {block.name}
               </Text>
-              {Platform.OS === "web" && bellHovered && (
+              <Text
+                style={{
+                  color: colors.muted,
+                  fontSize: targetTimeFontSize,
+                  fontWeight: "500",
+                  textAlign: "left",
+                  marginTop: 4,
+                  opacity: 0.85,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {pad(block.targetHour)}:{pad(block.targetMinute)}
+              </Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", flexShrink: 0 }}>
+              {block.alertMinutesBefore !== null && (
                 <View
-                  style={{
-                    position: "absolute",
-                    bottom: "100%",
-                    left: -40,
-                    backgroundColor: colors.surface,
-                    borderColor: colors.surfaceBorder,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    paddingVertical: 10,
-                    paddingHorizontal: 16,
-                    marginBottom: 12,
-                    zIndex: 999999,
-                    minWidth: 160,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
+                  style={{ position: "relative" }}
+                  {...(Platform.OS === "web"
+                    ? {
+                        onMouseEnter: () => setBellHovered(true),
+                        onMouseLeave: () => setBellHovered(false),
+                      }
+                    : {})}
                 >
                   <Text
                     style={{
-                      color: colors.muted,
-                      fontSize: 12,
-                      fontWeight: "500",
-                      textAlign: "center",
+                      color: colors.countdown,
+                      fontSize: labelFontSize,
+                      marginRight: 8,
                     }}
                   >
-                    Alert: {block.alertMinutesBefore} minute
-                    {block.alertMinutesBefore !== 1 ? "s" : ""} before
+                    {"\u{1F514}"}
                   </Text>
+                  {Platform.OS === "web" && bellHovered && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        bottom: "100%",
+                        left: -40,
+                        backgroundColor: colors.surface,
+                        borderColor: colors.surfaceBorder,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        paddingVertical: 10,
+                        paddingHorizontal: 16,
+                        marginBottom: 12,
+                        zIndex: 999999,
+                        minWidth: 160,
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: colors.muted,
+                          fontSize: 12,
+                          fontWeight: "500",
+                          textAlign: "center",
+                        }}
+                      >
+                        Alert: {block.alertMinutesBefore} minute
+                        {block.alertMinutesBefore !== 1 ? "s" : ""} before
+                      </Text>
+                    </View>
+                  )}
                 </View>
               )}
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: colors.countdown,
+                  fontSize: countdownFontSize,
+                  fontWeight: "bold",
+                  paddingVertical: 8,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {block.countdown}
+              </Text>
             </View>
-          )}
-          <Text
-            style={{
-              color: colors.countdown,
-              fontSize: countdownFontSize,
-              fontWeight: "bold",
-              paddingVertical: 8,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {block.countdown}
-          </Text>
+          </View>
         </View>
       </View>
     );
@@ -608,7 +618,6 @@ function TargetBlockInner({
               >
                 Zone
               </Text>
-              fullScreen
               <View
                 style={{
                   backgroundColor: colors.pickerBg,
