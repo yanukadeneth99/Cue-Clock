@@ -2,6 +2,7 @@ import { colors } from "@/constants/colors";
 import { Link, Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
+/** Catch-all 404 screen rendered by Expo Router when no route matches. */
 export default function NotFoundScreen() {
   return (
     <>

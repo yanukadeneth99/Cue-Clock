@@ -23,6 +23,7 @@ const DateTimePickerModal:
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       require("react-native-modal-datetime-picker").default;
 
+/** Serializable state for a single countdown timer card. Persisted via AsyncStorage. */
 export interface TargetBlockType {
   id: number;
   targetHour: number;
@@ -41,6 +42,7 @@ export interface TargetBlockType {
   notificationId?: string | null;
 }
 
+/** Props for {@link TargetBlock} / {@link TargetBlockInner}. */
 interface Props {
   block: TargetBlockType;
   toggleTargetPicker: (id: number, show: boolean) => void;
@@ -61,7 +63,107 @@ interface Props {
   onRequestNotifPermission?: () => void;
 }
 
+/** Zero-pad a number to two digits (e.g. 5 → "05"). */
 const pad = (n: number) => String(n).padStart(2, "0");
+
+const webInputStyle = {
+  backgroundColor: colors.pickerBg,
+  color: colors.pickerText,
+  border: `1px solid ${colors.border}`,
+  borderRadius: 8,
+  padding: "6px 4px",
+  fontSize: 20,
+  fontFamily: "inherit",
+  outline: "none",
+  width: "52px",
+  textAlign: "center" as const,
+};
+
+/**
+ * Web-only inline hour:minute editor used for both the Target and Deduct
+ * time fields. Replaces the native modal picker on web so the visual design
+ * matches the rest of the broadcast-themed card.
+ *
+ * @param label - Display label shown above the inputs (e.g. "Target", "Deduct").
+ * @param hour - Current hour value (0–23).
+ * @param minute - Current minute value (0–59).
+ * @param autoFocus - Whether the hour input should receive focus on mount.
+ * @param onChange - Called with the updated (hour, minute) on any input change.
+ * @param onDone - Called when the user presses "Done" to close the inline picker.
+ */
+function WebTimePickerInline({
+  label,
+  hour,
+  minute,
+  autoFocus,
+  onChange,
+  onDone,
+}: {
+  label: string;
+  hour: number;
+  minute: number;
+  autoFocus?: boolean;
+  onChange: (hour: number, minute: number) => void;
+  onDone: () => void;
+}) {
+  return (
+    <View style={[styles.timeButton, { alignItems: "center" }]}>
+      <Text
+        style={{
+          color: colors.muted,
+          fontSize: 10,
+          textTransform: "uppercase",
+          letterSpacing: 1,
+          marginBottom: 8,
+        }}
+      >
+        {label}
+      </Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+        }}
+      >
+        {React.createElement("input", {
+          type: "number",
+          min: "0",
+          max: "23",
+          autoFocus,
+          value: pad(hour),
+          onChange: (e: any) => {
+            const h = Math.min(23, Math.max(0, parseInt(e.target.value, 10) || 0));
+            onChange(h, minute);
+          },
+          onFocus: (e: any) => e.target.select(),
+          style: webInputStyle,
+        } as any)}
+        {React.createElement(
+          "span",
+          { style: { color: colors.pickerText, fontSize: 20, fontWeight: "bold" } },
+          ":",
+        )}
+        {React.createElement("input", {
+          type: "number",
+          min: "0",
+          max: "59",
+          value: pad(minute),
+          onChange: (e: any) => {
+            const m = Math.min(59, Math.max(0, parseInt(e.target.value, 10) || 0));
+            onChange(hour, m);
+          },
+          onFocus: (e: any) => e.target.select(),
+          style: webInputStyle,
+        } as any)}
+      </View>
+      <Pressable onPress={onDone} style={{ marginTop: 8 }}>
+        <Text style={{ color: colors.accent, fontSize: 13 }}>Done</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 /**
  * Renders a single countdown timer block.
@@ -364,100 +466,14 @@ function TargetBlockInner({
               {/* Web uses a custom-built inline picker here so the time controls can
                   follow the app's exact visual design instead of browser defaults. */}
               {Platform.OS === "web" && block.isTargetPickerVisible ? (
-                <View style={[styles.timeButton, { alignItems: "center" }]}>
-                  <Text
-                    style={{
-                      color: colors.muted,
-                      fontSize: 10,
-                      textTransform: "uppercase",
-                      letterSpacing: 1,
-                      marginBottom: 8,
-                    }}
-                  >
-                    Target
-                  </Text>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                    }}
-                  >
-                    {React.createElement("input", {
-                      type: "number",
-                      min: "0",
-                      max: "23",
-                      autoFocus: true,
-                      value: String(block.targetHour).padStart(2, "0"),
-                      onChange: (e: any) => {
-                        const h = Math.min(
-                          23,
-                          Math.max(0, parseInt(e.target.value, 10) || 0),
-                        );
-                        updateTargetTime(block.id, h, block.targetMinute);
-                      },
-                      onFocus: (e: any) => e.target.select(),
-                      style: {
-                        backgroundColor: colors.pickerBg,
-                        color: colors.pickerText,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        padding: "6px 4px",
-                        fontSize: 20,
-                        fontFamily: "inherit",
-                        outline: "none",
-                        width: "52px",
-                        textAlign: "center",
-                      },
-                    } as any)}
-                    {React.createElement(
-                      "span",
-                      {
-                        style: {
-                          color: colors.pickerText,
-                          fontSize: 20,
-                          fontWeight: "bold",
-                        },
-                      },
-                      ":",
-                    )}
-                    {React.createElement("input", {
-                      type: "number",
-                      min: "0",
-                      max: "59",
-                      value: String(block.targetMinute).padStart(2, "0"),
-                      onChange: (e: any) => {
-                        const m = Math.min(
-                          59,
-                          Math.max(0, parseInt(e.target.value, 10) || 0),
-                        );
-                        updateTargetTime(block.id, block.targetHour, m);
-                      },
-                      onFocus: (e: any) => e.target.select(),
-                      style: {
-                        backgroundColor: colors.pickerBg,
-                        color: colors.pickerText,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        padding: "6px 4px",
-                        fontSize: 20,
-                        fontFamily: "inherit",
-                        outline: "none",
-                        width: "52px",
-                        textAlign: "center",
-                      },
-                    } as any)}
-                  </View>
-                  <Pressable
-                    onPress={() => toggleTargetPicker(block.id, false)}
-                    style={{ marginTop: 8 }}
-                  >
-                    <Text style={{ color: colors.accent, fontSize: 13 }}>
-                      Done
-                    </Text>
-                  </Pressable>
-                </View>
+                <WebTimePickerInline
+                  label="Target"
+                  hour={block.targetHour}
+                  minute={block.targetMinute}
+                  autoFocus
+                  onChange={(h, m) => updateTargetTime(block.id, h, m)}
+                  onDone={() => toggleTargetPicker(block.id, false)}
+                />
               ) : (
                 <Pressable
                   onPress={() => toggleTargetPicker(block.id, true)}
@@ -489,99 +505,13 @@ function TargetBlockInner({
               {/* Same design rationale as Target: keep the web editing UI visually
                   consistent with the rest of the countdown card. */}
               {Platform.OS === "web" && block.isDeductPickerVisible ? (
-                <View style={[styles.timeButton, { alignItems: "center" }]}>
-                  <Text
-                    style={{
-                      color: colors.muted,
-                      fontSize: 10,
-                      textTransform: "uppercase",
-                      letterSpacing: 1,
-                      marginBottom: 8,
-                    }}
-                  >
-                    Deduct
-                  </Text>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                    }}
-                  >
-                    {React.createElement("input", {
-                      type: "number",
-                      min: "0",
-                      max: "23",
-                      value: String(block.deductHour).padStart(2, "0"),
-                      onChange: (e: any) => {
-                        const h = Math.min(
-                          23,
-                          Math.max(0, parseInt(e.target.value, 10) || 0),
-                        );
-                        updateDeductTime(block.id, h, block.deductMinute);
-                      },
-                      onFocus: (e: any) => e.target.select(),
-                      style: {
-                        backgroundColor: colors.pickerBg,
-                        color: colors.pickerText,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        padding: "6px 4px",
-                        fontSize: 20,
-                        fontFamily: "inherit",
-                        outline: "none",
-                        width: "52px",
-                        textAlign: "center",
-                      },
-                    } as any)}
-                    {React.createElement(
-                      "span",
-                      {
-                        style: {
-                          color: colors.pickerText,
-                          fontSize: 20,
-                          fontWeight: "bold",
-                        },
-                      },
-                      ":",
-                    )}
-                    {React.createElement("input", {
-                      type: "number",
-                      min: "0",
-                      max: "59",
-                      value: String(block.deductMinute).padStart(2, "0"),
-                      onChange: (e: any) => {
-                        const m = Math.min(
-                          59,
-                          Math.max(0, parseInt(e.target.value, 10) || 0),
-                        );
-                        updateDeductTime(block.id, block.deductHour, m);
-                      },
-                      onFocus: (e: any) => e.target.select(),
-                      style: {
-                        backgroundColor: colors.pickerBg,
-                        color: colors.pickerText,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 8,
-                        padding: "6px 4px",
-                        fontSize: 20,
-                        fontFamily: "inherit",
-                        outline: "none",
-                        width: "52px",
-                        textAlign: "center",
-                      },
-                    } as any)}
-                  </View>
-                  <Pressable
-                    onPress={() => toggleDeductPicker(block.id, false)}
-                    style={{ marginTop: 8 }}
-                  >
-                    <Text style={{ color: colors.accent, fontSize: 13 }}>
-                      Done
-                    </Text>
-                  </Pressable>
-                </View>
+                <WebTimePickerInline
+                  label="Deduct"
+                  hour={block.deductHour}
+                  minute={block.deductMinute}
+                  onChange={(h, m) => updateDeductTime(block.id, h, m)}
+                  onDone={() => toggleDeductPicker(block.id, false)}
+                />
               ) : (
                 <Pressable
                   onPress={() => toggleDeductPicker(block.id, true)}
@@ -735,6 +665,7 @@ function TargetBlockInner({
   );
 }
 
+/** Memoized countdown card — re-renders only when its own props change. */
 const TargetBlock = React.memo(TargetBlockInner);
 export default TargetBlock;
 

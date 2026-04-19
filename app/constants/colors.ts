@@ -1,3 +1,4 @@
+/** Dark broadcast palette — high-contrast colors optimised for studio monitor readability. */
 export const colors = {
   background: "#1a1d23",
   surface: "#252830",

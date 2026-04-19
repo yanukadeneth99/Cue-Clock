@@ -2,6 +2,7 @@ import { colors } from "@/constants/colors";
 import React from "react";
 import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
+/** Props for {@link AndroidBackgroundHelpModal}. */
 interface AndroidBackgroundHelpModalProps {
   visible: boolean;
   onClose: () => void;

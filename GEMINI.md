@@ -1,3 +1,3 @@
 # Main
 
-Read ./CLAUDE.md
+Throughly Read [CLAUDE.md](./CLAUDE.md)

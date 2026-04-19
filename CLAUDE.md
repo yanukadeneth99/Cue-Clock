@@ -351,77 +351,7 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
   ./scripts/build-android-local.sh --release
 ```
 
----
-
-## Codebase Edit History (2026)
-
-### 2026-04-17: Dependency Security Updates & PR Cleanup
-
-- **Security:** Bumped Next.js `16.2.1 → 16.2.3` (XSS patch); added `protobufjs ^7.5.5` to `app/` (transitive Firebase vuln fix).
-- **PR #54:** Removed unused `zone1`/`zone2` props from `TargetBlock` (dead prop drilling; reduces `React.memo` comparison cost and eliminates false invalidation trap on zone changes).
-- **PR #55:** Added runtime validation of GitHub contributors API response in `website/src/app/page.tsx` — `unknown` type guard with `Array.isArray` + URL allowlist filter (`startsWith('https://github.com/')`) prevents XSS via API tampering.
-
-### 2026-04-14: Removal of Unused EAS Configuration
-
-- Deleted `app/eas.json` — build pipeline uses `expo prebuild` + Gradle directly; EAS cloud builds never invoked. CI/CD unchanged; `EAS_PROJECT_ID`/`EAS_OWNER` fallback to safe defaults per `app.config.js`.
-
-### 2026-04-05: TextInput Security Enhancement
-
-- Added `maxLength={50}` to `TargetBlock` `TextInput` to prevent crashes/exploits from extreme input lengths.
-
-### 2026-04-04: Open-Source Hardening & Zero-Dependency Local Development
-
-- **Security:** Removed hardcoded `projectId`/`owner` from `app.json`; now injected via `app.config.js` at build time from GitHub Secrets.
-- **Local Dev:** App runs with **zero env vars required** — all credentials optional with safe defaults (`EXPO_PUBLIC_CLARITY_KEY`, `ANDROID_KEYSTORE_*`, `EAS_*`, `google-services.json`).
-- **Docs:** Added `DEVELOPMENT.md` (zero-setup contributor guide) and `GITHUB_SECRETS_SETUP.md`; clarified `.env.example`.
-- **CI/CD:** Both workflows inject `EAS_PROJECT_ID`/`EAS_OWNER` from Secrets — no account identifiers in public repo.
-
-### 2026-04-03: Alert & Sync Bug Fixes (Mobile)
-
-- **Timer Desync:** Two separate `DateTime.now()` calls in the interval could differ by microseconds, causing zone1 vs zone2 to tick at visibly different times. Fix: capture one `DateTime.now()`, then `.setZone()` both clocks from the same millisecond.
-- **Duplicate Foreground Notifications:** Pre-scheduled native notification + in-app `sendAlert` fired at the same second. Fix: queue the scheduled notification ID in `pendingCancelRef` and drain the queue in the alert-processing `useEffect` before calling `sendAlert`.
-- **Background → Foreground Re-Alert:** JS `setInterval` pauses in background; when resuming, state still showed `alertMinutesBefore` set and fired again. Fix: `AppState.addEventListener('change')` silently marks alerts fired if their fire time has already passed (native already notified the user). Listener cleans up via `subscription.remove()`.
-- **Root cause:** The 2026-04-02 O(1) interval optimization exposed these pre-existing bugs by making the interval run reliably every second.
-
-### 2026-04-02: Security & Performance Patches
-
-- **CI/CD Injection Fix (`android-release.yml`):** Previously `${{ github.event.release.tag_name }}` was interpolated directly into inline bash/Node scripts — a malicious tag like `v1.0"; rm -rf /; echo "` could execute arbitrary code. Fix: pass values via the `env` block, access as `$VAR` (bash) / `process.env.VAR` (Node).
-- **Countdown Interval O(1):** Pre-computed `DateTime.now().setZone(...)` outside the `blocks.map` loop inside `setInterval`. Benchmark: **~27% speedup** (14879ms → 10811ms over 100 iterations × 1000 blocks). Also makes `setTargetBlocks` a pure updater.
-
-### 2026-04-01: Website Security & YASHURA Rebranding
-
-- **Reverse Tabnabbing fix:** Added `rel="noopener noreferrer"` to external `target="_blank"` anchors in `page.tsx`.
-- **JSON-LD XSS fix:** Appended `.replace(/</g, '\\u003c')` to `JSON.stringify(jsonLd)` in `layout.tsx` to prevent premature `<script>` closure.
-- **Rebrand:** Footer → YASHURA (yashura.io) with X/LinkedIn icons; web CTA → "Start Now" (live.cueclock.app); removed desktop "Get Started"; added Privacy Policy footer link.
-- **SEO:** JSON-LD WebApplication schema, logo_cropped.png OG/Twitter image, privacy page in sitemap; fixed Material Symbols font loading (preconnect + `display=block`).
-- **Lint/fonts:** Fixed 9 ESLint errors (unescaped entities, `<a>` → `<Link>`); added `display: "swap"` to Space Grotesk & Inter.
-
-### 2026-03-31: GDPR Analytics & Dual CI/CD Pipeline
-
-- Non-dismissable first-launch analytics consent modal (three-state: `null` / `true` / `false`).
-- Privacy policy at `/privacy` with GDPR/CCPA compliance.
-- Dual-track CI/CD: internal testing (master push) + beta release (GitHub Release).
-- Firebase config moved to Secrets; Gradle caching cut build time 50 → 10–15 min.
-
-### 2026-03-27: Web UX & Clarity Analytics
-
-- Delete confirmation modal (`ConfirmModal`) added to `TargetBlock`.
-- Web Notifications API with `window.alert` fallback; "Notifications blocked" clickable header tag.
-- Circular "+Add Target" button in web header; Microsoft Clarity integrated (project ID `w2c5ecuzj5`).
-
-### 2026-03-11: Performance, Notifications & Timezones
-
-- `React.memo` on `TargetBlock`; reference-stable interval (15+ blocks lag-free).
-- `expo-notifications` with `Alert.alert` fallback; "Reset All" confirmation.
-- Timezones expanded 8 → 18 broadcast zones.
-
-### 2026-03-10: Fullscreen Layout & Stability
-
-- Dynamic `countdownFontSize` (shrinks as block count increases).
-- Single-root `View` pattern fixes native crashes on fullscreen toggles.
-- Migrated to inline styles (Android reliability); created `HelpModal.tsx` for 11 UI controls.
-
----
+--
 
 ## Codebase Flavor & Conventions
 

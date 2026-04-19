@@ -1,5 +1,4 @@
-// All the timezones that will be listed in the drop down
-
+/** 18 broadcast-relevant IANA timezone identifiers shown in the zone picker dropdowns. */
 export const timezones = [
   "UTC",
   "America/Los_Angeles",

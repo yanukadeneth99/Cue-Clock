@@ -2,6 +2,7 @@ import { colors } from "@/constants/colors";
 import React from "react";
 import { Linking, Modal, Platform, Pressable, Text, View } from "react-native";
 
+/** Props for {@link AnalyticsConsentModal}. */
 interface AnalyticsConsentModalProps {
   visible: boolean;
   onAccept: () => void;

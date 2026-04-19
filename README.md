@@ -23,11 +23,13 @@ In high-pressure broadcast environments, every second counts. **Cue Clock** is b
 This is a monolithic codebase containing two main projects:
 
 ### 1. The Mobile App (`app/`)
+
 The core React Native (Expo) application. It handles the clock logic, state persistence, and native notifications.
 
 **[Get Started with the App](./app/README.md)**
 
 ### 2. The Landing Page (`website/`)
+
 A modern Next.js 15 landing page showcasing Cue Clock’s features and design.
 
 **[Get Started with the Website](./website/README.md)**
@@ -52,10 +54,10 @@ cd ../website && npm install && npm run dev
 
 ## 🛠️ Tech Stack
 
-| Project | Tech Stack |
-|---|---|
+| Project        | Tech Stack                                                      |
+| -------------- | --------------------------------------------------------------- |
 | **Mobile App** | React Native, Expo, Luxon, TypeScript, Reanimated, AsyncStorage |
-| **Website** | Next.js 15, Tailwind CSS 4, TypeScript |
+| **Website**    | Next.js 15, Tailwind CSS 4, TypeScript                          |
 
 ---
 

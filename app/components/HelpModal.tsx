@@ -3,6 +3,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+/** Props for {@link HelpModal}. */
 interface HelpModalProps {
   visible: boolean;
   onClose: () => void;
@@ -15,6 +16,7 @@ interface HelpModalProps {
   notificationRuntimeNote?: string | null;
 }
 
+/** Static help entries common to all platforms. The last item (About) is always appended after the platform-specific notification entry. */
 const baseHelpItems: { label: string; description: string }[] = [
   {
     label: "Zone 1 / Zone 2",
@@ -91,10 +93,18 @@ const nativeNotificationHelpItem = {
 };
 
 /**
- * Scrollable help overlay explaining all app controls.
+ * Scrollable help overlay explaining all app controls, notification
+ * troubleshooting, analytics opt-out, and developer links.
  *
  * @param visible - Whether the modal is shown.
  * @param onClose - Callback to dismiss the modal.
+ * @param analyticsEnabled - Current analytics consent state; null means undecided.
+ * @param onRequestOptOut - Called when the user taps "Turn Off Analytics".
+ * @param onOpenNotificationSettings - Opens OS notification settings (native only).
+ * @param onOpenAppSettings - Opens OS app settings (native only).
+ * @param onOpenBatterySettings - Opens battery settings on Android (optional).
+ * @param onOpenExactAlarmSettings - Opens alarms & reminders settings on Android 12+ (optional).
+ * @param notificationRuntimeNote - Warning text to display above notification settings buttons.
  */
 export default function HelpModal({
   visible,

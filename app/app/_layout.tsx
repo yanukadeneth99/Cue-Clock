@@ -1,3 +1,4 @@
+import { applyAnalyticsCollection } from "@/lib/analytics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
 import Head from "expo-router/head";
@@ -23,32 +24,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS !== "ios" && Platform.OS !== "android") return;
     (async () => {
-      try {
-        const stored = await AsyncStorage.getItem("analyticsEnabled");
-        if (stored === null) return; // consent not yet given — HomeScreen will show the consent modal
-
-        const enabled = stored === "true";
-        const { getApps } = await import("@react-native-firebase/app");
-        const { default: analytics } = await import("@react-native-firebase/analytics");
-        const { default: crashlytics } = await import("@react-native-firebase/crashlytics");
-
-        // In React Native, Firebase auto-initializes from google-services.json at native module load.
-        // If no apps exist, Firebase isn't available, so skip analytics setup.
-        if (getApps().length === 0) return;
-        await analytics().setAnalyticsCollectionEnabled(enabled);
-        // Crashlytics collection mirrors the analytics consent choice
-        await crashlytics().setCrashlyticsCollectionEnabled(enabled);
-
-        if (enabled) {
-          const clarityKey = process.env.EXPO_PUBLIC_CLARITY_KEY;
-          if (clarityKey) {
-            const Clarity = await import("@microsoft/react-native-clarity");
-            Clarity.initialize(clarityKey, { logLevel: Clarity.LogLevel.None });
-          }
-        }
-      } catch (e) {
-        if (__DEV__) console.warn("[Analytics] _layout init failed:", e);
-      }
+      const stored = await AsyncStorage.getItem("analyticsEnabled").catch(() => null);
+      if (stored === null) return; // consent not yet given — HomeScreen will show the consent modal
+      await applyAnalyticsCollection(stored === "true");
     })();
   }, []);
 

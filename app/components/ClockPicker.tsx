@@ -5,14 +5,27 @@ import { DateTime } from "luxon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, Text, View } from "react-native";
 
+/** Props for {@link ClockPicker}. */
 interface Props {
+  /** IANA timezone string for the first clock (Zone 1). */
   zone1: string;
+  /** IANA timezone string for the second clock (Zone 2). */
   zone2: string;
+  /** Callback to update Zone 1 timezone. */
   setZone1: (zone: string) => void;
+  /** Callback to update Zone 2 timezone. */
   setZone2: (zone: string) => void;
+  /** When true, renders a compact fullscreen-mode layout without pickers. */
   fullScreen?: boolean;
 }
 
+/**
+ * Dual live-clock component displaying two configurable timezone clocks.
+ * In normal mode each clock includes a timezone picker. In fullscreen mode
+ * pickers are hidden and the time is rendered in a larger display font.
+ *
+ * @param props - See {@link Props}.
+ */
 export default function ClockPicker({
   zone1,
   zone2,

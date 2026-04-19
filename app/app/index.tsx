@@ -6,6 +6,7 @@ import ConfirmModal from "@/components/ConfirmModal";
 import HelpModal from "@/components/HelpModal";
 import TargetBlock, { TargetBlockType } from "@/components/TargetBlock";
 import { colors } from "@/constants/colors";
+import { applyAnalyticsCollection } from "@/lib/analytics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { DateTime } from "luxon";
@@ -144,6 +145,13 @@ async function cancelBlockNotification(notifId: string | null | undefined): Prom
   } catch {}
 }
 
+/**
+ * Build a new countdown block with sensible defaults.
+ * The target time defaults to the current wall-clock time so the card is
+ * immediately usable without requiring the user to set a time first.
+ *
+ * @param id - Unique numeric identifier for the block.
+ */
 function createDefaultBlock(id: number): TargetBlockType {
   return {
     id,
@@ -791,27 +799,7 @@ export default function HomeScreen() {
   const applyAnalyticsChoice = useCallback(async (enabled: boolean) => {
     setAnalyticsEnabled(enabled);
     await AsyncStorage.setItem("analyticsEnabled", String(enabled)).catch(() => {});
-    if (Platform.OS === "ios" || Platform.OS === "android") {
-      try {
-        const { getApps } = await import("@react-native-firebase/app");
-        const { default: analytics } = await import("@react-native-firebase/analytics");
-        const { default: crashlytics } = await import("@react-native-firebase/crashlytics");
-        // In React Native, Firebase auto-initializes from google-services.json at native module load.
-        // If no apps exist, Firebase isn't available (missing google-services.json), so skip analytics.
-        if (getApps().length === 0) return;
-        await analytics().setAnalyticsCollectionEnabled(enabled);
-        await crashlytics().setCrashlyticsCollectionEnabled(enabled);
-        if (enabled) {
-          const clarityKey = process.env.EXPO_PUBLIC_CLARITY_KEY;
-          if (clarityKey) {
-            const Clarity = await import("@microsoft/react-native-clarity");
-            Clarity.initialize(clarityKey, { logLevel: Clarity.LogLevel.None });
-          }
-        }
-      } catch (e) {
-        if (__DEV__) console.warn("[Analytics] applyAnalyticsChoice failed:", e);
-      }
-    }
+    await applyAnalyticsCollection(enabled);
   }, []);
 
   const handleAnalyticsConsent = useCallback(async (accepted: boolean) => {

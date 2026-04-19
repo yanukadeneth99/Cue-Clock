@@ -2,6 +2,7 @@ import { colors } from "@/constants/colors";
 import React, { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 
+/** Props for {@link AlertModal}. */
 interface AlertModalProps {
   visible: boolean;
   currentAlertMinutes: number | null;

@@ -2,6 +2,7 @@ import { colors } from "@/constants/colors";
 import React from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 
+/** Props for {@link AnalyticsOptOutModal}. */
 interface AnalyticsOptOutModalProps {
   visible: boolean;
   onConfirmOptOut: () => void;

@@ -2,12 +2,19 @@ import { colors } from "@/constants/colors";
 import React from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 
+/** Props for {@link ConfirmModal}. */
 interface ConfirmModalProps {
+  /** Whether the modal is shown. */
   visible: boolean;
+  /** Dialog heading text. */
   title: string;
+  /** Body text describing the action to confirm. */
   message: string;
+  /** Label for the confirm button. Defaults to "Confirm". */
   confirmLabel?: string;
+  /** Called when the user confirms the action. */
   onConfirm: () => void;
+  /** Called when the user cancels or dismisses the modal. */
   onCancel: () => void;
 }
 
