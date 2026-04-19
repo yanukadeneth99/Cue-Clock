@@ -28,11 +28,13 @@ export default function RootLayout() {
         if (stored === null) return; // consent not yet given — HomeScreen will show the consent modal
 
         const enabled = stored === "true";
-        const { initializeApp, getApps } = await import("@react-native-firebase/app");
+        const { getApps } = await import("@react-native-firebase/app");
         const { default: analytics } = await import("@react-native-firebase/analytics");
         const { default: crashlytics } = await import("@react-native-firebase/crashlytics");
 
-        if (getApps().length === 0) initializeApp();
+        // In React Native, Firebase auto-initializes from google-services.json at native module load.
+        // If no apps exist, Firebase isn't available, so skip analytics setup.
+        if (getApps().length === 0) return;
         await analytics().setAnalyticsCollectionEnabled(enabled);
         // Crashlytics collection mirrors the analytics consent choice
         await crashlytics().setCrashlyticsCollectionEnabled(enabled);

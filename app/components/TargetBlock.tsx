@@ -4,6 +4,7 @@ import { colors } from "@/constants/colors";
 import { Picker } from "@react-native-picker/picker";
 import React from "react";
 import {
+  Alert,
   Platform,
   Pressable,
   StyleSheet,
@@ -17,10 +18,10 @@ import {
 const DateTimePickerModal:
   | typeof import("react-native-modal-datetime-picker").default
   | null =
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Platform.OS !== "web"
-    ? require("react-native-modal-datetime-picker").default
-    : null;
+  Platform.OS === "web"
+    ? null
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("react-native-modal-datetime-picker").default;
 
 export interface TargetBlockType {
   id: number;
@@ -150,7 +151,13 @@ function TargetBlockInner({
                 {pad(block.targetHour)}:{pad(block.targetMinute)}
               </Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", flexShrink: 0 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                flexShrink: 0,
+              }}
+            >
               {block.alertMinutesBefore !== null && (
                 <View
                   style={{ position: "relative" }}
@@ -198,7 +205,7 @@ function TargetBlockInner({
                         }}
                       >
                         Alert: {block.alertMinutesBefore} minute
-                        {block.alertMinutesBefore !== 1 ? "s" : ""} before
+                        {block.alertMinutesBefore === 1 ? "" : "s"} before
                       </Text>
                     </View>
                   )}
@@ -283,7 +290,7 @@ function TargetBlockInner({
                   textAlign: "center",
                 }}
               >
-                {block.alertMinutesBefore !== null ? "\u{1F514}" : "\u{1F515}"}
+                {block.alertMinutesBefore === null ? "\u{1F515}" : "\u{1F514}"}
               </Text>
             </Pressable>
             <Pressable

@@ -77,7 +77,7 @@ export default function AlertModal({
               Alert Active
             </Text>
             <Text style={{ color: colors.countdown, fontSize: 16, textAlign: "center", marginBottom: 24 }}>
-              Alert set for {currentAlertMinutes} minute{currentAlertMinutes !== 1 ? "s" : ""} before target time
+              Alert set for {currentAlertMinutes} minute{currentAlertMinutes === 1 ? "" : "s"} before target time
             </Text>
             <View style={{ flexDirection: "row", gap: 12 }}>
               <Pressable
@@ -180,7 +180,7 @@ export default function AlertModal({
                         fontSize: 15,
                       }}
                     >
-                      Before {minutes} minute{minutes !== 1 ? "s" : ""}
+                      Before {minutes} minute{minutes === 1 ? "" : "s"}
                     </Text>
                   </Pressable>
                 )
@@ -211,20 +211,20 @@ export default function AlertModal({
                 style={{
                   flex: 1,
                   backgroundColor:
-                    selectedMinutes !== null ? colors.accent : colors.background,
+                    selectedMinutes === null ? colors.background : colors.accent,
                   borderColor:
-                    selectedMinutes !== null ? colors.accent : colors.border,
+                    selectedMinutes === null ? colors.border : colors.accent,
                   borderWidth: 1,
                   borderRadius: 12,
                   paddingVertical: 12,
                   alignItems: "center",
-                  opacity: selectedMinutes !== null ? 1 : 0.5,
+                  opacity: selectedMinutes === null ? 0.5 : 1,
                 }}
                 disabled={selectedMinutes === null}
               >
                 <Text
                   style={{
-                    color: selectedMinutes !== null ? "#ffffff" : colors.muted,
+                    color: selectedMinutes === null ? colors.muted : "#ffffff",
                     fontSize: 14,
                     fontWeight: "600",
                   }}

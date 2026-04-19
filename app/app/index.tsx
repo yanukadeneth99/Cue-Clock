@@ -120,7 +120,7 @@ async function scheduleBlockNotification(block: TargetBlockType, zone: string): 
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: "Countdown Alert",
-        body: `"${block.name}" has reached ${block.alertMinutesBefore} minute${block.alertMinutesBefore !== 1 ? "s" : ""} before target!`,
+        body: `"${block.name}" has reached ${block.alertMinutesBefore} minute${block.alertMinutesBefore === 1 ? "" : "s"} before target!`,
         sound: true,
         ...(Platform.OS === "android" ? { channelId: "default" } : {}),
       },
@@ -333,8 +333,8 @@ export default function HomeScreen() {
         // Step 2: on Android 12+ (API 31+), also check the SCHEDULE_EXACT_ALARM
         // permission. Without it, date-triggered notifications fire late or not at all.
         // canScheduleExactNotificationsAsync() is available in expo-notifications SDK 51+.
-        if (Platform.OS === "android" && typeof Notifications!.canScheduleExactNotificationsAsync === "function") {
-          const canExact = await Notifications!.canScheduleExactNotificationsAsync().catch(() => true);
+        if (Platform.OS === "android" && typeof (Notifications as any).canScheduleExactNotificationsAsync === "function") {
+          const canExact = await (Notifications as any).canScheduleExactNotificationsAsync().catch(() => true);
           if (!canExact) {
             Alert.alert(
               "Allow Exact Alarms",
@@ -600,7 +600,7 @@ export default function HomeScreen() {
       alerts.forEach((a) => {
         sendAlert(
           "Countdown Alert",
-          `"${a.name}" has reached ${a.minutes} minute${a.minutes !== 1 ? "s" : ""} before target!`
+          `"${a.name}" has reached ${a.minutes} minute${a.minutes === 1 ? "" : "s"} before target!`
         );
       });
     }
@@ -793,10 +793,12 @@ export default function HomeScreen() {
     await AsyncStorage.setItem("analyticsEnabled", String(enabled)).catch(() => {});
     if (Platform.OS === "ios" || Platform.OS === "android") {
       try {
-        const { initializeApp, getApps } = await import("@react-native-firebase/app");
+        const { getApps } = await import("@react-native-firebase/app");
         const { default: analytics } = await import("@react-native-firebase/analytics");
         const { default: crashlytics } = await import("@react-native-firebase/crashlytics");
-        if (getApps().length === 0) initializeApp();
+        // In React Native, Firebase auto-initializes from google-services.json at native module load.
+        // If no apps exist, Firebase isn't available (missing google-services.json), so skip analytics.
+        if (getApps().length === 0) return;
         await analytics().setAnalyticsCollectionEnabled(enabled);
         await crashlytics().setCrashlyticsCollectionEnabled(enabled);
         if (enabled) {
