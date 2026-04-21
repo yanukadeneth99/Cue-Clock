@@ -487,14 +487,23 @@ export default function HomeScreen() {
     loadData();
   }, []);
 
-  // Save changes (batched); analyticsEnabled is saved explicitly in its handlers
+  // Save changes (batched); analyticsEnabled is saved explicitly in its handlers.
+  // We strip `countdown` before persisting — it's derived state recomputed every
+  // second from targetHour/targetMinute/deduct/zone, so writing it on every tick
+  // would churn the disk unnecessarily. Stripping it also prevents the write from
+  // firing at all on pure countdown ticks (the persisted slice is reference-equal).
+  const persistPayloadRef = useRef<string>("");
   useEffect(() => {
     if (!isLoadedRef.current) return;
+    const slim = targetBlocks.map(({ countdown, isTargetPickerVisible, isDeductPickerVisible, isAlertModalVisible, ...rest }) => rest);
+    const serialized = JSON.stringify(slim);
+    if (serialized === persistPayloadRef.current) return;
+    persistPayloadRef.current = serialized;
     AsyncStorage.multiSet([
       ["zone1", zone1],
       ["zone2", zone2],
-      ["targetBlocks", JSON.stringify(targetBlocks)],
-    ]);
+      ["targetBlocks", serialized],
+    ]).catch(() => {});
   }, [zone1, zone2, targetBlocks]);
 
   // Countdown updater — returns same array reference if nothing changed
@@ -635,41 +644,51 @@ export default function HomeScreen() {
     );
   }, []);
 
-  const handleTargetConfirm = useCallback(async (id: number, date: Date) => {
+  // Reschedule a block's native notification in the background without blocking
+  // the UI. The state has already been updated optimistically; this just keeps
+  // the scheduled notification in sync. Errors are swallowed because the in-app
+  // alert loop remains the source of truth while the app is foregrounded.
+  const rescheduleInBackground = useCallback((id: number, patch: Partial<TargetBlockType>) => {
     const block = targetBlocksRef.current.find((b) => b.id === id);
-    let notifId = block?.notificationId ?? null;
-    if (block && block.alertMinutesBefore !== null) {
-      if (notifId) await cancelBlockNotification(notifId);
-      const tempBlock = { ...block, targetHour: date.getHours(), targetMinute: date.getMinutes() };
-      const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
-      notifId = await scheduleBlockNotification(tempBlock, zone);
-    }
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, targetHour: date.getHours(), targetMinute: date.getMinutes(), isTargetPickerVisible: false, alertFired: false, notificationId: notifId }
-          : b
-      )
-    );
+    if (!block || block.alertMinutesBefore === null) return;
+    const tempBlock = { ...block, ...patch };
+    const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
+    (async () => {
+      try {
+        if (block.notificationId) await cancelBlockNotification(block.notificationId);
+        const notifId = await scheduleBlockNotification(tempBlock, zone);
+        setTargetBlocks((blocks) =>
+          blocks.map((b) => (b.id === id ? { ...b, notificationId: notifId } : b))
+        );
+      } catch {}
+    })();
   }, [zone1, zone2]);
 
-  const handleDeductConfirm = useCallback(async (id: number, date: Date) => {
-    const block = targetBlocksRef.current.find((b) => b.id === id);
-    let notifId = block?.notificationId ?? null;
-    if (block && block.alertMinutesBefore !== null) {
-      if (notifId) await cancelBlockNotification(notifId);
-      const tempBlock = { ...block, deductHour: date.getHours(), deductMinute: date.getMinutes() };
-      const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
-      notifId = await scheduleBlockNotification(tempBlock, zone);
-    }
+  const handleTargetConfirm = useCallback((id: number, date: Date) => {
+    const targetHour = date.getHours();
+    const targetMinute = date.getMinutes();
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
-          ? { ...b, deductHour: date.getHours(), deductMinute: date.getMinutes(), isDeductPickerVisible: false, alertFired: false, notificationId: notifId }
+          ? { ...b, targetHour, targetMinute, isTargetPickerVisible: false, alertFired: false }
           : b
       )
     );
-  }, [zone1, zone2]);
+    rescheduleInBackground(id, { targetHour, targetMinute });
+  }, [rescheduleInBackground]);
+
+  const handleDeductConfirm = useCallback((id: number, date: Date) => {
+    const deductHour = date.getHours();
+    const deductMinute = date.getMinutes();
+    setTargetBlocks((blocks) =>
+      blocks.map((b) =>
+        b.id === id
+          ? { ...b, deductHour, deductMinute, isDeductPickerVisible: false, alertFired: false }
+          : b
+      )
+    );
+    rescheduleInBackground(id, { deductHour, deductMinute });
+  }, [rescheduleInBackground]);
 
   const toggleAlertModal = useCallback((id: number, show: boolean) => {
     setTargetBlocks((blocks) =>
@@ -679,26 +698,34 @@ export default function HomeScreen() {
     );
   }, []);
 
-  const handleAlertConfirm = useCallback(async (id: number, minutes: number) => {
-    const block = targetBlocksRef.current.find((b) => b.id === id);
-    // Cancel any previously scheduled notification for this block
-    if (block?.notificationId) await cancelBlockNotification(block.notificationId);
-    // Schedule a new background notification
-    const tempBlock = { ...block!, alertMinutesBefore: minutes, alertFired: false };
-    const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
-    const notifId = await scheduleBlockNotification(tempBlock, zone);
+  const handleAlertConfirm = useCallback((id: number, minutes: number) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
-          ? { ...b, alertMinutesBefore: minutes, isAlertModalVisible: false, alertFired: false, notificationId: notifId }
+          ? { ...b, alertMinutesBefore: minutes, isAlertModalVisible: false, alertFired: false }
           : b
       )
     );
+    // Schedule the native notification in the background. Use a temp block with
+    // the new alertMinutesBefore so scheduleBlockNotification computes the
+    // correct fire time even before React has flushed the state update.
+    const block = targetBlocksRef.current.find((b) => b.id === id);
+    if (!block) return;
+    const tempBlock = { ...block, alertMinutesBefore: minutes, alertFired: false };
+    const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
+    (async () => {
+      try {
+        if (block.notificationId) await cancelBlockNotification(block.notificationId);
+        const notifId = await scheduleBlockNotification(tempBlock, zone);
+        setTargetBlocks((blocks) =>
+          blocks.map((b) => (b.id === id ? { ...b, notificationId: notifId } : b))
+        );
+      } catch {}
+    })();
   }, [zone1, zone2]);
 
-  const handleAlertDelete = useCallback(async (id: number) => {
+  const handleAlertDelete = useCallback((id: number) => {
     const block = targetBlocksRef.current.find((b) => b.id === id);
-    if (block?.notificationId) await cancelBlockNotification(block.notificationId);
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
@@ -706,39 +733,28 @@ export default function HomeScreen() {
           : b
       )
     );
+    if (block?.notificationId) {
+      cancelBlockNotification(block.notificationId).catch(() => {});
+    }
   }, []);
 
-  const updateTargetTime = useCallback(async (id: number, hour: number, minute: number) => {
-    const block = targetBlocksRef.current.find((b) => b.id === id);
-    let notifId = block?.notificationId ?? null;
-    if (block && block.alertMinutesBefore !== null) {
-      if (notifId) await cancelBlockNotification(notifId);
-      const tempBlock = { ...block, targetHour: hour, targetMinute: minute };
-      const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
-      notifId = await scheduleBlockNotification(tempBlock, zone);
-    }
+  const updateTargetTime = useCallback((id: number, hour: number, minute: number) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
-        b.id === id ? { ...b, targetHour: hour, targetMinute: minute, alertFired: false, notificationId: notifId } : b
+        b.id === id ? { ...b, targetHour: hour, targetMinute: minute, alertFired: false } : b
       )
     );
-  }, [zone1, zone2]);
+    rescheduleInBackground(id, { targetHour: hour, targetMinute: minute });
+  }, [rescheduleInBackground]);
 
-  const updateDeductTime = useCallback(async (id: number, hour: number, minute: number) => {
-    const block = targetBlocksRef.current.find((b) => b.id === id);
-    let notifId = block?.notificationId ?? null;
-    if (block && block.alertMinutesBefore !== null) {
-      if (notifId) await cancelBlockNotification(notifId);
-      const tempBlock = { ...block, deductHour: hour, deductMinute: minute };
-      const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
-      notifId = await scheduleBlockNotification(tempBlock, zone);
-    }
+  const updateDeductTime = useCallback((id: number, hour: number, minute: number) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
-        b.id === id ? { ...b, deductHour: hour, deductMinute: minute, alertFired: false, notificationId: notifId } : b
+        b.id === id ? { ...b, deductHour: hour, deductMinute: minute, alertFired: false } : b
       )
     );
-  }, [zone1, zone2]);
+    rescheduleInBackground(id, { deductHour: hour, deductMinute: minute });
+  }, [rescheduleInBackground]);
 
   const addTargetBlock = useCallback(() => {
     const newId = nextIdRef.current++;
@@ -757,10 +773,12 @@ export default function HomeScreen() {
     });
   }, []);
 
-  const removeBlock = useCallback(async (id: number) => {
+  const removeBlock = useCallback((id: number) => {
     const block = targetBlocksRef.current.find((b) => b.id === id);
-    if (block?.notificationId) await cancelBlockNotification(block.notificationId);
     setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id));
+    if (block?.notificationId) {
+      cancelBlockNotification(block.notificationId).catch(() => {});
+    }
   }, []);
 
   const requestNotifPermission = useCallback(async () => {
