@@ -16,9 +16,23 @@ if (typeof window !== 'undefined') {
  */
 export default function Home() {
   const container = useRef<HTMLDivElement>(null);
-  const [selectedPlatform, setSelectedPlatform] = useState<'web' | 'android' | 'ios'>('ios');
+  const [selectedPlatform, setSelectedPlatform] = useState<'web' | 'android' | 'ios'>(() => {
+    if (typeof window === 'undefined') return 'ios';
+    const ua = navigator.userAgent;
+    if (/android/i.test(ua)) return 'android';
+    if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+    return 'web';
+  });
   const [contributors, setContributors] = useState<{ id: number; login: string; avatar_url: string; html_url: string; contributions: number }[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [repoStats, setRepoStats] = useState<{
+    stars: number;
+    forks: number;
+    openIssues: number;
+    lastCommit: string | null;
+    lastWorkflowStatus: string | null;
+    lastWorkflowDuration: number | null;
+  } | null>(null);
 
   useEffect(() => {
     const fetchContributors = async () => {
@@ -45,7 +59,54 @@ export default function Home() {
         // Non-critical: contributors section degrades gracefully on fetch failure
       }
     };
+
+    const fetchRepoStats = async () => {
+      try {
+        const [repoRes, commitsRes, runsRes] = await Promise.all([
+          fetch('https://api.github.com/repos/yanukadeneth99/Cue-Clock'),
+          fetch('https://api.github.com/repos/yanukadeneth99/Cue-Clock/commits/master'),
+          fetch('https://api.github.com/repos/yanukadeneth99/Cue-Clock/actions/runs?per_page=1&status=completed'),
+        ]);
+
+        const repo = repoRes.ok ? (await repoRes.json() as Record<string, unknown>) : null;
+        const commit = commitsRes.ok ? (await commitsRes.json() as Record<string, unknown>) : null;
+        const runs = runsRes.ok ? (await runsRes.json() as Record<string, unknown>) : null;
+
+        let lastCommit: string | null = null;
+        if (commit?.commit && typeof commit.commit === 'object') {
+          const c = commit.commit as Record<string, unknown>;
+          if (c.committer && typeof c.committer === 'object') {
+            const committer = c.committer as Record<string, unknown>;
+            if (typeof committer.date === 'string') lastCommit = committer.date;
+          }
+        }
+
+        let lastWorkflowStatus: string | null = null;
+        let lastWorkflowDuration: number | null = null;
+        if (runs?.workflow_runs && Array.isArray(runs.workflow_runs) && runs.workflow_runs.length > 0) {
+          const run = runs.workflow_runs[0] as Record<string, unknown>;
+          if (typeof run.conclusion === 'string') lastWorkflowStatus = run.conclusion;
+          if (typeof run.created_at === 'string' && typeof run.updated_at === 'string') {
+            const duration = Math.round((new Date(run.updated_at as string).getTime() - new Date(run.created_at as string).getTime()) / 1000);
+            lastWorkflowDuration = duration;
+          }
+        }
+
+        setRepoStats({
+          stars: typeof repo?.stargazers_count === 'number' ? repo.stargazers_count : 0,
+          forks: typeof repo?.forks_count === 'number' ? repo.forks_count : 0,
+          openIssues: typeof repo?.open_issues_count === 'number' ? repo.open_issues_count : 0,
+          lastCommit,
+          lastWorkflowStatus,
+          lastWorkflowDuration,
+        });
+      } catch {
+        // Non-critical: stats degrade gracefully
+      }
+    };
+
     fetchContributors();
+    fetchRepoStats();
   }, []);
 
   const platforms = {
@@ -422,6 +483,7 @@ export default function Home() {
           <div className="max-w-screen-xl mx-auto">
             <div className="bg-surface-container rounded-sm overflow-hidden grid md:grid-cols-2 items-center">
               <div className="story-text p-8 md:p-20 border-l-4 border-primary order-2 md:order-1">
+                <h2 className="font-headline text-3xl md:text-4xl font-bold tracking-tight text-on-surface mb-6 md:mb-8">Why free?</h2>
                 <div className="space-y-4 md:space-y-6">
                   <p className="text-on-surface-variant text-base md:text-lg leading-relaxed font-body">
                     Cue Clock started because I simply needed a reliable, straightforward, simple timing tool during live broadcast production. Everything else I used felt overly complicated and costs a fortune.
@@ -512,12 +574,75 @@ export default function Home() {
                   <svg className="w-10 h-10 fill-on-surface" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
                   <h2 className="font-headline text-4xl font-bold tracking-tight text-on-surface">Completely Open-Source</h2>
                 </div>
-                <p className="text-on-surface-variant text-lg leading-relaxed font-body mb-8">
-                  Cue Clock is fully open-source. I believe that critical broadcast tools should be transparent, community-driven, and accessible to everyone. You can audit the code, suggest features, or contribute directly on GitHub.
+                <p className="text-on-surface-variant text-lg leading-relaxed font-body mb-6">
+                  Every line of Cue Clock is public. No black boxes, no hidden telemetry beyond what you explicitly consent to. Fork it, audit it, self-host it. Broadcast infrastructure should be something the community owns, not rents.
                 </p>
-                <a 
-                  href="https://github.com/yanukadeneth99/Cue-Clock" 
-                  target="_blank" 
+
+                {/* Repo Stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+                  {repoStats ? (
+                    <>
+                      <div className="bg-surface-container-high rounded-sm p-4 border border-outline-variant/10">
+                        <div className="font-mono-data text-2xl font-bold text-primary mb-1">{repoStats.stars}</div>
+                        <div className="font-label text-[0.6rem] uppercase tracking-widest text-on-surface-variant flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">star</span> Stars
+                        </div>
+                      </div>
+                      <div className="bg-surface-container-high rounded-sm p-4 border border-outline-variant/10">
+                        <div className="font-mono-data text-2xl font-bold text-secondary mb-1">{repoStats.forks}</div>
+                        <div className="font-label text-[0.6rem] uppercase tracking-widest text-on-surface-variant flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">fork_right</span> Forks
+                        </div>
+                      </div>
+                      <div className="bg-surface-container-high rounded-sm p-4 border border-outline-variant/10">
+                        <div className="font-mono-data text-2xl font-bold text-tertiary mb-1">{repoStats.openIssues}</div>
+                        <div className="font-label text-[0.6rem] uppercase tracking-widest text-on-surface-variant flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">bug_report</span> Open Issues
+                        </div>
+                      </div>
+                      {repoStats.lastCommit && (
+                        <div className="bg-surface-container-high rounded-sm p-4 border border-outline-variant/10 col-span-2 sm:col-span-1">
+                          <div className="font-mono-data text-sm font-bold text-on-surface mb-1 truncate">
+                            {new Date(repoStats.lastCommit).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                          <div className="font-label text-[0.6rem] uppercase tracking-widest text-on-surface-variant flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">commit</span> Last Commit
+                          </div>
+                        </div>
+                      )}
+                      {repoStats.lastWorkflowStatus && (
+                        <div className="bg-surface-container-high rounded-sm p-4 border border-outline-variant/10">
+                          <div className={`font-mono-data text-sm font-bold mb-1 capitalize ${repoStats.lastWorkflowStatus === 'success' ? 'text-secondary' : repoStats.lastWorkflowStatus === 'failure' ? 'text-error' : 'text-tertiary'}`}>
+                            {repoStats.lastWorkflowStatus}
+                          </div>
+                          <div className="font-label text-[0.6rem] uppercase tracking-widest text-on-surface-variant flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">play_circle</span> Last CI Run
+                          </div>
+                        </div>
+                      )}
+                      {repoStats.lastWorkflowDuration !== null && (
+                        <div className="bg-surface-container-high rounded-sm p-4 border border-outline-variant/10">
+                          <div className="font-mono-data text-sm font-bold text-on-surface mb-1">
+                            {repoStats.lastWorkflowDuration >= 60
+                              ? `${Math.floor(repoStats.lastWorkflowDuration / 60)}m ${repoStats.lastWorkflowDuration % 60}s`
+                              : `${repoStats.lastWorkflowDuration}s`}
+                          </div>
+                          <div className="font-label text-[0.6rem] uppercase tracking-widest text-on-surface-variant flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">timer</span> Build Time
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="bg-surface-container-high rounded-sm p-4 border border-outline-variant/10 animate-pulse h-16"></div>
+                    ))
+                  )}
+                </div>
+
+                <a
+                  href="https://github.com/yanukadeneth99/Cue-Clock"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-primary font-label font-bold uppercase tracking-widest text-[0.6875rem] hover:underline"
                 >

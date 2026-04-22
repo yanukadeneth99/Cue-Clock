@@ -1,0 +1,52 @@
+name: Feature request
+description: Suggest a new feature or improvement.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Cue Clock is built for broadcast professionals, so features that serve that audience are prioritised.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Which part of the project?
+      options:
+        - Mobile app (app/)
+        - Website (website/)
+        - CI / build pipeline
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the use case — ideally a concrete broadcast/studio scenario.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should the feature do? UI sketches or flow descriptions welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+    validations:
+      required: false
