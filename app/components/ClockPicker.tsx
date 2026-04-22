@@ -109,7 +109,7 @@ export default function ClockPicker({
             ))}
           </Picker>
         </View>
-        <Text style={{ color: colors.zone1, fontSize: timeSize, marginTop: 8, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: colors.zone1, fontSize: timeSize, marginTop: 8, fontWeight: "bold", fontVariant: ["tabular-nums"], width: "100%", textAlign: "center" }}>
           {time1}
         </Text>
       </View>
@@ -131,7 +131,7 @@ export default function ClockPicker({
             ))}
           </Picker>
         </View>
-        <Text style={{ color: colors.zone2, fontSize: timeSize, marginTop: 8, fontWeight: "bold", fontVariant: ["tabular-nums"] }}>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: colors.zone2, fontSize: timeSize, marginTop: 8, fontWeight: "bold", fontVariant: ["tabular-nums"], width: "100%", textAlign: "center" }}>
           {time2}
         </Text>
       </View>
