@@ -49,6 +49,14 @@ jobs:
             "ndk;27.1.12297006" \
             "cmake;3.22.1"
 
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Run Expo Doctor
+        working-directory: app
+        run: npx expo-doctor
+
       - name: Dry-run Android release build
         env:
           VERSION_TAG: v0.0.24

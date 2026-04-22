@@ -20,7 +20,7 @@
     "@react-native-picker/picker": "2.11.4",
     "@react-navigation/native": "^7.1.6",
     "@types/react": "~19.2.10",
-    "expo": "~55.0.16",
+    "expo": "~55.0.17",
     "expo-constants": "~55.0.15",
     "expo-font": "~55.0.6",
     "expo-linking": "~55.0.14",
