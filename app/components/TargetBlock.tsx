@@ -221,12 +221,13 @@ function TargetBlockInner({
           <View
             style={{
               flexDirection: "row",
-              justifyContent: "space-between",
+              justifyContent: "center",
               alignItems: "center",
               width: "100%",
+              gap: 24,
             }}
           >
-            <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+            <View style={{ minWidth: 0 }}>
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -234,7 +235,7 @@ function TargetBlockInner({
                   color: colors.muted,
                   fontSize: labelFontSize,
                   fontWeight: "500",
-                  textAlign: "left",
+                  textAlign: "center",
                 }}
               >
                 {block.name}
@@ -244,7 +245,7 @@ function TargetBlockInner({
                   color: colors.muted,
                   fontSize: targetTimeFontSize,
                   fontWeight: "500",
-                  textAlign: "left",
+                  textAlign: "center",
                   marginTop: 4,
                   opacity: 0.85,
                   fontVariant: ["tabular-nums"],

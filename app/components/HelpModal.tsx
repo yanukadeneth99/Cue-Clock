@@ -1,5 +1,5 @@
 import { colors } from "@/constants/colors";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -9,15 +9,11 @@ interface HelpModalProps {
   onClose: () => void;
   analyticsEnabled: boolean | null;
   onRequestOptOut: () => void;
-  onOpenNotificationSettings?: () => void;
-  onOpenAppSettings?: () => void;
-  onOpenBatterySettings?: () => void;
-  onOpenExactAlarmSettings?: () => void;
-  notificationRuntimeNote?: string | null;
+  onOpenAndroidBackgroundHelp?: () => void;
 }
 
-/** Static help entries common to all platforms. The last item (About) is always appended after the platform-specific notification entry. */
-const baseHelpItems: { label: string; description: string }[] = [
+/** Static help entries, excluding the notification and About entries which are rendered separately. */
+const coreHelpItems: { label: string; description: string }[] = [
   {
     label: "Zone 1 / Zone 2",
     description:
@@ -41,7 +37,7 @@ const baseHelpItems: { label: string; description: string }[] = [
   {
     label: "Deduct Time",
     description:
-      "A buffer offset subtracted from the countdown. Useful for pre-show preparation \u2014 e.g. deduct 5 minutes to get a warning before the actual target.",
+      "A buffer offset subtracted from the countdown. Useful for pre-show preparation — e.g. deduct 5 minutes to get a warning before the actual target.",
   },
   {
     label: "Zone Selector",
@@ -54,7 +50,7 @@ const baseHelpItems: { label: string; description: string }[] = [
       "Set an alert that fires at exactly MM:00 when the countdown reaches a chosen number of minutes before the target. The alert sends a browser notification (or a dialog if notifications are blocked) and removes itself automatically after firing.",
   },
   {
-    label: "\u2013  Collapse / +  Expand",
+    label: "–  Collapse / +  Expand",
     description:
       "Minimizes the countdown card to show only the name and timer, hiding the settings. Tap again to expand.",
   },
@@ -73,23 +69,12 @@ const baseHelpItems: { label: string; description: string }[] = [
     description:
       "Clears all saved data and returns the app to its default state with one countdown timer. A confirmation dialog will appear before resetting.",
   },
-  {
-    label: "About the Developer",
-    description:
-      "Cue Clock is built by YASHURA. It started from a simple need during live broadcast production: a timing tool that is dependable, fast to read, and not overloaded with extra complexity.\n\nI kept Cue Clock free because tools like this should be available across the industry, whether you are producing independently or running larger broadcast operations. The app is intended to stay free and ad-free.",
-  },
 ];
 
 const webNotificationHelpItem = {
   label: "\u{1F514}  Notifications on Web",
   description:
-    "Cue Clock can send browser notifications when alerts fire, but your browser and device must allow them.\n\nChrome:\n\u2022 Click the site settings icon near the address bar.\n\u2022 Open Site settings and set Notifications to Allow.\n\u2022 If Focus mode or Do Not Disturb is on at system level, notifications may stay hidden.\n\nSafari:\n\u2022 Open Safari Settings, then Websites \u2192 Notifications.\n\u2022 Find Cue Clock and set permission to Allow.\n\u2022 On macOS, also check System Settings \u2192 Notifications \u2192 Safari and make sure alerts are enabled.\n\nFirefox:\n\u2022 Click the permission icon in the address bar or open Settings \u2192 Privacy & Security.\n\u2022 Under Permissions \u2192 Notifications, make sure Cue Clock is allowed.\n\u2022 If you blocked notifications earlier, remove the block and refresh the page before trying again.",
-};
-
-const nativeNotificationHelpItem = {
-  label: "\u{1F6D1}  Background Notifications Not Firing?",
-  description:
-    "If alerts don\u2019t fire when the app is in the background, your device may be blocking background activity.\n\nOn Android:\n\u2022 Open Settings \u2192 Apps \u2192 Cue Clock \u2192 Notifications and make sure notifications are enabled.\n\u2022 Open Settings \u2192 Apps \u2192 Cue Clock \u2192 Battery and set to \u201cUnrestricted\u201d.\n\u2022 On Android 12+, go to Settings \u2192 Apps \u2192 Special app access \u2192 Alarms & reminders and enable Cue Clock.\n\nTap the button below to open app settings directly.",
+    "Cue Clock can send browser notifications when alerts fire, but your browser and device must allow them.\n\nChrome:\n• Click the site settings icon near the address bar.\n• Open Site settings and set Notifications to Allow.\n• If Focus mode or Do Not Disturb is on at system level, notifications may stay hidden.\n\nSafari:\n• Open Safari Settings, then Websites → Notifications.\n• Find Cue Clock and set permission to Allow.\n• On macOS, also check System Settings → Notifications → Safari and make sure alerts are enabled.\n\nFirefox:\n• Click the permission icon in the address bar or open Settings → Privacy & Security.\n• Under Permissions → Notifications, make sure Cue Clock is allowed.\n• If you blocked notifications earlier, remove the block and refresh the page before trying again.",
 };
 
 /**
@@ -100,29 +85,15 @@ const nativeNotificationHelpItem = {
  * @param onClose - Callback to dismiss the modal.
  * @param analyticsEnabled - Current analytics consent state; null means undecided.
  * @param onRequestOptOut - Called when the user taps "Turn Off Analytics".
- * @param onOpenNotificationSettings - Opens OS notification settings (native only).
- * @param onOpenAppSettings - Opens OS app settings (native only).
- * @param onOpenBatterySettings - Opens battery settings on Android (optional).
- * @param onOpenExactAlarmSettings - Opens alarms & reminders settings on Android 12+ (optional).
- * @param notificationRuntimeNote - Warning text to display above notification settings buttons.
+ * @param onOpenAndroidBackgroundHelp - Opens the Android background permissions guide modal.
  */
 export default function HelpModal({
   visible,
   onClose,
   analyticsEnabled,
   onRequestOptOut,
-  onOpenNotificationSettings,
-  onOpenAppSettings,
-  onOpenBatterySettings,
-  onOpenExactAlarmSettings,
-  notificationRuntimeNote,
+  onOpenAndroidBackgroundHelp,
 }: HelpModalProps) {
-  const helpItems = [
-    ...baseHelpItems.slice(0, -1),
-    Platform.OS === "web" ? webNotificationHelpItem : nativeNotificationHelpItem,
-    baseHelpItems[baseHelpItems.length - 1],
-  ];
-
   return (
     <Modal
       visible={visible}
@@ -130,95 +101,78 @@ export default function HelpModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      {/* Backdrop and card are siblings — prevents backdrop Pressable from
-          stealing scroll gestures that belong to the inner ScrollView */}
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
         <View style={styles.card}>
           <Text style={styles.title}>How to Use</Text>
 
           <ScrollView showsVerticalScrollIndicator nestedScrollEnabled>
-            {helpItems.map((item, index) => (
+            {/* Core help items */}
+            {coreHelpItems.map((item, index) => (
               <View
                 key={index}
-                style={[
-                  styles.item,
-                  index < helpItems.length - 1 && styles.itemBorder,
-                ]}
+                style={[styles.item, styles.itemBorder]}
               >
                 <Text style={styles.itemLabel}>{item.label}</Text>
                 <Text style={styles.itemDesc}>{item.description}</Text>
               </View>
             ))}
 
-            <View style={{ gap: 8, marginTop: 8, marginBottom: 4 }}>
-              <Pressable
-                onPress={() => Linking.openURL("https://yashura.io")}
-                style={styles.notifButton}
-              >
-                <Text style={styles.notifButtonText}>Visit yashura.io</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => Linking.openURL("https://github.com/yanukadeneth99/Cue-Clock")}
-                style={styles.repoButton}
-              >
-                <FontAwesome name="github" size={16} color={colors.header} />
-                <Text style={styles.repoButtonText}>View Open-Source Codebase</Text>
-              </Pressable>
-            </View>
-
-            {Platform.OS !== "web" && onOpenNotificationSettings && (
-              <View style={{ gap: 8, marginTop: 8, marginBottom: 4 }}>
-                {notificationRuntimeNote ? (
-                  <View style={styles.runtimeNote}>
-                    <Text style={styles.runtimeNoteText}>{notificationRuntimeNote}</Text>
-                  </View>
-                ) : null}
-                <Pressable
-                  onPress={onOpenNotificationSettings}
-                  style={styles.notifButton}
-                >
-                  <Text style={styles.notifButtonText}>Open Notification Settings</Text>
-                </Pressable>
-                {onOpenAppSettings ? (
-                  <Pressable onPress={onOpenAppSettings} style={styles.notifButton}>
-                    <Text style={styles.notifButtonText}>Open App Settings</Text>
-                  </Pressable>
-                ) : (
+            {/* Notification help — web vs native rendered differently */}
+            {Platform.OS === "web" ? (
+              <View style={[styles.item, styles.itemBorder]}>
+                <Text style={styles.itemLabel}>{webNotificationHelpItem.label}</Text>
+                <Text style={styles.itemDesc}>{webNotificationHelpItem.description}</Text>
+              </View>
+            ) : (
+              <View style={[styles.item, styles.itemBorder, styles.notifItem]}>
+                <View style={styles.notifItemHeader}>
+                  <MaterialIcons name="warning-amber" size={16} color={colors.countdown} />
+                  <Text style={styles.notifItemLabel}>Background Notifications Not Firing?</Text>
+                </View>
+                <Text style={styles.notifItemDesc}>
+                  {"If alerts don’t fire when the app is in the background, your device may be blocking background activity.\n\nAndroid restricts apps to save battery — even when notifications are enabled. You need to explicitly allow Cue Clock to run unrestricted."}
+                </Text>
+                {onOpenAndroidBackgroundHelp && Platform.OS === "android" && (
                   <Pressable
-                    onPress={() => Linking.openSettings()}
-                    style={styles.notifButton}
+                    onPress={() => {
+                      onClose();
+                      onOpenAndroidBackgroundHelp();
+                    }}
+                    style={styles.notifActionButton}
                   >
-                    <Text style={styles.notifButtonText}>Open App Settings</Text>
+                    <MaterialIcons name="open-in-new" size={14} color={colors.background} />
+                    <Text style={styles.notifActionButtonText}>Open Setup Guide</Text>
                   </Pressable>
                 )}
               </View>
             )}
 
-            {Platform.OS === "android" && (onOpenAppSettings || onOpenBatterySettings || onOpenExactAlarmSettings) && (
-              <View style={{ gap: 8, marginTop: 8, marginBottom: 4 }}>
-                <View style={styles.runtimeNote}>
-                  <Text style={styles.runtimeNoteText}>
-                    If alerts stop when you switch apps, Android is usually restricting Cue Clock in the background. Disable &quot;Pause app activity if unused&quot;, set battery usage to &quot;No restrictions&quot; or &quot;Unrestricted&quot;, and allow exact alarms when available.
-                  </Text>
-                </View>
-                {onOpenAppSettings ? (
-                  <Pressable onPress={onOpenAppSettings} style={styles.notifButton}>
-                    <Text style={styles.notifButtonText}>Open App Permissions</Text>
-                  </Pressable>
-                ) : null}
-                {onOpenBatterySettings ? (
-                  <Pressable onPress={onOpenBatterySettings} style={styles.notifButton}>
-                    <Text style={styles.notifButtonText}>Open Battery Settings</Text>
-                  </Pressable>
-                ) : null}
-                {onOpenExactAlarmSettings ? (
-                  <Pressable onPress={onOpenExactAlarmSettings} style={styles.notifButton}>
-                    <Text style={styles.notifButtonText}>Open Alarms & Reminders</Text>
-                  </Pressable>
-                ) : null}
+            {/* About the Developer — distinct layout */}
+            <View style={styles.aboutItem}>
+              <Text style={styles.aboutLabel}>About the Developer</Text>
+              <Text style={styles.aboutDesc}>
+                {"Cue Clock is built by YASHURA. It started from a simple need during live broadcast production: a timing tool that is dependable, fast to read, and not overloaded with extra complexity.\n\nKept free so the industry can use it — independent producers and large broadcast operations alike."}
+              </Text>
+              <View style={styles.iconRow}>
+                <Pressable
+                  onPress={() => Linking.openURL("https://yashura.io")}
+                  style={styles.iconButton}
+                  accessibilityLabel="Visit yashura.io"
+                >
+                  <MaterialIcons name="language" size={22} color={colors.accent} />
+                  <Text style={styles.iconButtonLabel}>yashura.io</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => Linking.openURL("https://github.com/yanukadeneth99/Cue-Clock")}
+                  style={styles.iconButton}
+                  accessibilityLabel="View open-source codebase"
+                >
+                  <FontAwesome name="github" size={22} color={colors.header} />
+                  <Text style={styles.iconButtonLabel}>Source</Text>
+                </Pressable>
               </View>
-            )}
+            </View>
 
             {analyticsEnabled === true && (
               <Pressable
@@ -285,47 +239,90 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
   },
-  notifButton: {
-    backgroundColor: colors.background,
-    borderColor: colors.accent,
+  /* Notification troubleshooting item — amber warning style */
+  notifItem: {
+    backgroundColor: "rgba(251,191,36,0.06)",
+    borderColor: "rgba(251,191,36,0.3)",
     borderWidth: 1,
     borderRadius: 12,
-    paddingVertical: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  notifItemHeader: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
   },
-  notifButtonText: {
-    color: colors.accent,
+  notifItemLabel: {
+    color: colors.countdown,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  notifItemDesc: {
+    color: colors.muted,
     fontSize: 13,
-    fontWeight: "600",
+    lineHeight: 19,
+    marginBottom: 12,
   },
-  repoButton: {
-    backgroundColor: colors.background,
-    borderColor: colors.surfaceBorder,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
+  notifActionButton: {
+    backgroundColor: colors.countdown,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
+    gap: 6,
+    alignSelf: "stretch",
   },
-  repoButtonText: {
-    color: colors.header,
+  notifActionButtonText: {
+    color: colors.background,
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-  runtimeNote: {
+  /* About the Developer — distinct card */
+  aboutItem: {
     backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    gap: 10,
+  },
+  aboutLabel: {
+    color: colors.header,
+    fontSize: 15,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  aboutDesc: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: "center",
+  },
+  iconRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  iconButton: {
+    flex: 1,
+    backgroundColor: colors.surface,
     borderColor: colors.surfaceBorder,
     borderWidth: 1,
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
   },
-  runtimeNoteText: {
-    color: colors.countdown,
-    fontSize: 13,
-    lineHeight: 18,
+  iconButtonLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "500",
   },
   optOutButton: {
     backgroundColor: colors.background,

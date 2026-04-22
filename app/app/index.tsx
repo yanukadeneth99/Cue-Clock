@@ -803,7 +803,7 @@ export default function HomeScreen() {
 
   const doReset = useCallback(async () => {
     try {
-      await AsyncStorage.clear();
+      await AsyncStorage.multiRemove(["zone1", "zone2", "targetBlocks"]);
       setZone1("Europe/Berlin");
       setZone2("Asia/Colombo");
       nextIdRef.current = 2;
@@ -1252,11 +1252,7 @@ export default function HomeScreen() {
         onClose={() => setHelpVisible(false)}
         analyticsEnabled={analyticsEnabled}
         onRequestOptOut={() => setOptOutModalVisible(true)}
-        onOpenNotificationSettings={requestNotifPermission}
-        onOpenAppSettings={openAppSettings}
-        onOpenBatterySettings={openBatterySettings}
-        onOpenExactAlarmSettings={openExactAlarmSettings}
-        notificationRuntimeNote={notifUnavailableReason}
+        onOpenAndroidBackgroundHelp={() => setAndroidBackgroundHelpVisible(true)}
       />
 
       <AnalyticsConsentModal
