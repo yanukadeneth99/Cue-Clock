@@ -261,6 +261,7 @@ export default function HomeScreen() {
   const [consentModalVisible, setConsentModalVisible] = useState(false);
   const [androidBackgroundHelpVisible, setAndroidBackgroundHelpVisible] = useState(false);
   const [optOutModalVisible, setOptOutModalVisible] = useState(false);
+  const [is24Hour, setIs24Hour] = useState(true);
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     createDefaultBlock(1),
   ]);
@@ -447,16 +448,19 @@ export default function HomeScreen() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [storedZone1, storedZone2, storedTargets, storedAnalytics, storedAndroidBackgroundHelp] = await AsyncStorage.multiGet([
+        const [storedZone1, storedZone2, storedTargets, storedAnalytics, storedAndroidBackgroundHelp, storedIs24Hour] = await AsyncStorage.multiGet([
           "zone1",
           "zone2",
           "targetBlocks",
           "analyticsEnabled",
           "androidBackgroundHelpSeen",
+          "is24Hour",
         ]);
 
         if (storedZone1[1]) setZone1(storedZone1[1]);
         if (storedZone2[1]) setZone2(storedZone2[1]);
+        // Missing key defaults to 24-hour (existing behavior); explicit "false" opts into 12-hour.
+        if (storedIs24Hour[1] === "false") setIs24Hour(false);
         if (storedAnalytics[1] === null) {
           // First launch — show consent modal
           setConsentModalVisible(true);
@@ -503,8 +507,9 @@ export default function HomeScreen() {
       ["zone1", zone1],
       ["zone2", zone2],
       ["targetBlocks", serialized],
+      ["is24Hour", String(is24Hour)],
     ]).catch(() => {});
-  }, [zone1, zone2, targetBlocks]);
+  }, [zone1, zone2, targetBlocks, is24Hour]);
 
   // Countdown updater — returns same array reference if nothing changed
   useEffect(() => {
@@ -803,9 +808,10 @@ export default function HomeScreen() {
 
   const doReset = useCallback(async () => {
     try {
-      await AsyncStorage.multiRemove(["zone1", "zone2", "targetBlocks"]);
+      await AsyncStorage.multiRemove(["zone1", "zone2", "targetBlocks", "is24Hour"]);
       setZone1("Europe/Berlin");
       setZone2("Asia/Colombo");
+      setIs24Hour(true);
       nextIdRef.current = 2;
       setTargetBlocks([createDefaultBlock(1)]);
     } catch {
@@ -1086,6 +1092,7 @@ export default function HomeScreen() {
           setZone1={setZone1}
           setZone2={setZone2}
           fullScreen
+          is24Hour={is24Hour}
         />
       )}
 
@@ -1112,6 +1119,7 @@ export default function HomeScreen() {
             zone2={zone2}
             setZone1={setZone1}
             setZone2={setZone2}
+            is24Hour={is24Hour}
           />
         )}
 
@@ -1135,6 +1143,7 @@ export default function HomeScreen() {
             notifBlocked={notifBlocked}
             notifUnavailableReason={notifUnavailableReason}
             onRequestNotifPermission={requestNotifPermission}
+            is24Hour={is24Hour}
           />
         ))}
 
@@ -1253,6 +1262,8 @@ export default function HomeScreen() {
         analyticsEnabled={analyticsEnabled}
         onRequestOptOut={() => setOptOutModalVisible(true)}
         onOpenAndroidBackgroundHelp={() => setAndroidBackgroundHelpVisible(true)}
+        is24Hour={is24Hour}
+        onToggle24Hour={setIs24Hour}
       />
 
       <AnalyticsConsentModal

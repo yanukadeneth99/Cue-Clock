@@ -16,6 +16,7 @@ Developer reference for AI-assisted work on this repository.
 - **On-air (Full-screen) mode** — A distraction-free display that strips away controls for studio use.
 - **Persistent state** — All settings, zones, and timers are saved locally across sessions via AsyncStorage.
 - **Per-timer alerts** — Configurable "minutes-before" push notifications and in-app alerts.
+- **12/24-hour clock format** — User-selectable display preference (toggle in Help modal), persisted across sessions. Affects live clocks and target time displays; countdown duration stays in 24h style.
 - **In-app help** — Integrated guide explaining all controls and usage patterns.
 
 ---
@@ -29,12 +30,16 @@ app/              # React Native (Expo) Mobile Application
     index.tsx     # Main screen — all primary state and logic lives here (~839 lines)
     +not-found.tsx# 404 catch-all route
   components/     # UI Components
-    AnalyticsConsentModal.tsx  # First-launch GDPR-compliant opt-in modal (non-dismissable)
-    ClockPicker.tsx            # Dual live-clock with timezone pickers
-    TargetBlock.tsx            # Countdown card with name, times, zone, alert, collapse, delete
-    AlertModal.tsx             # Minutes-before alert configuration modal
-    ConfirmModal.tsx           # Generic yes/no confirmation dialog
-    HelpModal.tsx              # In-app help overlay explaining all 11 controls
+    AnalyticsConsentModal.tsx        # First-launch GDPR-compliant opt-in modal (non-dismissable)
+    AnalyticsOptOutModal.tsx         # Opt-out confirmation modal (shown when user turns off analytics)
+    AndroidBackgroundHelpModal.tsx   # Step-by-step guide to enable Android background activity
+    ClockPicker.tsx                  # Dual live-clock with timezone pickers
+    TargetBlock.tsx                  # Countdown card with name, times, zone, alert, collapse, delete
+    AlertModal.tsx                   # Minutes-before alert configuration modal
+    ConfirmModal.tsx                 # Generic yes/no confirmation dialog
+    HelpModal.tsx                    # In-app help overlay with 24h toggle, controls guide, about section
+  lib/            # Shared modules
+    analytics.ts  # Firebase/Clarity analytics initialisation (extracted from _layout.tsx)
   constants/      # App-wide constants
     colors.ts     # 14-color dark broadcast palette
     timezones.ts  # 18 broadcast timezone definitions
@@ -118,11 +123,14 @@ Root Documentation
 
 ```
 HomeScreen (app/app/index.tsx)
-├── ClockPicker          — Dual live-clock with timezone pickers
-├── TargetBlock[]        — One per countdown; collapsible; includes AlertModal + ConfirmModal
-│   ├── AlertModal       — Set/delete countdown alert
-│   └── ConfirmModal     — Delete confirmation dialog
-└── HelpModal            — In-app help overlay (triggered by ? button in header)
+├── ClockPicker                  — Dual live-clock with timezone pickers
+├── TargetBlock[]                — One per countdown; collapsible; includes AlertModal + ConfirmModal
+│   ├── AlertModal               — Set/delete countdown alert
+│   └── ConfirmModal             — Delete confirmation dialog
+├── HelpModal                    — In-app help overlay (triggered by ? button in header)
+│   └── (opens) AndroidBackgroundHelpModal — Background-permissions guide (Android only)
+├── AnalyticsConsentModal        — First-launch opt-in (non-dismissable)
+└── AnalyticsOptOutModal         — Opt-out confirmation (shown when user turns off analytics)
 ```
 
 ### State Management
@@ -132,7 +140,8 @@ All state is lifted to `HomeScreen` and persisted via AsyncStorage (`multiSet`/`
 - `zone1` / `zone2`: Timezone strings.
 - `targetBlocks`: JSON-serialized `TargetBlockType[]`.
 - `fullScreen`: Boolean for on-air mode.
-- `analyticsEnabled`: Three-state (`null` = not yet given, `true` = accepted, `false` = declined).
+- `is24Hour`: Boolean clock-format preference (default `true`). Persisted; missing key defaults to `true` (backwards-safe). Affects live clocks and target time displays only — countdown durations stay in 24h style.
+- `analyticsEnabled`: Three-state (`null` = not yet given, `true` = accepted, `false` = declined). **Preserved on reset** — `doReset` uses `multiRemove` on specific keys, not `AsyncStorage.clear`.
 - `consentModalVisible`: Boolean for first-launch analytics consent modal visibility.
 - `helpVisible` / `resetModalVisible`: Modal visibility booleans.
 - `notifBlocked`: Web notification permission state (web only).
@@ -232,7 +241,7 @@ Uses a **single `View` root** (to prevent native crashes from tree remounts) wit
 9. Decode Base64 keystore secret → `release.keystore`
 10. Setup Gradle with persistent cache
 11. Build signed release AAB via `./gradlew bundleRelease`
-12. Generate downloadable artifact (30-day retention) for manual upload to Google Play internal testing track
+12. Upload signed AAB directly to Google Play internal testing track via service account
 
 ### Android Release Workflow (`.github/workflows/android-release.yml`)
 
@@ -373,6 +382,7 @@ KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
 - **Error Handling**: Uses `try/catch` with empty or comment-only `catch` blocks for production-safe silence (`} catch { // silently fail }`). Promise `.catch(() => {})` chains are also common. No `console.log` in production.
 - **Control Flow**: Extensive use of early returns (guard clauses) to avoid deeply nested `if/else` statements.
 - **State & Rendering**: All state is lifted to parent components. Heavy reliance on `useRef` for mutable state that shouldn't trigger re-renders, and `useCallback`/`React.memo` for performance optimization.
+- **Fire-and-forget async handlers**: Time/alert mutations (e.g. `handleTargetConfirm`, `handleAlertConfirm`, `removeBlock`) apply state updates synchronously first, then reschedule notifications in a background IIFE (`(async () => { ... })()`). This keeps UI response <16ms instead of blocking on native notification APIs (~500ms).
 - **Comment Style**: JSDoc is used for exported functions and components. Inline comments explain "why" specific edge cases or platform quirks are handled.
 - **Styling**: Relies heavily on inline styles in the React Native app, combined with platform-specific checks (`Platform.OS === "web"`). The Next.js website uses Tailwind CSS.
 

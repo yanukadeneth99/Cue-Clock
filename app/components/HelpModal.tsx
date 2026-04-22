@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import React from "react";
-import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
 /** Props for {@link HelpModal}. */
 interface HelpModalProps {
@@ -10,6 +10,10 @@ interface HelpModalProps {
   analyticsEnabled: boolean | null;
   onRequestOptOut: () => void;
   onOpenAndroidBackgroundHelp?: () => void;
+  /** Current clock-format preference: true = 24-hour, false = 12-hour. */
+  is24Hour: boolean;
+  /** Called when the user toggles the clock-format switch. */
+  onToggle24Hour: (value: boolean) => void;
 }
 
 /** Static help entries, excluding the notification and About entries which are rendered separately. */
@@ -93,6 +97,8 @@ export default function HelpModal({
   analyticsEnabled,
   onRequestOptOut,
   onOpenAndroidBackgroundHelp,
+  is24Hour,
+  onToggle24Hour,
 }: HelpModalProps) {
   return (
     <Modal
@@ -107,6 +113,24 @@ export default function HelpModal({
           <Text style={styles.title}>How to Use</Text>
 
           <ScrollView showsVerticalScrollIndicator nestedScrollEnabled>
+            {/* Clock-format preference — visually separated from instructional items below */}
+            <View style={styles.settingSection}>
+              <View style={styles.settingRow}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.settingLabel}>24-Hour Clock</Text>
+                  <Text style={styles.settingSubtext}>
+                    {is24Hour ? "Shows times as 14:30" : "Shows times as 2:30 PM"}
+                  </Text>
+                </View>
+                <Switch
+                  value={is24Hour}
+                  onValueChange={onToggle24Hour}
+                  trackColor={{ false: colors.border, true: colors.accent }}
+                  thumbColor={colors.header}
+                />
+              </View>
+            </View>
+
             {/* Core help items */}
             {coreHelpItems.map((item, index) => (
               <View
@@ -219,6 +243,33 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     marginBottom: 20,
+  },
+  settingSection: {
+    paddingBottom: 16,
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceBorder,
+  },
+  settingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  settingLabel: {
+    color: colors.header,
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  settingSubtext: {
+    color: colors.muted,
+    fontSize: 12,
   },
   item: {
     marginBottom: 16,

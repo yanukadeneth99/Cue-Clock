@@ -61,10 +61,23 @@ interface Props {
   notifBlocked?: boolean;
   notifUnavailableReason?: string | null;
   onRequestNotifPermission?: () => void;
+  /** When true, show times in 24-hour format; otherwise 12-hour with AM/PM. */
+  is24Hour?: boolean;
 }
 
 /** Zero-pad a number to two digits (e.g. 5 → "05"). */
 const pad = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * Format an (hour, minute) pair for display.
+ * 24-hour mode returns `HH:MM`; 12-hour mode returns `h:MM AM/PM`.
+ */
+const formatHM = (h: number, m: number, is24Hour: boolean): string => {
+  if (is24Hour) return `${pad(h)}:${pad(m)}`;
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${pad(m)} ${period}`;
+};
 
 const webInputStyle = {
   backgroundColor: colors.pickerBg,
@@ -202,6 +215,7 @@ function TargetBlockInner({
   notifBlocked = false,
   notifUnavailableReason,
   onRequestNotifPermission,
+  is24Hour = true,
 }: Props) {
   const [bellHovered, setBellHovered] = React.useState(false);
   const [confirmDeleteVisible, setConfirmDeleteVisible] = React.useState(false);
@@ -251,7 +265,7 @@ function TargetBlockInner({
                   fontVariant: ["tabular-nums"],
                 }}
               >
-                {pad(block.targetHour)}:{pad(block.targetMinute)}
+                {formatHM(block.targetHour, block.targetMinute, is24Hour)}
               </Text>
             </View>
             <View
@@ -498,7 +512,7 @@ function TargetBlockInner({
                       fontWeight: "600",
                     }}
                   >
-                    {pad(block.targetHour)}:{pad(block.targetMinute)}
+                    {formatHM(block.targetHour, block.targetMinute, is24Hour)}
                   </Text>
                 </Pressable>
               )}
@@ -622,7 +636,7 @@ function TargetBlockInner({
                       })()}
                       onConfirm={(date) => handleTargetConfirm(block.id, date)}
                       onCancel={() => toggleTargetPicker(block.id, false)}
-                      is24Hour={true}
+                      is24Hour={is24Hour}
                     />
                     <NativeDateTimePicker
                       isVisible={block.isDeductPickerVisible}

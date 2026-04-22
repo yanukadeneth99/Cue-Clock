@@ -17,6 +17,8 @@ interface Props {
   setZone2: (zone: string) => void;
   /** When true, renders a compact fullscreen-mode layout without pickers. */
   fullScreen?: boolean;
+  /** When true, use 24-hour format; otherwise 12-hour with AM/PM. */
+  is24Hour?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export default function ClockPicker({
   setZone1,
   setZone2,
   fullScreen,
+  is24Hour = true,
 }: Props) {
   const [time1, setTime1] = useState("");
   const [time2, setTime2] = useState("");
@@ -39,9 +42,10 @@ export default function ClockPicker({
 
   const updateTimes = useCallback(() => {
     const now = DateTime.now();
-    setTime1(now.setZone(zone1).toFormat("HH:mm:ss"));
-    setTime2(now.setZone(zone2).toFormat("HH:mm:ss"));
-  }, [zone1, zone2]);
+    const fmt = is24Hour ? "HH:mm:ss" : "h:mm:ss a";
+    setTime1(now.setZone(zone1).toFormat(fmt));
+    setTime2(now.setZone(zone2).toFormat(fmt));
+  }, [zone1, zone2, is24Hour]);
 
   useEffect(() => {
     updateTimes();
