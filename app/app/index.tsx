@@ -886,20 +886,22 @@ export default function HomeScreen() {
   // notifications switch to the new delivery system without requiring a manual edit.
   useEffect(() => {
     if (!isLoadedRef.current) return;
-    targetBlocksRef.current.forEach((block) => {
-      if (block.alertMinutesBefore === null) return;
-      const zone = block.targetZone === "zone1" ? zone1 : zone2;
-      (async () => {
+
+    async function rescheduleAll() {
+      for (const block of targetBlocksRef.current) {
+        if (block.alertMinutesBefore === null) continue;
+        const zone = block.targetZone === "zone1" ? zone1 : zone2;
         try {
           if (block.notificationId) await cancelAnyAlert(block.notificationId);
           const notifId = await scheduleBlockAlert(block, zone, alertMode);
-          const blockId = block.id;
           setTargetBlocks(
-            targetBlocksRef.current.map((b) => (b.id === blockId ? { ...b, notificationId: notifId } : b))
+            targetBlocksRef.current.map((b) => (b.id === block.id ? { ...b, notificationId: notifId } : b))
           );
         } catch {}
-      })();
-    });
+      }
+    }
+
+    rescheduleAll().catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alertMode]);
 
