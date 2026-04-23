@@ -6,8 +6,6 @@ on:
       - '.github/workflows/android-release.yml'
       - '.github/workflows/android-release-verify.yml'
       - 'app/**'
-      - 'app/scripts/prepare-android-release.js'
-      - 'scripts/android-release-dry-run.sh'
       - 'docker/Dockerfile.android'
 
 concurrency:
@@ -57,7 +55,79 @@ jobs:
         working-directory: app
         run: npx expo-doctor
 
-      - name: Dry-run Android release build
+      - name: Update version for dry-run
+        working-directory: app
         env:
-          VERSION_TAG: v0.0.24
-        run: bash scripts/android-release-dry-run.sh
+          VERSION: 0.0.24
+          VERSION_CODE: ${{ github.run_number }}
+        run: node scripts/prepare-android-release.js
+
+      - name: Create stub .env
+        working-directory: app
+        run: |
+          echo "EAS_PROJECT_ID=dev-local-open-source" > .env
+          echo "EAS_OWNER=open-source-contributor" >> .env
+          echo "EXPO_PUBLIC_CLARITY_KEY=" >> .env
+
+      - name: Create stub google-services.json
+        working-directory: app
+        run: |
+          cat > google-services.json <<'EOF'
+          {
+            "project_info": {
+              "project_number": "1234567890",
+              "project_id": "cue-clock-ci",
+              "storage_bucket": "cue-clock-ci.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:1234567890:android:1234567890abcdef123456",
+                  "android_client_info": {
+                    "package_name": "com.yanukadeneth99.cueclock"
+                  }
+                },
+                "api_key": [{ "current_key": "fake-api-key" }]
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+
+      - name: Generate Android native project
+        working-directory: app
+        run: npx expo prebuild --platform android --clean
+
+      - name: Sync Android native version after prebuild
+        working-directory: app
+        env:
+          VERSION: 0.0.24
+          VERSION_CODE: ${{ github.run_number }}
+        run: node scripts/prepare-android-release.js --sync-native
+
+      - name: Generate throwaway signing keystore
+        working-directory: app/android
+        run: |
+          keytool -genkeypair \
+            -alias androidreleasekey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storetype JKS \
+            -keystore release.keystore \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Cue Clock Dry Run, OU=CI, O=Cue Clock, L=Colombo, S=Western, C=LK"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build release AAB
+        working-directory: app/android
+        run: |
+          ./gradlew bundleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86,x86_64 \
+            -Pandroid.injected.signing.store.file=$(pwd)/release.keystore \
+            -Pandroid.injected.signing.store.password=android \
+            -Pandroid.injected.signing.key.alias=androidreleasekey \
+            -Pandroid.injected.signing.key.password=android
