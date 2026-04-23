@@ -19,13 +19,15 @@ jobs:
 
       - name: Push to Wiki
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Clone the wiki repo (created automatically by GitHub when you create the first page)
-          git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki
+          # NOTE: The default GITHUB_TOKEN cannot push to *.wiki.git — a PAT is required.
+          # WIKI_TOKEN must be a classic PAT with `repo` scope, or a fine-grained PAT
+          # with "Contents: Read and write" on this repository.
+          git clone "https://x-access-token:${WIKI_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki
 
           # Copy the source file as Home.md (GitHub Wiki renders this as the landing page)
           cp docs/wiki.md wiki/Home.md
