@@ -893,8 +893,9 @@ export default function HomeScreen() {
         try {
           if (block.notificationId) await cancelAnyAlert(block.notificationId);
           const notifId = await scheduleBlockAlert(block, zone, alertMode);
-          setTargetBlocks((blocks) =>
-            blocks.map((b) => (b.id === block.id ? { ...b, notificationId: notifId } : b))
+          const blockId = block.id;
+          setTargetBlocks(
+            targetBlocksRef.current.map((b) => (b.id === blockId ? { ...b, notificationId: notifId } : b))
           );
         } catch {}
       })();
@@ -958,8 +959,8 @@ export default function HomeScreen() {
           }).catch(() => null);
         }
         if (newId) {
-          setTargetBlocks((blocks) =>
-            blocks.map((b) => (b.id === blockId ? { ...b, notificationId: newId } : b))
+          setTargetBlocks(
+            targetBlocksRef.current.map((b) => (b.id === blockId ? { ...b, notificationId: newId } : b))
           );
         }
       } catch {}

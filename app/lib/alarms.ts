@@ -9,7 +9,7 @@ export const MAX_SNOOZES = 5;
 export const ALARM_CHANNEL_ID = "cue-clock-alarm";
 
 // Lazy accessor so the require only executes on Android and is cached by Metro's module system.
-function getNotifee(): any | null {
+function getNotifee(): any {
   if (Platform.OS !== "android") return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports

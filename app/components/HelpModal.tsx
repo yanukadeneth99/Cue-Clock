@@ -97,6 +97,11 @@ const webNotificationHelpItem = {
  * @param onRequestOptOut - Called when the user taps "Turn Off Analytics".
  * @param onOpenAndroidBackgroundHelp - Opens the Android background permissions guide modal.
  */
+function alarmModeSubtext(alarmAvailable: boolean, alertMode: "notification" | "alarm"): string {
+  if (!alarmAvailable) return "Grant notification permission to enable";
+  return alertMode === "alarm" ? "Full-screen alarm — must be dismissed" : "Standard notification (current)";
+}
+
 export default function HelpModal({
   visible,
   onClose,
@@ -147,11 +152,7 @@ export default function HelpModal({
                       Alarm Mode
                     </Text>
                     <Text style={[styles.settingSubtext, !alarmAvailable && { opacity: 0.5 }]}>
-                      {!alarmAvailable
-                        ? "Grant notification permission to enable"
-                        : alertMode === "alarm"
-                          ? "Full-screen alarm — must be dismissed"
-                          : "Standard notification (current)"}
+                      {alarmModeSubtext(alarmAvailable, alertMode)}
                     </Text>
                   </View>
                   <Switch

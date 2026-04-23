@@ -33,7 +33,7 @@ export default function AlarmDismissModal({
   snoozeCount,
   onDismiss,
   onSnooze,
-}: AlarmDismissModalProps) {
+}: Readonly<AlarmDismissModalProps>) {
   // Start vibration while modal is visible; stop on close.
   useEffect(() => {
     if (!visible || Platform.OS === "web") return;

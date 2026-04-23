@@ -11,7 +11,7 @@ import {
   MAX_SNOOZES,
 } from "./alarms";
 
-function getNotifee(): any | null {
+function getNotifee(): any {
   if (Platform.OS !== "android") return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -35,12 +35,12 @@ async function handleSnooze(
   notifId: string | undefined,
   data: Record<string, string>,
 ): Promise<void> {
-  const blockId = parseInt(data.blockId, 10);
-  const alertMinutesBefore = parseInt(data.alertMinutesBefore, 10);
-  const prevCount = parseInt(data.snoozeCount ?? "0", 10);
+  const blockId = Number.parseInt(data.blockId, 10);
+  const alertMinutesBefore = Number.parseInt(data.alertMinutesBefore, 10);
+  const prevCount = Number.parseInt(data.snoozeCount ?? "0", 10);
   const newCount = prevCount + 1;
 
-  if (isNaN(blockId) || newCount > MAX_SNOOZES) return;
+  if (Number.isNaN(blockId) || newCount > MAX_SNOOZES) return;
   if (notifId) await cancelAlarm(notifId);
 
   const stored = await AsyncStorage.getItem("targetBlocks").catch(() => null);
@@ -79,8 +79,8 @@ async function handleDismiss(
   notifId: string | undefined,
   data: Record<string, string>,
 ): Promise<void> {
-  const blockId = parseInt(data.blockId, 10);
-  if (isNaN(blockId)) return;
+  const blockId = Number.parseInt(data.blockId, 10);
+  if (Number.isNaN(blockId)) return;
   if (notifId) await cancelAlarm(notifId);
 
   const stored = await AsyncStorage.getItem("targetBlocks").catch(() => null);
