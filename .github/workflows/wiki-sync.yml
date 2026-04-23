@@ -1,0 +1,42 @@
+name: Sync Wiki
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'docs/wiki.md'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Push docs/wiki.md to GitHub Wiki
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Push to Wiki
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Clone the wiki repo (created automatically by GitHub when you create the first page)
+          git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki
+
+          # Copy the source file as Home.md (GitHub Wiki renders this as the landing page)
+          cp docs/wiki.md wiki/Home.md
+
+          cd wiki
+          git add Home.md
+
+          # Only commit if there are actual changes
+          if git diff --cached --quiet; then
+            echo "No changes to wiki — skipping commit."
+          else
+            git commit -m "docs: sync wiki from docs/wiki.md"
+            git push
+          fi
