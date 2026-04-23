@@ -135,6 +135,7 @@ echo "Building release AAB..."
 (
   cd android
   ./gradlew bundleRelease \
+    -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86,x86_64 \
     -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
     -Pandroid.injected.signing.store.password=android \
     -Pandroid.injected.signing.key.alias=androidreleasekey \

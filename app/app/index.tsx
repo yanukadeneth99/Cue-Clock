@@ -475,6 +475,10 @@ export default function HomeScreen() {
           setTargetBlocks(
             parsed.map((b) => ({
               ...b,
+              // `countdown` is stripped before persisting; restore a safe default
+              // so the first render after rehydrate doesn't see `undefined` before
+              // the 1s tick recomputes it (crashed TargetBlock.split on resume).
+              countdown: b.countdown ?? "00:00",
               isTargetPickerVisible: false,
               isDeductPickerVisible: false,
               isAlertModalVisible: false,

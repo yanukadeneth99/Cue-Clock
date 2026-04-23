@@ -659,7 +659,7 @@ function TargetBlockInner({
         <AlertModal
           visible={block.isAlertModalVisible}
           currentAlertMinutes={block.alertMinutesBefore}
-          maxMinutes={parseInt(block.countdown.split(":")[0], 10) || 0}
+          maxMinutes={parseInt((block.countdown ?? "00:00").split(":")[0], 10) || 0}
           onConfirm={(minutes) => handleAlertConfirm(block.id, minutes)}
           onDelete={() => handleAlertDelete(block.id)}
           onCancel={() => toggleAlertModal(block.id, false)}
