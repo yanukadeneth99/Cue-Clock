@@ -2,6 +2,12 @@
 
 Developer reference for AI-assisted work on this repository.
 
+> **⚠ This is a public repository.**
+> Before committing or pushing anything, double-check:
+> - **Security** — No secrets, API keys, tokens, credentials, internal URLs, or private config (check `.env`, `google-services.json`, keystores, etc.).
+> - **Brand** — No unreleased feature names, internal codenames, partner names, or confidential roadmap details.
+> When in doubt, ask before pushing.
+
 ---
 
 ## What This App Does
