@@ -7,6 +7,19 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+// Register Notifee background event handlers at module load time so snooze and
+// dismiss actions work even when the app process is killed. Must be outside
+// any React component to guarantee execution before React mounts.
+if (Platform.OS === "android") {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { registerAlarmHandlers } = require("@/lib/alarmHandlers");
+    registerAlarmHandlers();
+  } catch {
+    // Notifee unavailable — alarm mode will gracefully degrade
+  }
+}
+
 /**
  * Root layout for the Expo Router stack.
  * Initializes fonts, conditionally initializes analytics based on user preference,

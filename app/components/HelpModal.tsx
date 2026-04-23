@@ -14,6 +14,12 @@ interface HelpModalProps {
   is24Hour: boolean;
   /** Called when the user toggles the clock-format switch. */
   onToggle24Hour: (value: boolean) => void;
+  /** Current alert mode (Android only). */
+  alertMode: "notification" | "alarm";
+  /** Called when the user toggles the alert mode. */
+  onToggleAlertMode: (mode: "notification" | "alarm") => void;
+  /** Whether alarm mode is available (false if permission denied or non-Android). */
+  alarmAvailable: boolean;
 }
 
 /** Static help entries, excluding the notification and About entries which are rendered separately. */
@@ -91,6 +97,11 @@ const webNotificationHelpItem = {
  * @param onRequestOptOut - Called when the user taps "Turn Off Analytics".
  * @param onOpenAndroidBackgroundHelp - Opens the Android background permissions guide modal.
  */
+function alarmModeSubtext(alarmAvailable: boolean, alertMode: "notification" | "alarm"): string {
+  if (!alarmAvailable) return "Grant notification permission to enable";
+  return alertMode === "alarm" ? "Full-screen alarm — must be dismissed" : "Standard notification (current)";
+}
+
 export default function HelpModal({
   visible,
   onClose,
@@ -99,6 +110,9 @@ export default function HelpModal({
   onOpenAndroidBackgroundHelp,
   is24Hour,
   onToggle24Hour,
+  alertMode,
+  onToggleAlertMode,
+  alarmAvailable,
 }: HelpModalProps) {
   return (
     <Modal
@@ -129,6 +143,27 @@ export default function HelpModal({
                   thumbColor={colors.header}
                 />
               </View>
+
+              {/* Alarm mode — Android only */}
+              {Platform.OS === "android" && (
+                <View style={[styles.settingRow, { marginTop: 10 }]}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={[styles.settingLabel, !alarmAvailable && { opacity: 0.5 }]}>
+                      Alarm Mode
+                    </Text>
+                    <Text style={[styles.settingSubtext, !alarmAvailable && { opacity: 0.5 }]}>
+                      {alarmModeSubtext(alarmAvailable, alertMode)}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={alertMode === "alarm"}
+                    onValueChange={(v) => onToggleAlertMode(v ? "alarm" : "notification")}
+                    disabled={!alarmAvailable}
+                    trackColor={{ false: colors.border, true: colors.countdown }}
+                    thumbColor={colors.header}
+                  />
+                </View>
+              )}
             </View>
 
             {/* Core help items */}

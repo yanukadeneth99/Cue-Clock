@@ -40,6 +40,8 @@ export interface TargetBlockType {
   isAlertModalVisible: boolean;
   alertFired: boolean;
   notificationId?: string | null;
+  /** Number of times the current alert has been snoozed (reset to 0 on dismiss). */
+  snoozeCount?: number;
 }
 
 /** Props for {@link TargetBlock} / {@link TargetBlockInner}. */
@@ -63,6 +65,8 @@ interface Props {
   onRequestNotifPermission?: () => void;
   /** When true, show times in 24-hour format; otherwise 12-hour with AM/PM. */
   is24Hour?: boolean;
+  /** Current alert mode; "alarm" shows an ALARM badge on the bell when alert is set. */
+  alertMode?: "notification" | "alarm";
 }
 
 /** Zero-pad a number to two digits (e.g. 5 → "05"). */
@@ -216,6 +220,7 @@ function TargetBlockInner({
   notifUnavailableReason,
   onRequestNotifPermission,
   is24Hour = true,
+  alertMode = "notification",
 }: Props) {
   const [bellHovered, setBellHovered] = React.useState(false);
   const [confirmDeleteVisible, setConfirmDeleteVisible] = React.useState(false);
@@ -409,6 +414,20 @@ function TargetBlockInner({
               >
                 {block.alertMinutesBefore === null ? "\u{1F515}" : "\u{1F514}"}
               </Text>
+              {block.alertMinutesBefore !== null &&
+                alertMode === "alarm" &&
+                Platform.OS === "android" && (
+                  <Text
+                    style={{
+                      color: colors.countdown,
+                      fontSize: 7,
+                      fontWeight: "700",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    ALM
+                  </Text>
+                )}
             </Pressable>
             <Pressable
               onPress={() =>

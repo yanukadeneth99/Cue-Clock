@@ -1,3 +1,4 @@
+import AlarmDismissModal from "@/components/AlarmDismissModal";
 import AndroidBackgroundHelpModal from "@/components/AndroidBackgroundHelpModal";
 import AnalyticsConsentModal from "@/components/AnalyticsConsentModal";
 import AnalyticsOptOutModal from "@/components/AnalyticsOptOutModal";
@@ -7,6 +8,13 @@ import HelpModal from "@/components/HelpModal";
 import TargetBlock, { TargetBlockType } from "@/components/TargetBlock";
 import { colors } from "@/constants/colors";
 import { applyAnalyticsCollection } from "@/lib/analytics";
+import {
+  cancelAlarm,
+  ensureAlarmChannel,
+  MAX_SNOOZES,
+  scheduleAlarm,
+  SNOOZE_MS,
+} from "@/lib/alarms";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { DateTime } from "luxon";
@@ -146,6 +154,32 @@ async function cancelBlockNotification(notifId: string | null | undefined): Prom
 }
 
 /**
+ * Cancel a scheduled alert from either expo-notifications or Notifee.
+ * Tries both cancellers since the ID namespace differs; one will no-op silently.
+ */
+async function cancelAnyAlert(notifId: string | null | undefined): Promise<void> {
+  await cancelBlockNotification(notifId);
+  await cancelAlarm(notifId);
+}
+
+/**
+ * Schedule an alert for a block using either expo-notifications (notification mode)
+ * or Notifee (alarm mode on Android). Returns the scheduled ID or null.
+ */
+async function scheduleBlockAlert(
+  block: TargetBlockType,
+  zone: string,
+  alertMode: "notification" | "alarm",
+): Promise<string | null> {
+  if (Platform.OS === "android" && alertMode === "alarm") {
+    const fireDate = computeAlertFireDate(block, zone);
+    if (!fireDate) return null;
+    return scheduleAlarm(block, fireDate, block.snoozeCount ?? 0);
+  }
+  return scheduleBlockNotification(block, zone);
+}
+
+/**
  * Build a new countdown block with sensible defaults.
  * The target time defaults to the current wall-clock time so the card is
  * immediately usable without requiring the user to set a time first.
@@ -262,13 +296,20 @@ export default function HomeScreen() {
   const [androidBackgroundHelpVisible, setAndroidBackgroundHelpVisible] = useState(false);
   const [optOutModalVisible, setOptOutModalVisible] = useState(false);
   const [is24Hour, setIs24Hour] = useState(true);
+  const [alertMode, setAlertMode] = useState<"notification" | "alarm">("notification");
+  const [alarmDismissData, setAlarmDismissData] = useState<{
+    blockId: number;
+    name: string;
+    minutes: number;
+    snoozeCount: number;
+  } | null>(null);
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     createDefaultBlock(1),
   ]);
   const nextIdRef = useRef(2);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const isLoadedRef = useRef(false);
-  const alertQueueRef = useRef<{ id: number; name: string; minutes: number }[]>([]);
+  const alertQueueRef = useRef<{ id: number; name: string; minutes: number; snoozeCount: number }[]>([]);
   // Holds notificationIds that must be cancelled before the in-app alert fires.
   // We queue them here because the setTargetBlocks updater is a pure function and
   // cannot perform async work (cancelBlockNotification) directly.
@@ -362,6 +403,12 @@ export default function HomeScreen() {
             );
           }
         }
+
+        // Step 3: create the alarm notification channel on Android so it is
+        // ready before the user first enables alarm mode.
+        if (Platform.OS === "android") {
+          await ensureAlarmChannel();
+        }
       } catch {
         // Permissions API unavailable — alerts will use Alert.alert fallback
       }
@@ -448,19 +495,21 @@ export default function HomeScreen() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [storedZone1, storedZone2, storedTargets, storedAnalytics, storedAndroidBackgroundHelp, storedIs24Hour] = await AsyncStorage.multiGet([
+        const [storedZone1, storedZone2, storedTargets, storedAnalytics, storedAndroidBackgroundHelp, storedIs24Hour, storedAlertMode] = await AsyncStorage.multiGet([
           "zone1",
           "zone2",
           "targetBlocks",
           "analyticsEnabled",
           "androidBackgroundHelpSeen",
           "is24Hour",
+          "alertMode",
         ]);
 
         if (storedZone1[1]) setZone1(storedZone1[1]);
         if (storedZone2[1]) setZone2(storedZone2[1]);
         // Missing key defaults to 24-hour (existing behavior); explicit "false" opts into 12-hour.
         if (storedIs24Hour[1] === "false") setIs24Hour(false);
+        if (storedAlertMode[1] === "alarm") setAlertMode("alarm");
         if (storedAnalytics[1] === null) {
           // First launch — show consent modal
           setConsentModalVisible(true);
@@ -512,8 +561,9 @@ export default function HomeScreen() {
       ["zone2", zone2],
       ["targetBlocks", serialized],
       ["is24Hour", String(is24Hour)],
+      ["alertMode", alertMode],
     ]).catch(() => {});
-  }, [zone1, zone2, targetBlocks, is24Hour]);
+  }, [zone1, zone2, targetBlocks, is24Hour, alertMode]);
 
   // Countdown updater — returns same array reference if nothing changed
   useEffect(() => {
@@ -584,6 +634,7 @@ export default function HomeScreen() {
                 id: block.id,
                 name: block.name,
                 minutes: block.alertMinutesBefore,
+                snoozeCount: block.snoozeCount ?? 0,
               });
               updates.alertFired = true;
               updates.alertMinutesBefore = null;
@@ -614,23 +665,30 @@ export default function HomeScreen() {
 
   // Process queued alerts via push notification (or Alert.alert fallback).
   // We first drain pendingCancelRef so the pre-scheduled native notification is
-  // cancelled BEFORE sendAlert fires its own immediate notification — preventing
-  // the user from receiving two notifications for the same alert event.
+  // cancelled BEFORE the in-app alert fires — preventing duplicate notifications.
+  // When alarm mode is active on Android, show AlarmDismissModal instead.
   useEffect(() => {
     if (pendingCancelRef.current.length > 0) {
       const toCancel = pendingCancelRef.current.splice(0);
-      toCancel.forEach((id) => { if (id) cancelBlockNotification(id); });
+      toCancel.forEach((id) => { if (id) cancelAnyAlert(id); });
     }
     if (alertQueueRef.current.length > 0) {
       const alerts = alertQueueRef.current.splice(0);
       alerts.forEach((a) => {
-        sendAlert(
-          "Countdown Alert",
-          `"${a.name}" has reached ${a.minutes} minute${a.minutes === 1 ? "" : "s"} before target!`
-        );
+        if (Platform.OS === "android" && alertMode === "alarm") {
+          // Show in-app full-screen alarm modal; don't replace an existing one.
+          setAlarmDismissData((prev) =>
+            prev ?? { blockId: a.id, name: a.name, minutes: a.minutes, snoozeCount: a.snoozeCount }
+          );
+        } else {
+          sendAlert(
+            "Countdown Alert",
+            `"${a.name}" has reached ${a.minutes} minute${a.minutes === 1 ? "" : "s"} before target!`
+          );
+        }
       });
     }
-  }, [targetBlocks]);
+  }, [targetBlocks, alertMode]);
 
   const toggleFullScreen = useCallback(
     () => setFullScreen((prev) => !prev),
@@ -664,14 +722,14 @@ export default function HomeScreen() {
     const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
     (async () => {
       try {
-        if (block.notificationId) await cancelBlockNotification(block.notificationId);
-        const notifId = await scheduleBlockNotification(tempBlock, zone);
+        if (block.notificationId) await cancelAnyAlert(block.notificationId);
+        const notifId = await scheduleBlockAlert(tempBlock, zone, alertMode);
         setTargetBlocks((blocks) =>
           blocks.map((b) => (b.id === id ? { ...b, notificationId: notifId } : b))
         );
       } catch {}
     })();
-  }, [zone1, zone2]);
+  }, [zone1, zone2, alertMode]);
 
   const handleTargetConfirm = useCallback((id: number, date: Date) => {
     const targetHour = date.getHours();
@@ -720,18 +778,18 @@ export default function HomeScreen() {
     // correct fire time even before React has flushed the state update.
     const block = targetBlocksRef.current.find((b) => b.id === id);
     if (!block) return;
-    const tempBlock = { ...block, alertMinutesBefore: minutes, alertFired: false };
+    const tempBlock = { ...block, alertMinutesBefore: minutes, alertFired: false, snoozeCount: 0 };
     const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
     (async () => {
       try {
-        if (block.notificationId) await cancelBlockNotification(block.notificationId);
-        const notifId = await scheduleBlockNotification(tempBlock, zone);
+        if (block.notificationId) await cancelAnyAlert(block.notificationId);
+        const notifId = await scheduleBlockAlert(tempBlock, zone, alertMode);
         setTargetBlocks((blocks) =>
           blocks.map((b) => (b.id === id ? { ...b, notificationId: notifId } : b))
         );
       } catch {}
     })();
-  }, [zone1, zone2]);
+  }, [zone1, zone2, alertMode]);
 
   const handleAlertDelete = useCallback((id: number) => {
     const block = targetBlocksRef.current.find((b) => b.id === id);
@@ -743,7 +801,7 @@ export default function HomeScreen() {
       )
     );
     if (block?.notificationId) {
-      cancelBlockNotification(block.notificationId).catch(() => {});
+      cancelAnyAlert(block.notificationId).catch(() => {});
     }
   }, []);
 
@@ -786,7 +844,7 @@ export default function HomeScreen() {
     const block = targetBlocksRef.current.find((b) => b.id === id);
     setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id));
     if (block?.notificationId) {
-      cancelBlockNotification(block.notificationId).catch(() => {});
+      cancelAnyAlert(block.notificationId).catch(() => {});
     }
   }, []);
 
@@ -812,16 +870,104 @@ export default function HomeScreen() {
 
   const doReset = useCallback(async () => {
     try {
-      await AsyncStorage.multiRemove(["zone1", "zone2", "targetBlocks", "is24Hour"]);
+      await AsyncStorage.multiRemove(["zone1", "zone2", "targetBlocks", "is24Hour", "alertMode"]);
       setZone1("Europe/Berlin");
       setZone2("Asia/Colombo");
       setIs24Hour(true);
+      setAlertMode("notification");
       nextIdRef.current = 2;
       setTargetBlocks([createDefaultBlock(1)]);
     } catch {
       // silently fail — state already reset above
     }
   }, []);
+
+  // Reschedule all active block alerts when alertMode changes so already-scheduled
+  // notifications switch to the new delivery system without requiring a manual edit.
+  useEffect(() => {
+    if (!isLoadedRef.current) return;
+
+    async function rescheduleAll() {
+      for (const block of targetBlocksRef.current) {
+        if (block.alertMinutesBefore === null) continue;
+        const zone = block.targetZone === "zone1" ? zone1 : zone2;
+        try {
+          if (block.notificationId) await cancelAnyAlert(block.notificationId);
+          const notifId = await scheduleBlockAlert(block, zone, alertMode);
+          setTargetBlocks(
+            targetBlocksRef.current.map((b) => (b.id === block.id ? { ...b, notificationId: notifId } : b))
+          );
+        } catch {}
+      }
+    }
+
+    rescheduleAll().catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alertMode]);
+
+  const handleAlarmDismiss = useCallback(() => {
+    setAlarmDismissData(null);
+    // alertMinutesBefore and alertFired are already set by the countdown timer
+    // when the foreground alert fires — no additional state cleanup needed.
+  }, []);
+
+  const handleAlarmSnooze = useCallback(async () => {
+    if (!alarmDismissData) return;
+    const { blockId, minutes, snoozeCount } = alarmDismissData;
+    const newSnoozeCount = snoozeCount + 1;
+    if (newSnoozeCount > MAX_SNOOZES) {
+      setAlarmDismissData(null);
+      return;
+    }
+
+    setAlarmDismissData(null);
+
+    const fireDate = new Date(Date.now() + SNOOZE_MS);
+    const block = targetBlocksRef.current.find((b) => b.id === blockId);
+
+    // Restore alertMinutesBefore (it was cleared by the countdown timer) and
+    // increment snoozeCount so the rescheduled alarm shows the correct snooze cap.
+    setTargetBlocks((blocks) =>
+      blocks.map((b) =>
+        b.id === blockId
+          ? { ...b, alertMinutesBefore: minutes, alertFired: false, snoozeCount: newSnoozeCount }
+          : b
+      )
+    );
+
+    if (!block) return;
+    const tempBlock = { ...block, alertMinutesBefore: minutes, alertFired: false, snoozeCount: newSnoozeCount };
+
+    (async () => {
+      try {
+        let newId: string | null = null;
+        if (Platform.OS === "android" && alertMode === "alarm") {
+          newId = await scheduleAlarm(tempBlock, fireDate, newSnoozeCount);
+        } else if (Notifications) {
+          // For notification-mode snooze, schedule directly at the snooze fire date
+          // rather than using computeAlertFireDate (which recalculates from target time).
+          newId = await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Countdown Alert (Snoozed)",
+              body: `"${tempBlock.name}" has reached ${minutes} minute${minutes === 1 ? "" : "s"} before target!`,
+              sound: true,
+              ...(Platform.OS === "android" ? { channelId: "default" } : {}),
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: fireDate,
+              ...(Platform.OS === "android" ? { channelId: "default" } : {}),
+            },
+          }).catch(() => null);
+        }
+        if (newId) {
+          setTargetBlocks(
+            targetBlocksRef.current.map((b) => (b.id === blockId ? { ...b, notificationId: newId } : b))
+          );
+        }
+      } catch {}
+    })();
+  }, [alarmDismissData, alertMode]);
 
   /** Apply an analytics consent choice: persist it, update Firebase, and init Clarity if accepted. */
   const applyAnalyticsChoice = useCallback(async (enabled: boolean) => {
@@ -899,6 +1045,9 @@ export default function HomeScreen() {
       : (!isWeb && !Notifications
           ? "Native notifications are unavailable in this build, so background alerts cannot be scheduled."
           : null);
+  // Alarm mode is available when we're on Android, permissions are not blocked,
+  // and we're not running in Expo Go (which lacks full notification support).
+  const alarmAvailable = Platform.OS === "android" && !notifBlocked && !isExpoGo && !!Notifications;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -1148,6 +1297,7 @@ export default function HomeScreen() {
             notifUnavailableReason={notifUnavailableReason}
             onRequestNotifPermission={requestNotifPermission}
             is24Hour={is24Hour}
+            alertMode={alertMode}
           />
         ))}
 
@@ -1268,6 +1418,9 @@ export default function HomeScreen() {
         onOpenAndroidBackgroundHelp={() => setAndroidBackgroundHelpVisible(true)}
         is24Hour={is24Hour}
         onToggle24Hour={setIs24Hour}
+        alertMode={alertMode}
+        onToggleAlertMode={setAlertMode}
+        alarmAvailable={alarmAvailable}
       />
 
       <AnalyticsConsentModal
@@ -1292,6 +1445,17 @@ export default function HomeScreen() {
         }}
         onCancel={() => setOptOutModalVisible(false)}
       />
+
+      {alarmDismissData && (
+        <AlarmDismissModal
+          visible
+          blockName={alarmDismissData.name}
+          minutes={alarmDismissData.minutes}
+          snoozeCount={alarmDismissData.snoozeCount}
+          onDismiss={handleAlarmDismiss}
+          onSnooze={handleAlarmSnooze}
+        />
+      )}
     </View>
     </View>
   );

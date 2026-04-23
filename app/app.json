@@ -22,7 +22,8 @@
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "USE_FULL_SCREEN_INTENT"
       ]
     },
     "web": {
