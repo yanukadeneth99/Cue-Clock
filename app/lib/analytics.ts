@@ -15,12 +15,14 @@ export async function applyAnalyticsCollection(enabled: boolean): Promise<void> 
     const { getApps } = await import("@react-native-firebase/app");
     const { default: analytics } = await import("@react-native-firebase/analytics");
     const { default: crashlytics } = await import("@react-native-firebase/crashlytics");
+    const { default: perf } = await import("@react-native-firebase/perf");
 
     // In React Native, Firebase auto-initializes from google-services.json at native module load.
     // If no apps exist, Firebase isn't available, so skip analytics setup.
     if (getApps().length === 0) return;
     await analytics().setAnalyticsCollectionEnabled(enabled);
     await crashlytics().setCrashlyticsCollectionEnabled(enabled);
+    await perf().setPerformanceCollectionEnabled(enabled);
 
     if (enabled) {
       const clarityKey = process.env.EXPO_PUBLIC_CLARITY_KEY;

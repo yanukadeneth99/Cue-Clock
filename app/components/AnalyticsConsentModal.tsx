@@ -85,6 +85,7 @@ export default function AnalyticsConsentModal({
               "App usage patterns (screens visited)",
               "Device type and OS version",
               "Crash reports and errors",
+              "App performance metrics (startup time, screen load)",
               "General geographic region (country-level)",
             ].map((item) => (
               <View key={item} style={{ flexDirection: "row", gap: 8 }}>
@@ -107,8 +108,10 @@ export default function AnalyticsConsentModal({
           >
             Powered by{" "}
             <Text style={{ color: colors.header }}>Microsoft Clarity</Text>
-            {" "}and{" "}
+            {", "}
             <Text style={{ color: colors.header }}>Firebase Analytics</Text>
+            {", and "}
+            <Text style={{ color: colors.header }}>Firebase Performance</Text>
             {". "}
             You can change this at any time in the app.{" "}
             {Platform.OS === "web" && (
