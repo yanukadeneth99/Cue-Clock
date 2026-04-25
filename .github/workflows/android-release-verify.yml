@@ -6,7 +6,6 @@ on:
       - '.github/workflows/android-release.yml'
       - '.github/workflows/android-release-verify.yml'
       - 'app/**'
-      - 'docker/Dockerfile.android'
 
 concurrency:
   group: android-release-verify-${{ github.event.pull_request.number || github.ref }}

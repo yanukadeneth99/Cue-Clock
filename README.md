@@ -21,6 +21,20 @@ A minimal, distraction-free clock app built specifically for broadcast professio
 
 ---
 
+## 💛 Support This Project
+
+Cue Clock is **completely free, open-source, and ad-free** — and I plan to keep it that way.
+
+> I will **never** place ads inside any product I build. If you find Cue Clock useful, consider buying me a coffee instead. It directly funds continued development, new features, and keeping the lights on.
+
+<a href="https://ko-fi.com/yanukadeneth99" target="_blank">
+  <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" height="36" />
+</a>
+
+Every contribution — no matter the size — is genuinely appreciated. Thank you. 🙏
+
+---
+
 ## ⚡ What it Does
 
 In high-pressure broadcast environments, every second counts. **Cue Clock** is built for that constraint: **fast, obvious, and zero friction.**

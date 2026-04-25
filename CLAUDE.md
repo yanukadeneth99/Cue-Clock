@@ -72,11 +72,6 @@ website/          # Next.js Landing Page & Documentation
   public/         # Static assets (SVGs)
   package.json    # Website dependencies and scripts
 
-docker/
-  Dockerfile.android  # Ubuntu 24.04 image with Java 17, Node 22, Android SDK 35
-
-scripts/
-  build-android-local.sh  # Local Docker-based Android build (debug/release modes)
 
 .github/workflows/
   android-internal.yml # CI/CD: build + sign AAB + upload to Google Play internal track (master pushes)
@@ -291,19 +286,6 @@ releaseNotes: ${{ github.event.release.body }}
 
 → Pipeline automatically triggers, builds signed AAB, and uploads to Google Play beta track with release notes.
 
-### Local Android Build (`scripts/build-android-local.sh`)
-
-- **Debug** (default): `./gradlew assembleDebug` → APK output
-- **Release** (`--release` flag): Requires env vars `KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
-- Runs inside the `docker/Dockerfile.android` container
-
-### Docker (`docker/Dockerfile.android`)
-
-Custom Android build environment (not currently used by CI — CI uses `thyrlian/android-sdk:latest`). Useful for local builds without manual SDK installation.
-
-- Ubuntu 24.04, OpenJDK 17, Node.js 22
-- Android SDK: platform-tools, platforms;android-35, build-tools;34.0.0, ndk;26.1.10909125
-
 ---
 
 ## Engineering Standards
@@ -355,16 +337,6 @@ npm run dev            # Start Next.js dev server
 npm run build          # Build for production
 ```
 
-### Local Android Build
-
-```bash
-# Debug APK
-./scripts/build-android-local.sh
-
-# Signed release APK
-KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
-  ./scripts/build-android-local.sh --release
-```
 
 --
 

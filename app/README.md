@@ -71,6 +71,16 @@ For the full architecture walkthrough — state model, countdown algorithm, aler
 
 ---
 
+## 💛 Support
+
+Cue Clock is free, open-source, and **will never have ads**. If it saves you time in the studio, consider supporting its development:
+
+<a href="https://ko-fi.com/yanukadeneth99" target="_blank">
+  <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" height="36" />
+</a>
+
+---
+
 ## Contributing
 
 Issues and PRs are welcome! Read [`../CONTRIBUTING.md`](../CONTRIBUTING.md) before starting work.

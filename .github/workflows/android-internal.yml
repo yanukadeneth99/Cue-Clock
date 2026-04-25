@@ -91,6 +91,13 @@ jobs:
             -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cue-clock-internal-${{ github.run_number }}
+          path: app/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 7
+
       - name: Upload to Google Play (Internal Testing track)
         uses: r0adkll/upload-google-play@v1
         with:
@@ -100,4 +107,3 @@ jobs:
           releaseName: cue-clock-${{ github.run_number }}
           track: internal
           status: completed
-          changesNotSentForReview: true

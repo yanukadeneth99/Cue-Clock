@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cue Clock — Website
 
-## Getting Started
+The Next.js landing page for [cueclock.app](https://cueclock.app). A fully animated, SEO-optimized marketing site for the Cue Clock broadcast tool.
 
-First, run the development server:
+> Looking for the mobile app? See [`../app/`](../app/README.md).
+> Looking for the project overview? See the [root README](../README.md).
+
+---
+
+## What's in Here
+
+| Route           | Description                                                           |
+| --------------- | --------------------------------------------------------------------- |
+| `/`             | Landing page — hero, feature highlights, story, download CTA, credits |
+| `/privacy`      | Privacy policy (data collection, analytics opt-out)                   |
+| `robots.ts`     | Dynamic `robots.txt` generation                                       |
+| `sitemap.ts`    | Dynamic sitemap for `cueclock.app`                                    |
+
+### Key Features
+
+- **GSAP animations** — Hero entrance, scroll-triggered reveals via `ScrollTrigger`
+- **Live GitHub stats** — Stars, forks, last commit, and CI run status fetched from the GitHub API at runtime
+- **Contributor grid** — Pulls live contributor avatars from the GitHub API
+- **Platform-aware download CTA** — Detects Android/iOS/Web and highlights the relevant download button
+- **Full SEO** — OpenGraph, Twitter Card, JSON-LD structured data, canonical URL, sitemap
+- **Dark broadcast theme** — Matches the mobile app's dark blue-gray palette
+
+---
+
+## Quick Start
 
 ```bash
+cd website
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Command         | What it does                 |
+| --------------- | ---------------------------- |
+| `npm run dev`   | Start Next.js dev server     |
+| `npm run build` | Production build             |
+| `npm run start` | Serve the production build   |
+| `npm run lint`  | Run ESLint                   |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Layer      | Technology                    | Version  |
+| ---------- | ----------------------------- | -------- |
+| Framework  | Next.js (App Router)          | 16.2.3   |
+| React      | React                         | 19.2.4   |
+| Animations | GSAP + `@gsap/react`          | 3.14.2   |
+| Styling    | Tailwind CSS                  | 4        |
+| Fonts      | Space Grotesk (headings), Inter (body) | Google Fonts |
+| Language   | TypeScript (strict)           | 6        |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project Layout
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+website/
+├── src/app/
+│   ├── page.tsx        # Landing page — all sections + GSAP animations
+│   ├── layout.tsx      # Root layout: SEO metadata, fonts, JSON-LD, dark theme
+│   ├── globals.css     # Tailwind 4, Material Icons, glassmorphism utilities
+│   ├── robots.ts       # robots.txt generation
+│   ├── sitemap.ts      # Sitemap generation (cueclock.app)
+│   └── privacy/
+│       └── page.tsx    # Privacy policy page
+└── public/             # Static assets (SVGs, logo)
+```
+
+---
+
+## 💛 Support
+
+Cue Clock is free, open-source, and **will never have ads**. If you find it useful, consider supporting its development:
+
+<a href="https://ko-fi.com/yanukadeneth99" target="_blank">
+  <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" height="36" />
+</a>
+
+---
+
+## Contributing
+
+Issues and PRs are welcome! Read [`../CONTRIBUTING.md`](../CONTRIBUTING.md) before starting work.
+
+## License
+
+AGPL-3.0. See [`../LICENSE`](../LICENSE). Commercial licensing: [hello@yashura.io](mailto:hello@yashura.io).
