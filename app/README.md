@@ -1,6 +1,6 @@
-# Cue Clock — Mobile App
+# Cue Clock: Mobile App
 
-The React Native (Expo) application powering Cue Clock. Dual live clocks, infinite countdowns, on-air fullscreen mode, and per-timer alerts — built for broadcast studios where every second counts.
+The React Native (Expo) application powering Cue Clock. Dual live clocks, infinite countdowns, on-air fullscreen mode, and per-timer alerts, built for broadcast studios where every second counts.
 
 > Looking for the landing page? See [`../website/`](../website/README.md).
 > Looking for the project overview? See the [root README](../README.md).
@@ -19,9 +19,9 @@ npx expo start
 
 Then press:
 
-- `a` — run on Android emulator/device
-- `i` — run on iOS simulator (macOS only)
-- `w` — run in web browser
+- `a`: run on Android emulator/device
+- `i`: run on iOS simulator (macOS only)
+- `w`: run in web browser
 
 For a deeper setup guide (optional env vars, native builds, signing), see [`../DEVELOPMENT.md`](../DEVELOPMENT.md).
 
@@ -58,7 +58,7 @@ For a deeper setup guide (optional env vars, native builds, signing), see [`../D
 app/
 ├── app/            # Expo Router screens (file-based routing)
 │   ├── _layout.tsx # Root layout: fonts, stack, analytics init
-│   └── index.tsx   # Main screen — all primary state lives here
+│   └── index.tsx   # Main screen: all primary state lives here
 ├── components/     # UI components (ClockPicker, TargetBlock, modals)
 ├── constants/      # colors.ts, timezones.ts
 ├── hooks/          # Shared React hooks
@@ -67,7 +67,7 @@ app/
 └── scripts/        # Maintenance utilities
 ```
 
-For the full architecture walkthrough — state model, countdown algorithm, alert queue, platform branches — see [`../CLAUDE.md`](../CLAUDE.md).
+For the full architecture walkthrough (state model, countdown algorithm, alert queue, platform branches), see [`../CLAUDE.md`](../CLAUDE.md).
 
 ---
 

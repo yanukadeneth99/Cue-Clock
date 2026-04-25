@@ -1,4 +1,4 @@
-# Cue Clock — Website
+# Cue Clock: Website
 
 The Next.js landing page for [cueclock.app](https://cueclock.app). A fully animated, SEO-optimized marketing site for the Cue Clock broadcast tool.
 
@@ -11,19 +11,19 @@ The Next.js landing page for [cueclock.app](https://cueclock.app). A fully anima
 
 | Route           | Description                                                           |
 | --------------- | --------------------------------------------------------------------- |
-| `/`             | Landing page — hero, feature highlights, story, download CTA, credits |
+| `/`             | Landing page: hero, feature highlights, story, download CTA, credits  |
 | `/privacy`      | Privacy policy (data collection, analytics opt-out)                   |
 | `robots.ts`     | Dynamic `robots.txt` generation                                       |
 | `sitemap.ts`    | Dynamic sitemap for `cueclock.app`                                    |
 
 ### Key Features
 
-- **GSAP animations** — Hero entrance, scroll-triggered reveals via `ScrollTrigger`
-- **Live GitHub stats** — Stars, forks, last commit, and CI run status fetched from the GitHub API at runtime
-- **Contributor grid** — Pulls live contributor avatars from the GitHub API
-- **Platform-aware download CTA** — Detects Android/iOS/Web and highlights the relevant download button
-- **Full SEO** — OpenGraph, Twitter Card, JSON-LD structured data, canonical URL, sitemap
-- **Dark broadcast theme** — Matches the mobile app's dark blue-gray palette
+- **GSAP animations:** Hero entrance, scroll-triggered reveals via `ScrollTrigger`
+- **Live GitHub stats:** Stars, forks, last commit, and CI run status fetched from the GitHub API at runtime
+- **Contributor grid:** Pulls live contributor avatars from the GitHub API
+- **Platform-aware download CTA:** Detects Android/iOS/Web and highlights the relevant download button
+- **Full SEO:** OpenGraph, Twitter Card, JSON-LD structured data, canonical URL, sitemap
+- **Dark broadcast theme:** Matches the mobile app's dark blue-gray palette
 
 ---
 
@@ -68,7 +68,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ```
 website/
 ├── src/app/
-│   ├── page.tsx        # Landing page — all sections + GSAP animations
+│   ├── page.tsx        # Landing page: all sections + GSAP animations
 │   ├── layout.tsx      # Root layout: SEO metadata, fonts, JSON-LD, dark theme
 │   ├── globals.css     # Tailwind 4, Material Icons, glassmorphism utilities
 │   ├── robots.ts       # robots.txt generation

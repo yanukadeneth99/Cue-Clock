@@ -1,11 +1,11 @@
-# Cue Clock — CLAUDE.md
+# Cue Clock: CLAUDE.md
 
 Developer reference for AI-assisted work on this repository.
 
 > **⚠ This is a public repository.**
 > Before committing or pushing anything, double-check:
-> - **Security** — No secrets, API keys, tokens, credentials, internal URLs, or private config (check `.env`, `google-services.json`, keystores, etc.).
-> - **Brand** — No unreleased feature names, internal codenames, partner names, or confidential roadmap details.
+> - **Security**: No secrets, API keys, tokens, credentials, internal URLs, or private config (check `.env`, `google-services.json`, keystores, etc.).
+> - **Brand**: No unreleased feature names, internal codenames, partner names, or confidential roadmap details.
 > When in doubt, ask before pushing.
 
 ---
@@ -16,14 +16,14 @@ Developer reference for AI-assisted work on this repository.
 
 ### Core Features
 
-- **Dual live clocks** — Display two side-by-side clocks, each configurable to any of 18 broadcast timezones.
-- **Multiple countdown timers** — Create, name, and manage infinite countdowns tied to specific timezones.
-- **Deduction offsets** — Subtract "pre-show buffer" durations from countdown targets (useful for live show prep).
-- **On-air (Full-screen) mode** — A distraction-free display that strips away controls for studio use.
-- **Persistent state** — All settings, zones, and timers are saved locally across sessions via AsyncStorage.
-- **Per-timer alerts** — Configurable "minutes-before" push notifications and in-app alerts.
-- **12/24-hour clock format** — User-selectable display preference (toggle in Help modal), persisted across sessions. Affects live clocks and target time displays; countdown duration stays in 24h style.
-- **In-app help** — Integrated guide explaining all controls and usage patterns.
+- **Dual live clocks**: Display two side-by-side clocks, each configurable to any of 18 broadcast timezones.
+- **Multiple countdown timers**: Create, name, and manage infinite countdowns tied to specific timezones.
+- **Deduction offsets**: Subtract "pre-show buffer" durations from countdown targets (useful for live show prep).
+- **On-air (Full-screen) mode**: A distraction-free display that strips away controls for studio use.
+- **Persistent state**: All settings, zones, and timers are saved locally across sessions via AsyncStorage.
+- **Per-timer alerts**: Configurable "minutes-before" push notifications and in-app alerts.
+- **12/24-hour clock format**: User-selectable display preference (toggle in Help modal), persisted across sessions. Affects live clocks and target time displays; countdown duration stays in 24h style.
+- **In-app help**: Integrated guide explaining all controls and usage patterns.
 
 ---
 
@@ -33,7 +33,7 @@ Developer reference for AI-assisted work on this repository.
 app/              # React Native (Expo) Mobile Application
   app/            # Expo Router (file-based) directory
     _layout.tsx   # Root layout: font loading, Expo Router stack, Clarity analytics init
-    index.tsx     # Main screen — all primary state and logic lives here (~839 lines)
+    index.tsx     # Main screen: all primary state and logic lives here (~839 lines)
     +not-found.tsx# 404 catch-all route
   components/     # UI Components
     AnalyticsConsentModal.tsx        # First-launch GDPR-compliant opt-in modal (non-dismissable)
@@ -124,14 +124,14 @@ Root Documentation
 
 ```
 HomeScreen (app/app/index.tsx)
-├── ClockPicker                  — Dual live-clock with timezone pickers
-├── TargetBlock[]                — One per countdown; collapsible; includes AlertModal + ConfirmModal
-│   ├── AlertModal               — Set/delete countdown alert
-│   └── ConfirmModal             — Delete confirmation dialog
-├── HelpModal                    — In-app help overlay (triggered by ? button in header)
-│   └── (opens) AndroidBackgroundHelpModal — Background-permissions guide (Android only)
-├── AnalyticsConsentModal        — First-launch opt-in (non-dismissable)
-└── AnalyticsOptOutModal         — Opt-out confirmation (shown when user turns off analytics)
+├── ClockPicker                 : Dual live-clock with timezone pickers
+├── TargetBlock[]               : One per countdown; collapsible; includes AlertModal + ConfirmModal
+│   ├── AlertModal              : Set/delete countdown alert
+│   └── ConfirmModal            : Delete confirmation dialog
+├── HelpModal                   : In-app help overlay (triggered by ? button in header)
+│   └── (opens) AndroidBackgroundHelpModal: Background-permissions guide (Android only)
+├── AnalyticsConsentModal       : First-launch opt-in (non-dismissable)
+└── AnalyticsOptOutModal        : Opt-out confirmation (shown when user turns off analytics)
 ```
 
 ### State Management
@@ -141,8 +141,8 @@ All state is lifted to `HomeScreen` and persisted via AsyncStorage (`multiSet`/`
 - `zone1` / `zone2`: Timezone strings.
 - `targetBlocks`: JSON-serialized `TargetBlockType[]`.
 - `fullScreen`: Boolean for on-air mode.
-- `is24Hour`: Boolean clock-format preference (default `true`). Persisted; missing key defaults to `true` (backwards-safe). Affects live clocks and target time displays only — countdown durations stay in 24h style.
-- `analyticsEnabled`: Three-state (`null` = not yet given, `true` = accepted, `false` = declined). **Preserved on reset** — `doReset` uses `multiRemove` on specific keys, not `AsyncStorage.clear`.
+- `is24Hour`: Boolean clock-format preference (default `true`). Persisted; missing key defaults to `true` (backwards-safe). Affects live clocks and target time displays only: countdown durations stay in 24h style.
+- `analyticsEnabled`: Three-state (`null` = not yet given, `true` = accepted, `false` = declined). **Preserved on reset**: `doReset` uses `multiRemove` on specific keys, not `AsyncStorage.clear`.
 - `consentModalVisible`: Boolean for first-launch analytics consent modal visibility.
 - `helpVisible` / `resetModalVisible`: Modal visibility booleans.
 - `notifBlocked`: Web notification permission state (web only).
@@ -292,30 +292,30 @@ releaseNotes: ${{ github.event.release.body }}
 
 ### 1. Speed & Reliability (Primary Mandate)
 
-- **Minimal overhead** — Avoid heavy libraries or unnecessary re-renders.
-- **Simple Designs** — Prefer flat logic over clever abstractions.
-- **Intuitive UX** — Controls must be obvious to a stressed operator.
+- **Minimal overhead**: Avoid heavy libraries or unnecessary re-renders.
+- **Simple Designs**: Prefer flat logic over clever abstractions.
+- **Intuitive UX**: Controls must be obvious to a stressed operator.
 
 ### 2. Styling Standards
 
-- **Inline Style Props** — Use for all layout and visual properties.
-- **Color Scheme** — Strictly source colors from `app/constants/colors.ts`.
-- **Picker Rendering** — Never use fixed `height` or `overflow: hidden` on `@react-native-picker/picker` containers (fixes Android clipping).
-- **Safe Area** — Always use `useSafeAreaInsets()`; never hardcode platform offsets.
+- **Inline Style Props**: Use for all layout and visual properties.
+- **Color Scheme**: Strictly source colors from `app/constants/colors.ts`.
+- **Picker Rendering**: Never use fixed `height` or `overflow: hidden` on `@react-native-picker/picker` containers (fixes Android clipping).
+- **Safe Area**: Always use `useSafeAreaInsets()`; never hardcode platform offsets.
 
 ### 3. Coding Conventions
 
-- **TypeScript** — Strict mode enabled. Use `T[]` not `Array<T>`.
-- **Performance** — Use `useCallback` for handlers and `React.memo` on list items (`TargetBlock`).
-- **Error Handling** — Use empty or comment-only `catch` blocks for production-safe silence; no `console.log` in production.
-- **Documentation** — Exported components and functions must have JSDoc describing props/parameters.
-- **Interaction** — Use `Pressable` instead of `Button` for custom-styled elements.
-- **`any` Type Pattern** — `(window as any).Notification` and `onHoverIn/Out as any` spreads are intentional RN-Web escape hatches where no typed API exists. Do not remove these.
+- **TypeScript**: Strict mode enabled. Use `T[]` not `Array<T>`.
+- **Performance**: Use `useCallback` for handlers and `React.memo` on list items (`TargetBlock`).
+- **Error Handling**: Use empty or comment-only `catch` blocks for production-safe silence; no `console.log` in production.
+- **Documentation**: Exported components and functions must have JSDoc describing props/parameters.
+- **Interaction**: Use `Pressable` instead of `Button` for custom-styled elements.
+- **`any` Type Pattern**: `(window as any).Notification` and `onHoverIn/Out as any` spreads are intentional RN-Web escape hatches where no typed API exists. Do not remove these.
 
 ### 4. Git Conventions
 
-- **Commit Messages** — Never add Anthropic or Claude author lines (no `Co-Authored-By` trailers) in commit messages.
-- **Branch Policy** — Always ask for confirmation before committing directly to `master`, `main`, or `production` branches.
+- **Commit Messages**: Never add Anthropic or Claude author lines (no `Co-Authored-By` trailers) in commit messages.
+- **Branch Policy**: Always ask for confirmation before committing directly to `master`, `main`, or `production` branches.
 
 ---
 

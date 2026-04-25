@@ -25,7 +25,7 @@ Open a [GitHub Issue](https://github.com/yanukadeneth99/Cue-Clock/issues) for:
 ### 2. Development Setup
 
 1. **Fork** and **Clone** the repository.
-2. **No environment variables required** — all optional features gracefully skip initialization. See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed setup instructions.
+2. **No environment variables required**; all optional features gracefully skip initialization. See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed setup instructions.
 3. Choose the project you want to work on:
 
 #### Working on the Mobile App (`app/`)
@@ -39,7 +39,7 @@ npx expo run:android  # or run:ios, or press 'w' for web
 
 _Note: We prioritize **inline styles** for layout to ensure reliability on Android native._
 
-**No setup needed.** Skip analytics, Firebase, and signing credentials — they're all optional. The app just works.
+**No setup needed.** Skip analytics, Firebase, and signing credentials; they're all optional. The app just works.
 
 #### Working on the Website (`website/`)
 

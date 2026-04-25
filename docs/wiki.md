@@ -1,12 +1,12 @@
-# Cue Clock — User Guide
+# Cue Clock: User Guide
 
-**Cue Clock** is a time management tool built for broadcast professionals. It lets you monitor multiple timezones and run precision countdown timers — all in one distraction-free display.
+**Cue Clock** is a time management tool built for broadcast professionals. It lets you monitor multiple timezones and run precision countdown timers, all in one distraction-free display.
 
 ---
 
 ## Table of Contents
 
-- [Cue Clock — User Guide](#cue-clock--user-guide)
+- [Cue Clock: User Guide](#cue-clock-user-guide)
   - [Table of Contents](#table-of-contents)
   - [Getting Started](#getting-started)
   - [Live Clocks](#live-clocks)
@@ -37,7 +37,7 @@ Two large clocks sit at the top of the screen, each independently configurable t
 
 - Tap the **timezone label** beneath either clock to open the picker and choose a zone.
 - Both clocks update every second in real time.
-- Clock 1 is displayed in **green**; Clock 2 in **red** — matching broadcast convention for primary/secondary feeds.
+- Clock 1 is displayed in **green**; Clock 2 in **red**, matching broadcast convention for primary/secondary feeds.
 
 ---
 
@@ -47,8 +47,8 @@ Each countdown card shows the time remaining until a target moment in a chosen t
 
 ### Adding a timer
 
-- **Mobile** — tap the **+ Add** button in the footer.
-- **Web** — click the **+ Add** button in the header.
+- **Mobile:** tap the **+ Add** button in the footer.
+- **Web:** click the **+ Add** button in the header.
 
 ### Configuring a timer
 
@@ -98,12 +98,12 @@ The alert fires once and is then automatically cleared from the card.
 
 Full-screen mode strips away all controls for a clean studio display.
 
-- **Mobile** — tap the **broadcast icon** in the footer.
-- **Web** — click the **broadcast icon** in the header.
+- **Mobile:** tap the **broadcast icon** in the footer.
+- **Web:** click the **broadcast icon** in the header.
 
 In full-screen mode:
 
-- The countdown font scales dynamically — the more timers you have, the smaller each one gets to fit the screen.
+- The countdown font scales dynamically: the more timers you have, the smaller each one gets to fit the screen.
 - An **exit button** appears at the bottom edge and auto-dims after 3 seconds. Tap anywhere on it to exit.
 
 ---
@@ -122,7 +122,7 @@ Toggle between 12-hour (AM/PM) and 24-hour display from the **?** help screen.
 
 To clear all timers and settings, open the **?** help screen and tap **Reset**. You will be asked to confirm.
 
-> Analytics consent is **preserved** on reset — you will not be asked again.
+> Analytics consent is **preserved** on reset; you will not be asked again.
 
 ---
 

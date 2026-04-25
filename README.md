@@ -23,7 +23,7 @@ A minimal, distraction-free clock app built specifically for broadcast professio
 
 ## 💛 Support This Project
 
-Cue Clock is **completely free, open-source, and ad-free** — and I plan to keep it that way.
+Cue Clock is **completely free, open-source, and ad-free**, and I plan to keep it that way.
 
 > I will **never** place ads inside any product I build. If you find Cue Clock useful, consider buying me a coffee instead. It directly funds continued development, new features, and keeping the lights on.
 
@@ -31,7 +31,7 @@ Cue Clock is **completely free, open-source, and ad-free** — and I plan to kee
   <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" height="36" />
 </a>
 
-Every contribution — no matter the size — is genuinely appreciated. Thank you. 🙏
+Every contribution, no matter the size, is genuinely appreciated. Thank you. 🙏
 
 ---
 
@@ -39,11 +39,11 @@ Every contribution — no matter the size — is genuinely appreciated. Thank yo
 
 In high-pressure broadcast environments, every second counts. **Cue Clock** is built for that constraint: **fast, obvious, and zero friction.**
 
-- 🕒 **Dual Timezone Clocks** — Side-by-side live clocks configurable to 18 global broadcast timezones.
-- ⏳ **Infinite Countdowns** — Create as many named countdowns as you need, tied to any timezone.
-- 📐 **Deduction Offsets** — Subtract pre-show buffers automatically from your countdown targets.
-- 🎬 **On-Air Mode** — A dedicated full-screen mode that strips away all controls for studio display.
-- 📱 **Native Everywhere** — Optimized for iOS, Android, and Web with local state persistence.
+- 🕒 **Dual Timezone Clocks:** Side-by-side live clocks configurable to 18 global broadcast timezones.
+- ⏳ **Infinite Countdowns:** Create as many named countdowns as you need, tied to any timezone.
+- 📐 **Deduction Offsets:** Subtract pre-show buffers automatically from your countdown targets.
+- 🎬 **On-Air Mode:** A dedicated full-screen mode that strips away all controls for studio display.
+- 📱 **Native Everywhere:** Optimized for iOS, Android, and Web with local state persistence.
 
 ---
 

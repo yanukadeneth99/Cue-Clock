@@ -204,7 +204,7 @@ Ensure your Android emulator is running before executing `npx expo run:android`.
 1. Enable Developer Mode on your device (tap Build Number 7 times in Settings)
 2. Enable USB Debugging
 3. Connect via USB
-4. Run `npx expo run:android` — it will detect your device
+4. Run `npx expo run:android`; it will detect your device
 
 ### iOS Device
 
@@ -232,6 +232,6 @@ The GitHub Actions workflows automatically build and deploy to Google Play. See 
 - **Internal Testing**: Triggered on every push to `master`
 - **Beta Release**: Triggered on GitHub Release creation
 
-These workflows securely inject credentials via GitHub Secrets — they are never committed to the repository.
+These workflows securely inject credentials via GitHub Secrets; they are never committed to the repository.
 
 There is also a pull request validation workflow at `.github/workflows/android-release-verify.yml` that dry-runs the Android release build and checks the produced bundle version metadata without uploading to Google Play.
