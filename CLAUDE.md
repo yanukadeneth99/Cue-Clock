@@ -4,9 +4,10 @@ Developer reference for AI-assisted work on this repository.
 
 > **⚠ This is a public repository.**
 > Before committing or pushing anything, double-check:
+>
 > - **Security**: No secrets, API keys, tokens, credentials, internal URLs, or private config (check `.env`, `google-services.json`, keystores, etc.).
 > - **Brand**: No unreleased feature names, internal codenames, partner names, or confidential roadmap details.
-> When in doubt, ask before pushing.
+>   When in doubt, ask before pushing.
 
 ---
 
@@ -46,11 +47,12 @@ app/              # React Native (Expo) Mobile Application
     HelpModal.tsx                    # In-app help overlay with 24h toggle, controls guide, about section
   lib/            # Shared modules
     analytics.ts  # Firebase/Clarity analytics initialisation (extracted from _layout.tsx)
+    alarms.ts     # Notifee alarm and notification scheduling wrapper
   constants/      # App-wide constants
     colors.ts     # 14-color dark broadcast palette
     timezones.ts  # 18 broadcast timezone definitions
-  hooks/          # Shared hooks
-    useColorScheme.ts  # Re-exports React Native's built-in hook
+  plugins/        # Expo Config Plugins
+    withFullScreenAlarm.js # Adds showWhenLocked and turnScreenOn to MainActivity
   assets/         # Icons, splash screens, fonts (SpaceMono-Regular.ttf)
   scripts/        # Maintenance and utility scripts
   .env.example    # Template for environment variables (safe, no secrets)
@@ -160,13 +162,30 @@ All state is lifted to `HomeScreen` and persisted via AsyncStorage (`multiSet`/`
 
 ### Alert System
 
-- **Queue system**: Fired alerts tracked in a ref; processed in useEffect to prevent duplicate notifications.
-- **Trigger condition**: `totalMinutes === alertMinutesBefore && seconds === 0`.
-- **Auto-clears**: Alert config is removed from the block after firing.
-- **Notification priority**: `expo-notifications` → Web Notifications API → `window.alert` fallback.
-- **Android**: Requires notification channel (default, MAX importance, vibration) on first app launch.
-- **Web**: "Notifications blocked" tag appears in header if permission denied (clickable to re-request).
-- **Expo Go guard**: Notification registration is skipped in Expo Go and web environments.
+Dual-mode alert system powered by Notifee with graceful fallbacks:
+
+**Alarm Mode** (Primary: Android full-screen intents)
+
+- Full-screen notification that wakes device, shows over lock screen, and plays looping alarm sound
+- Requires `android.permission.POST_NOTIFICATIONS` and `SCHEDULE_EXACT_ALARM`
+- Automatically snoozes (5 max) when snoozed; creates fresh trigger notification
+- Uses `ALARM_CHANNEL_ID: "cue-clock-alarm-v2"` (channel versioning ensures fresh setup on Android)
+- Works even when app is backgrounded or device in Doze mode (via AlarmManager)
+- Requires `showWhenLocked` and `turnScreenOn` manifest attributes (set by `withFullScreenAlarm` plugin)
+
+**Notification Mode** (Fallback: standard heads-up)
+
+- Visible heads-up notification if full-screen intent permission not granted (Android 14+)
+- Uses `NOTIF_CHANNEL_ID: "cue-clock-notif-v2"` with default sound and vibration
+- Survives Doze via exact timestamp triggers
+
+**Common behaviors**
+
+- **Queue system**: Fired alerts tracked in a ref; processed in useEffect to prevent duplicates
+- **Trigger condition**: `totalMinutes === alertMinutesBefore && seconds === 0`
+- **Auto-clears**: Alert config is removed from the block after firing
+- **Web/iOS fallback**: Uses Web Notifications API → `window.alert` as final fallback
+- **Expo Go guard**: Notification registration skipped in Expo Go environment (dev limitation)
 
 ### Platform-Specific UI
 
@@ -201,6 +220,27 @@ Colors are defined in `app/constants/colors.ts` and used via the `colors` object
 - **Website Body**: Inter (regular)
 - **Countdown**: `fontVariant: ['tabular-nums']` for stable width during ticks
 
+### Alarm Scheduling (`lib/alarms.ts`)
+
+Thin wrapper around `@notifee/react-native` for scheduling and managing countdown alerts. All Notifee API calls are inside function bodies (never at module load) so the file safely imports on web and iOS.
+
+**Key exports:**
+
+- `scheduleAlarm(block, fireDate)` – Schedule alarm-mode notification
+- `scheduleNotif(block, fireDate)` – Schedule fallback heads-up notification
+- `scheduleAlarmFromData(blockId, blockName, alertMinutesBefore, fireDate)` – Schedule from raw data (used in snooze)
+- `scheduleNotifFromData(...)` – Fallback notification from raw data
+- `displayNotif(title, body)` – Display immediate foreground notification
+- `cancelAlarm(id)` – Cancel by notification ID
+- `canUseFullScreenIntent()` – Check if app has permission to use full-screen (Android 14+)
+- `openFullScreenIntentSettings()` – Launch system settings to grant full-screen permission
+- `ensureAlarmChannel()` / `ensureNotifChannel()` – Create Android channels on first use
+- `requestAlarmPermissions()` – Request notification & scheduling permissions
+
+**Channel versioning:** Channels are versioned (`v2`) so Android recreates them with locked-in sound/vibration settings. Older installs may have stale `v1` channels; version bump forces refresh.
+
+**Exact triggers:** Both alarm and notification modes use `AlarmManager.SET_EXACT_AND_ALLOW_WHILE_IDLE` to survive Doze and fire at exact scheduled time.
+
 ### Fullscreen Layout Pattern
 
 Uses a **single `View` root** (to prevent native crashes from tree remounts) with conditional children.
@@ -210,6 +250,15 @@ Uses a **single `View` root** (to prevent native crashes from tree remounts) wit
 - Exit button is fixed at the bottom; auto-dims after 3 seconds of inactivity via opacity animation.
 - Safe area padding is dynamically calculated using `useSafeAreaInsets()`.
 - Countdown font size scales dynamically: `countdownFontSize = screenHeight / blockCount` (shrinks as blocks increase).
+
+### Expo Config Plugins
+
+**`withFullScreenAlarm`** (`app/plugins/withFullScreenAlarm.js`)
+
+- Adds `android:showWhenLocked="true"` and `android:turnScreenOn="true"` to MainActivity manifest
+- Allows Notifee's `fullScreenAction` to launch app over lock screen and wake device when alarm fires
+- Registered in `app.json` plugins array and automatically applied during prebuild
+- Android-only; safe to call on other platforms (returns config unmodified)
 
 ---
 
@@ -317,6 +366,11 @@ releaseNotes: ${{ github.event.release.body }}
 - **Commit Messages**: Never add Anthropic or Claude author lines (no `Co-Authored-By` trailers) in commit messages.
 - **Branch Policy**: Always ask for confirmation before committing directly to `master`, `main`, or `production` branches.
 
+### 5. Build & Deployment Notes
+
+- **Docker removed**: Legacy `docker/` directory has been removed. Use Expo CLI (`npx expo prebuild`) for Android builds instead.
+- **Unused imports cleaned**: `app/hooks/useColorScheme.ts` was removed (RN built-in is not needed for this app's dark-only theme).
+
 ---
 
 ## Development Commands
@@ -336,7 +390,6 @@ npm run lint           # Run ESLint
 npm run dev            # Start Next.js dev server
 npm run build          # Build for production
 ```
-
 
 --
 

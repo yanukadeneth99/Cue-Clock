@@ -10,9 +10,15 @@ import { colors } from "@/constants/colors";
 import { applyAnalyticsCollection } from "@/lib/analytics";
 import {
   cancelAlarm,
+  canUseFullScreenIntent,
+  displayNotif,
   ensureAlarmChannel,
+  ensureNotifChannel,
   MAX_SNOOZES,
+  openFullScreenIntentSettings,
   scheduleAlarm,
+  scheduleNotif,
+  scheduleNotifFromData,
   SNOOZE_MS,
 } from "@/lib/alarms";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -53,14 +59,9 @@ if (!isExpoGo && Platform.OS !== "web") {
         shouldShowList: true,
       }),
     });
-    // Android requires a notification channel to display notifications
-    if (Platform.OS === "android") {
-      mod.setNotificationChannelAsync("default", {
-        name: "Default",
-        importance: mod.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-      }).catch(() => {});
-    }
+    // On Android we use Notifee (see lib/alarms.ts) for both alarm and
+    // notification-mode alerts — exact-alarm scheduling requires it. We still
+    // load expo-notifications for permission helpers and iOS scheduling.
     Notifications = mod;
   } catch {
     // expo-notifications failed to initialize — will fall back to Alert.alert
@@ -79,14 +80,14 @@ function sendAlert(title: string, body: string) {
     }
     return;
   }
+  if (Platform.OS === "android") {
+    // Route through Notifee so the alert uses our v2 channel with sound + vibration.
+    displayNotif(title, body).catch(() => Alert.alert(title, body));
+    return;
+  }
   if (Notifications) {
     Notifications.scheduleNotificationAsync({
-      content: {
-        title,
-        body,
-        sound: true,
-        ...(Platform.OS === "android" ? { channelId: "default" } : {}),
-      },
+      content: { title, body, sound: true },
       trigger: null,
     }).catch(() => {
       Alert.alert(title, body);
@@ -113,7 +114,7 @@ function computeAlertFireDate(block: TargetBlockType, zone: string): Date | null
   let targetDT = now.set({ hour: block.targetHour, minute: block.targetMinute, second: 0, millisecond: 0 });
   targetDT = targetDT.plus({ seconds: 1 });
   if (targetDT <= now) targetDT = targetDT.plus({ days: 1 });
-  const deductionMs = (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
+  const deductionMs = (block.deductMinute * 60 + block.deductSecond) * 1000;
   targetDT = targetDT.minus({ milliseconds: deductionMs });
   const fireTime = targetDT.minus({ minutes: block.alertMinutesBefore });
   if (fireTime <= now) return null;
@@ -122,21 +123,25 @@ function computeAlertFireDate(block: TargetBlockType, zone: string): Date | null
 
 /** Schedule a native push notification for a block's alert. Returns the notification ID or null. */
 async function scheduleBlockNotification(block: TargetBlockType, zone: string): Promise<string | null> {
-  if (!Notifications || Platform.OS === "web" || block.alertMinutesBefore === null) return null;
+  if (Platform.OS === "web" || block.alertMinutesBefore === null) return null;
   const fireDate = computeAlertFireDate(block, zone);
   if (!fireDate) return null;
+  // On Android, route through Notifee with SET_EXACT_AND_ALLOW_WHILE_IDLE so
+  // the notification fires at the precise second instead of being batched by Doze.
+  if (Platform.OS === "android") {
+    return scheduleNotif(block, fireDate);
+  }
+  if (!Notifications) return null;
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: "Countdown Alert",
         body: `"${block.name}" has reached ${block.alertMinutesBefore} minute${block.alertMinutesBefore === 1 ? "" : "s"} before target!`,
         sound: true,
-        ...(Platform.OS === "android" ? { channelId: "default" } : {}),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: fireDate,
-        ...(Platform.OS === "android" ? { channelId: "default" } : {}),
       },
     });
     return id;
@@ -191,8 +196,8 @@ function createDefaultBlock(id: number): TargetBlockType {
     id,
     targetHour: new Date().getHours(),
     targetMinute: new Date().getMinutes(),
-    deductHour: 0,
     deductMinute: 0,
+    deductSecond: 0,
     targetZone: "zone1",
     countdown: "00:00",
     isTargetPickerVisible: false,
@@ -404,9 +409,11 @@ export default function HomeScreen() {
           }
         }
 
-        // Step 3: create the alarm notification channel on Android so it is
-        // ready before the user first enables alarm mode.
+        // Step 3: create the Notifee channels on Android so they're ready before
+        // the first scheduled alert fires. Both notification-mode and alarm-mode
+        // routes through Notifee on Android (see lib/alarms.ts).
         if (Platform.OS === "android") {
+          await ensureNotifChannel();
           await ensureAlarmChannel();
         }
       } catch {
@@ -593,7 +600,7 @@ export default function HomeScreen() {
           if (targetDT <= nowInZone) targetDT = targetDT.plus({ days: 1 });
 
           const deductionMs =
-            (block.deductHour * 60 + block.deductMinute) * 60 * 1000;
+            (block.deductMinute * 60 + block.deductSecond) * 1000;
           targetDT = targetDT.minus({ milliseconds: deductionMs });
 
           // Keep Luxon's component diff here instead of replacing it with raw
@@ -745,16 +752,16 @@ export default function HomeScreen() {
   }, [rescheduleInBackground]);
 
   const handleDeductConfirm = useCallback((id: number, date: Date) => {
-    const deductHour = date.getHours();
-    const deductMinute = date.getMinutes();
+    const deductMinute = date.getHours();
+    const deductSecond = date.getMinutes();
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
-          ? { ...b, deductHour, deductMinute, isDeductPickerVisible: false, alertFired: false }
+          ? { ...b, deductMinute, deductSecond, isDeductPickerVisible: false, alertFired: false }
           : b
       )
     );
-    rescheduleInBackground(id, { deductHour, deductMinute });
+    rescheduleInBackground(id, { deductMinute, deductSecond });
   }, [rescheduleInBackground]);
 
   const toggleAlertModal = useCallback((id: number, show: boolean) => {
@@ -814,13 +821,13 @@ export default function HomeScreen() {
     rescheduleInBackground(id, { targetHour: hour, targetMinute: minute });
   }, [rescheduleInBackground]);
 
-  const updateDeductTime = useCallback((id: number, hour: number, minute: number) => {
+  const updateDeductTime = useCallback((id: number, minute: number, second: number) => {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
-        b.id === id ? { ...b, deductHour: hour, deductMinute: minute, alertFired: false } : b
+        b.id === id ? { ...b, deductMinute: minute, deductSecond: second, alertFired: false } : b
       )
     );
-    rescheduleInBackground(id, { deductHour: hour, deductMinute: minute });
+    rescheduleInBackground(id, { deductMinute: minute, deductSecond: second });
   }, [rescheduleInBackground]);
 
   const addTargetBlock = useCallback(() => {
@@ -881,6 +888,27 @@ export default function HomeScreen() {
       // silently fail — state already reset above
     }
   }, []);
+
+  // When the user opts into alarm mode on Android 14+, check that the
+  // full-screen-intent permission is granted; otherwise the alarm UI silently
+  // downgrades to a regular heads-up (no full-screen takeover, no looping sound
+  // visible to the user). Deep-link to the per-app toggle if missing.
+  useEffect(() => {
+    if (!isLoadedRef.current) return;
+    if (Platform.OS !== "android" || alertMode !== "alarm") return;
+    (async () => {
+      const allowed = await canUseFullScreenIntent();
+      if (allowed) return;
+      Alert.alert(
+        "Allow Full-Screen Alarms",
+        "On Android 14+, Cue Clock needs the \"Full-screen notifications\" permission to display the full-screen alarm with sound and vibration.\n\nTap OK to open the settings page, then enable the toggle for Cue Clock.",
+        [
+          { text: "Later", style: "cancel" },
+          { text: "OK", onPress: () => openFullScreenIntentSettings() },
+        ],
+      );
+    })();
+  }, [alertMode]);
 
   // Reschedule all active block alerts when alertMode changes so already-scheduled
   // notifications switch to the new delivery system without requiring a manual edit.
@@ -943,20 +971,20 @@ export default function HomeScreen() {
         let newId: string | null = null;
         if (Platform.OS === "android" && alertMode === "alarm") {
           newId = await scheduleAlarm(tempBlock, fireDate, newSnoozeCount);
+        } else if (Platform.OS === "android") {
+          // Notification-mode snooze on Android — exact-alarm Notifee trigger.
+          newId = await scheduleNotifFromData(blockId, tempBlock.name, minutes, fireDate);
         } else if (Notifications) {
-          // For notification-mode snooze, schedule directly at the snooze fire date
-          // rather than using computeAlertFireDate (which recalculates from target time).
+          // iOS path (web is already filtered out above by alarmAvailable gating).
           newId = await Notifications.scheduleNotificationAsync({
             content: {
               title: "Countdown Alert (Snoozed)",
               body: `"${tempBlock.name}" has reached ${minutes} minute${minutes === 1 ? "" : "s"} before target!`,
               sound: true,
-              ...(Platform.OS === "android" ? { channelId: "default" } : {}),
             },
             trigger: {
               type: Notifications.SchedulableTriggerInputTypes.DATE,
               date: fireDate,
-              ...(Platform.OS === "android" ? { channelId: "default" } : {}),
             },
           }).catch(() => null);
         }

@@ -17,8 +17,6 @@ A minimal, distraction-free clock app built specifically for broadcast professio
 **📱 Google Play:** [Beta testers welcome](https://play.google.com/store/apps/details?id=com.yanukadeneth99.cueclock)
 -->
 
-
-
 ---
 
 ## 💛 Support This Project

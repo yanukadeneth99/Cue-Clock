@@ -28,8 +28,8 @@ export interface TargetBlockType {
   id: number;
   targetHour: number;
   targetMinute: number;
-  deductHour: number;
   deductMinute: number;
+  deductSecond: number;
   targetZone: "zone1" | "zone2";
   countdown: string;
   isTargetPickerVisible: boolean;
@@ -52,7 +52,7 @@ interface Props {
   handleTargetConfirm: (id: number, date: Date) => void;
   handleDeductConfirm: (id: number, date: Date) => void;
   updateTargetTime: (id: number, hour: number, minute: number) => void;
-  updateDeductTime: (id: number, hour: number, minute: number) => void;
+  updateDeductTime: (id: number, minute: number, second: number) => void;
   toggleAlertModal: (id: number, show: boolean) => void;
   handleAlertConfirm: (id: number, minutes: number) => void;
   handleAlertDelete: (id: number) => void;
@@ -541,9 +541,9 @@ function TargetBlockInner({
               {Platform.OS === "web" && block.isDeductPickerVisible ? (
                 <WebTimePickerInline
                   label="Deduct"
-                  hour={block.deductHour}
-                  minute={block.deductMinute}
-                  onChange={(h, m) => updateDeductTime(block.id, h, m)}
+                  hour={block.deductMinute}
+                  minute={block.deductSecond}
+                  onChange={(m, s) => updateDeductTime(block.id, m, s)}
                   onDone={() => toggleDeductPicker(block.id, false)}
                 />
               ) : (
@@ -569,7 +569,7 @@ function TargetBlockInner({
                       fontWeight: "600",
                     }}
                   >
-                    {pad(block.deductHour)}:{pad(block.deductMinute)}
+                    {pad(block.deductMinute)}:{pad(block.deductSecond)}
                   </Text>
                 </Pressable>
               )}
@@ -662,7 +662,7 @@ function TargetBlockInner({
                       mode="time"
                       date={(() => {
                         const d = new Date();
-                        d.setHours(block.deductHour, block.deductMinute, 0, 0);
+                        d.setHours(block.deductMinute, block.deductSecond, 0, 0);
                         return d;
                       })()}
                       onConfirm={(date) => handleDeductConfirm(block.id, date)}
