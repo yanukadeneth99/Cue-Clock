@@ -184,10 +184,12 @@ function buildAlarmAndroid(
     importance: AndroidImportance.HIGH ?? 4,
     visibility: AndroidVisibility.PUBLIC ?? 1,
     sound: "default",
-    vibrationPattern: [0, 500, 500, 500],
+    vibrationPattern: [0, 500, 500, 500, 500, 500],
     bypassDnd: true,
     fullScreenAction: { id: "default" },
     loopSound: true,
+    ongoing: true,
+    autoCancel: false,
     pressAction: { id: "default", launchActivity: "default" },
     actions: [
       ...(snoozeCount < MAX_SNOOZES
