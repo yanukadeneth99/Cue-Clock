@@ -3,7 +3,15 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Privacy policy for Cue Clock. Learn how we handle your data with minimal collection and full transparency.",
+  description: "Privacy policy for Cue Clock. Cue Clock stores all timers and settings locally on your device and never transmits personal data. Optional analytics are opt-in only.",
+  alternates: { canonical: "https://cueclock.app/privacy" },
+  openGraph: {
+    title: "Privacy Policy | Cue Clock",
+    description: "How Cue Clock handles your data: local-only storage, opt-in anonymous analytics, no personal data collection.",
+    url: "https://cueclock.app/privacy",
+    type: "article",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function PrivacyPolicy() {
