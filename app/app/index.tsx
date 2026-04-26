@@ -10,11 +10,13 @@ import { colors } from "@/constants/colors";
 import { applyAnalyticsCollection } from "@/lib/analytics";
 import {
   cancelAlarm,
+  canScheduleExactAlarms,
   canUseFullScreenIntent,
   displayNotif,
   ensureAlarmChannel,
   ensureNotifChannel,
   MAX_SNOOZES,
+  openAlarmPermissionSettings,
   openFullScreenIntentSettings,
   scheduleAlarm,
   scheduleNotif,
@@ -388,22 +390,15 @@ export default function HomeScreen() {
         // Step 2: on Android 12+ (API 31+), also check the SCHEDULE_EXACT_ALARM
         // permission. Without it, date-triggered notifications fire late or not at all.
         // canScheduleExactNotificationsAsync() is available in expo-notifications SDK 51+.
-        if (Platform.OS === "android" && typeof (Notifications as any).canScheduleExactNotificationsAsync === "function") {
-          const canExact = await (Notifications as any).canScheduleExactNotificationsAsync().catch(() => true);
+        if (Platform.OS === "android") {
+          const canExact = await canScheduleExactAlarms();
           if (!canExact) {
             Alert.alert(
               "Allow Exact Alarms",
               "To receive countdown alerts at the precise moment, Cue Clock needs permission to schedule exact alarms.\n\nTap OK to open the Alarms & Reminders settings.",
               [
                 { text: "Later", style: "cancel" },
-                {
-                  text: "OK",
-                  onPress: () => {
-                    Linking.sendIntent("android.settings.REQUEST_SCHEDULE_EXACT_ALARM").catch(() => {
-                      Linking.openSettings();
-                    });
-                  },
-                },
+                { text: "OK", onPress: () => { openAlarmPermissionSettings(); } },
               ]
             );
           }
@@ -897,6 +892,18 @@ export default function HomeScreen() {
     if (!isLoadedRef.current) return;
     if (Platform.OS !== "android" || alertMode !== "alarm") return;
     (async () => {
+      const canExact = await canScheduleExactAlarms();
+      if (!canExact) {
+        Alert.alert(
+          "Allow Exact Alarms",
+          "Alarm mode requires the \"Alarms & reminders\" permission so the alarm fires at the precise moment, even when Cue Clock isn't focused.\n\nTap OK to open settings.",
+          [
+            { text: "Later", style: "cancel" },
+            { text: "OK", onPress: () => { openAlarmPermissionSettings(); } },
+          ],
+        );
+        return;
+      }
       const allowed = await canUseFullScreenIntent();
       if (allowed) return;
       Alert.alert(

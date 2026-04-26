@@ -9,8 +9,10 @@ export const MAX_SNOOZES = 5;
 // Bumped to v2 so Android creates a fresh channel with sound + vibration locked
 // in. Older installs may have a v1 channel created without these settings; once
 // a channel exists, Android freezes those properties — renaming forces a refresh.
-export const ALARM_CHANNEL_ID = "cue-clock-alarm-v2";
-export const NOTIF_CHANNEL_ID = "cue-clock-notif-v2";
+export const ALARM_CHANNEL_ID = "cue-clock-alarm-v3";
+export const NOTIF_CHANNEL_ID = "cue-clock-notif-v3";
+const STALE_ALARM_CHANNELS = ["cue-clock-alarm", "cue-clock-alarm-v2"];
+const STALE_NOTIF_CHANNELS = ["cue-clock-notif", "cue-clock-notif-v2"];
 
 // Lazy accessor so the require only executes on Android and is cached by Metro's module system.
 function getNotifee(): any {
@@ -53,6 +55,9 @@ export async function ensureAlarmChannel(): Promise<void> {
   const notifee = getNotifee();
   if (!notifee) return;
   const { AndroidImportance, AndroidVisibility } = getNotifeeEnums();
+  for (const id of STALE_ALARM_CHANNELS) {
+    try { await notifee.deleteChannel(id); } catch {}
+  }
   try {
     await notifee.createChannel({
       id: ALARM_CHANNEL_ID,
@@ -73,6 +78,9 @@ export async function ensureNotifChannel(): Promise<void> {
   const notifee = getNotifee();
   if (!notifee) return;
   const { AndroidImportance, AndroidVisibility } = getNotifeeEnums();
+  for (const id of STALE_NOTIF_CHANNELS) {
+    try { await notifee.deleteChannel(id); } catch {}
+  }
   try {
     await notifee.createChannel({
       id: NOTIF_CHANNEL_ID,
@@ -117,6 +125,39 @@ export async function canUseFullScreenIntent(): Promise<boolean> {
     return settings.android.fullScreen === ENABLED;
   } catch {
     return true;
+  }
+}
+
+/**
+ * Whether the user has granted SCHEDULE_EXACT_ALARM (Android 12+). Without this,
+ * AlarmManager downgrades to inexact and timestamp triggers fire seconds-to-minutes late.
+ */
+export async function canScheduleExactAlarms(): Promise<boolean> {
+  if (Platform.OS !== "android") return false;
+  const notifee = getNotifee();
+  if (!notifee) return false;
+  try {
+    const settings = await notifee.getNotificationSettings();
+    const { AndroidNotificationSetting } = getNotifeeEnums();
+    const ENABLED = AndroidNotificationSetting?.ENABLED ?? 1;
+    if (settings?.android?.alarm === undefined) return true;
+    return settings.android.alarm === ENABLED;
+  } catch {
+    return true;
+  }
+}
+
+/** Open the dedicated SCHEDULE_EXACT_ALARM settings page via Notifee. */
+export async function openAlarmPermissionSettings(): Promise<void> {
+  if (Platform.OS !== "android") return;
+  const notifee = getNotifee();
+  if (!notifee) return;
+  try {
+    await notifee.openAlarmPermissionSettings();
+  } catch {
+    Linking.sendIntent("android.settings.REQUEST_SCHEDULE_EXACT_ALARM").catch(() => {
+      Linking.openSettings().catch(() => {});
+    });
   }
 }
 
