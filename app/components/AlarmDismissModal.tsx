@@ -1,11 +1,16 @@
 import { colors } from "@/constants/colors";
 import { MAX_SNOOZES } from "@/lib/alarms";
 import { useAudioPlayer } from "expo-audio";
+import * as Haptics from "expo-haptics";
 import React, { useEffect } from "react";
-import { Modal, Platform, Pressable, Text, Vibration, View } from "react-native";
+import { Modal, Platform, Pressable, Text, View } from "react-native";
 
 // 60s safety cap so an unattended phone doesn't sound forever during a live show.
 const MAX_ALARM_DURATION_MS = 60_000;
+// Pulse haptics every 800ms via expo-haptics. Xiaomi/MIUI ignores RN's
+// Vibration.vibrate(pattern, repeat) reliably, but honors the per-call
+// VibrationEffect that expo-haptics issues. So we drive the cadence in JS.
+const HAPTIC_INTERVAL_MS = 800;
 const ALARM_SOURCE = require("../assets/alarm.mp3");
 
 /** Props for {@link AlarmDismissModal}. */
@@ -23,9 +28,6 @@ interface AlarmDismissModalProps {
   /** Called when the user taps Snooze. */
   onSnooze: () => void;
 }
-
-// Vibration pattern: wait 0ms, vibrate 600ms, pause 200ms, vibrate 600ms …
-const VIBRATE_PATTERN = [0, 600, 200, 600, 200, 600];
 
 /**
  * Full-screen alarm overlay shown when an alarm-mode alert fires while the app
@@ -48,10 +50,16 @@ export default function AlarmDismissModal({
     if (!visible) return;
     let cancelled = false;
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+    let hapticInterval: ReturnType<typeof setInterval> | null = null;
 
-    if (Platform.OS !== "web") {
-      Vibration.vibrate(VIBRATE_PATTERN, true);
-    }
+    const triggerHaptic = () => {
+      if (Platform.OS === "web") return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      });
+    };
+    triggerHaptic();
+    hapticInterval = setInterval(triggerHaptic, HAPTIC_INTERVAL_MS);
 
     try {
       player.loop = true;
@@ -59,20 +67,20 @@ export default function AlarmDismissModal({
       player.seekTo(0);
       player.play();
     } catch {
-      // expo-audio not yet available on this build (e.g. fast refresh) — fall back to vibration only.
+      // expo-audio not yet available on this build (e.g. fast refresh) — fall back to haptics only.
     }
 
     safetyTimer = setTimeout(() => {
       if (cancelled) return;
       try { player.pause(); } catch {}
-      Vibration.cancel();
+      if (hapticInterval) clearInterval(hapticInterval);
     }, MAX_ALARM_DURATION_MS);
 
     return () => {
       cancelled = true;
       if (safetyTimer) clearTimeout(safetyTimer);
+      if (hapticInterval) clearInterval(hapticInterval);
       try { player.pause(); } catch {}
-      Vibration.cancel();
     };
   }, [visible, player]);
 

@@ -1,6 +1,18 @@
 import { colors } from "@/constants/colors";
 import React from "react";
-import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Linking, Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
+
+/**
+ * Open MIUI/HyperOS Autostart screen via the documented Xiaomi Security Center
+ * intent. Falls back to generic app settings when the intent isn't resolvable
+ * (i.e. non-Xiaomi devices). MIUI silently kills AlarmManager triggers without
+ * Autostart — even when "Battery: Unrestricted" and "Alarms & reminders" are on.
+ */
+function openMIUIAutostart() {
+  Linking.sendIntent("miui.intent.action.OP_AUTO_START").catch(() => {
+    Linking.openSettings().catch(() => {});
+  });
+}
 
 /** Props for {@link AndroidBackgroundHelpModal}. */
 interface AndroidBackgroundHelpModalProps {
@@ -9,6 +21,8 @@ interface AndroidBackgroundHelpModalProps {
   onOpenAppSettings: () => void;
   onOpenBatterySettings: () => void;
   onOpenExactAlarmSettings: () => void;
+  /** Schedules a real Notifee trigger 5s in the future; reports success/failure via Alert. */
+  onTestAlarm?: () => void;
 }
 
 /**
@@ -26,6 +40,7 @@ export default function AndroidBackgroundHelpModal({
   onOpenAppSettings,
   onOpenBatterySettings,
   onOpenExactAlarmSettings,
+  onTestAlarm,
 }: AndroidBackgroundHelpModalProps) {
   if (Platform.OS !== "android") return null;
 
@@ -92,6 +107,12 @@ export default function AndroidBackgroundHelpModal({
             <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19 }}>
               3. Open Alarms & reminders and allow exact alarms if your device shows that setting.
             </Text>
+            <Text style={{ color: colors.danger, fontSize: 13, lineHeight: 19, fontWeight: "600" }}>
+              4. Xiaomi / Redmi / POCO only: Open Autostart and toggle Cue Clock ON. Without this, MIUI / HyperOS silently kills scheduled alarms even with every other permission granted.
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19 }}>
+              5. From Recent apps, long-press Cue Clock and tap the lock icon (or &quot;Lock&quot; option) so the system can&apos;t terminate it during cleanup.
+            </Text>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
@@ -140,6 +161,37 @@ export default function AndroidBackgroundHelpModal({
                 Open Alarms & Reminders
               </Text>
             </Pressable>
+            <Pressable
+              onPress={openMIUIAutostart}
+              style={{
+                backgroundColor: colors.background,
+                borderColor: colors.danger,
+                borderWidth: 1,
+                borderRadius: 12,
+                paddingVertical: 12,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: colors.danger, fontSize: 14, fontWeight: "600" }}>
+                Open Autostart (Xiaomi / MIUI)
+              </Text>
+            </Pressable>
+            {onTestAlarm && (
+              <Pressable
+                onPress={onTestAlarm}
+                style={{
+                  backgroundColor: colors.countdown,
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                  alignItems: "center",
+                  marginTop: 8,
+                }}
+              >
+                <Text style={{ color: "#000000", fontSize: 14, fontWeight: "700" }}>
+                  Test Alarm in 5 Seconds
+                </Text>
+              </Pressable>
+            )}
           </ScrollView>
 
           <Pressable

@@ -1075,6 +1075,56 @@ export default function HomeScreen() {
     AsyncStorage.setItem("androidBackgroundHelpSeen", "true").catch(() => {});
   }, []);
 
+  /**
+   * Diagnostic: schedule a real Notifee alarm-mode trigger 5s in the future and
+   * report success/failure with the actual native error. This isolates Notifee
+   * scheduling from the countdown/alert pipeline so the user can verify whether
+   * AlarmManager triggers are firing at all on their device — without waiting
+   * a full minute for a snooze to fire (or fail).
+   */
+  const runTestAlarm = useCallback(async () => {
+    if (Platform.OS !== "android") return;
+    try {
+      const fireDate = new Date(Date.now() + 5_000);
+      const testBlock = {
+        id: 99999,
+        name: "Test Alarm",
+        targetHour: 0,
+        targetMinute: 0,
+        deductHour: 0,
+        deductMinute: 0,
+        targetZone: "zone1" as const,
+        countdown: "00:00:00",
+        isCollapsed: false,
+        isTargetPickerVisible: false,
+        isDeductPickerVisible: false,
+        isAlertModalVisible: false,
+        deductSecond: 0,
+        alertMinutesBefore: 0,
+        notificationId: null,
+        alertFired: false,
+        snoozeCount: 0,
+      };
+      const id = await scheduleAlarm(testBlock, fireDate, 0);
+      if (id) {
+        Alert.alert(
+          "Test alarm scheduled",
+          "Lock your screen now. Alarm should fire in 5 seconds.\n\nIf nothing fires:\n• Open Autostart and toggle Cue Clock ON\n• Long-press in Recent apps and tap the lock icon\n\nMIUI/HyperOS kills background AlarmManager triggers without those.",
+        );
+      } else {
+        Alert.alert(
+          "Scheduling failed",
+          "Notifee returned no notification ID. Likely cause: Alarms & reminders permission not granted, or Notifee crashed silently. Check the channel exists in Settings → Apps → Cue Clock → Notifications.",
+        );
+      }
+    } catch (err: any) {
+      Alert.alert(
+        "Scheduling error",
+        `Native error: ${err?.message ?? String(err)}\n\nThis is what's blocking your alarms. Most common cause on Xiaomi: Autostart is OFF.`,
+      );
+    }
+  }, []);
+
   const resetAll = useCallback(() => {
     if (Platform.OS === "web") {
       setResetModalVisible(true);
@@ -1500,6 +1550,7 @@ export default function HomeScreen() {
         onOpenAppSettings={openAppSettings}
         onOpenBatterySettings={openBatterySettings}
         onOpenExactAlarmSettings={openExactAlarmSettings}
+        onTestAlarm={runTestAlarm}
       />
 
       <AnalyticsOptOutModal
