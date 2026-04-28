@@ -53,7 +53,7 @@ app/              # React Native (Expo) Mobile Application
     timezones.ts  # 18 broadcast timezone definitions
   plugins/        # Expo Config Plugins
     withFullScreenAlarm.js # Adds showWhenLocked and turnScreenOn to MainActivity
-  assets/         # Icons, splash screens, fonts (SpaceMono-Regular.ttf)
+  assets/         # Icons, splash screens, fonts (SpaceMono-Regular.ttf), alarm.mp3 (alarm tone)
   scripts/        # Maintenance and utility scripts
   .env.example    # Template for environment variables (safe, no secrets)
   app.json        # Expo configuration (slug, bundle ID, plugins)
@@ -103,7 +103,8 @@ Root Documentation
 | Styling         | Inline Styles                             | -                    |
 | Date/Time       | Luxon                                     | 3.7.1                |
 | Persistence     | @react-native-async-storage/async-storage | 2.2.0                |
-| Notifications   | expo-notifications                        | 55                   |
+| Notifications   | @notifee/react-native + expo-notifications | 9.1.8 / 55          |
+| Audio (alarm)   | expo-audio (+ expo-asset peer)             | ~55.0.14             |
 | Pickers         | @react-native-picker/picker               | 2.11.4               |
 | DateTime Picker | react-native-modal-datetime-picker        | 18.0.0               |
 | Analytics       | @microsoft/react-native-clarity           | 4.5.3                |
@@ -166,17 +167,20 @@ Dual-mode alert system powered by Notifee with graceful fallbacks:
 
 **Alarm Mode** (Primary: Android full-screen intents)
 
-- Full-screen notification that wakes device, shows over lock screen, and plays looping alarm sound
-- Requires `android.permission.POST_NOTIFICATIONS` and `SCHEDULE_EXACT_ALARM`
+- Full-screen notification that wakes device and shows over lock screen via Notifee's `fullScreenAction`
+- Audio + haptics are played **in-activity** by `AlarmDismissModal` using `expo-audio` (looping `assets/alarm.mp3` at full volume) and `Vibration.vibrate(pattern, true)`. The notification's channel sound is intentionally a fallback only — Android suppresses channel sound the moment a full-screen intent launches an Activity, so the alarm UX is owned by the React component
+- 60-second safety cap stops sound + vibration automatically if the operator never acts (prevents an unattended phone from sounding forever during a live show)
+- Cold-start path: when Android launches the app from a killed state via `fullScreenAction`, `notifee.getInitialNotification()` is read after AsyncStorage hydration and the modal opens with the correct block context
+- Requires `android.permission.POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, and the Android 14+ "Full-screen notifications" per-app toggle (gated at runtime via `canScheduleExactAlarms()` and `canUseFullScreenIntent()`; both deep-link to settings if missing)
 - Automatically snoozes (5 max) when snoozed; creates fresh trigger notification
-- Uses `ALARM_CHANNEL_ID: "cue-clock-alarm-v2"` (channel versioning ensures fresh setup on Android)
-- Works even when app is backgrounded or device in Doze mode (via AlarmManager)
+- Uses `ALARM_CHANNEL_ID: "cue-clock-alarm-v3"` (channel versioning ensures fresh setup on Android — channels are immutable post-creation; stale v1/v2 channels are explicitly deleted on first run)
+- Works even when app is backgrounded or device in Doze mode (via AlarmManager `SET_EXACT_AND_ALLOW_WHILE_IDLE`)
 - Requires `showWhenLocked` and `turnScreenOn` manifest attributes (set by `withFullScreenAlarm` plugin)
 
 **Notification Mode** (Fallback: standard heads-up)
 
 - Visible heads-up notification if full-screen intent permission not granted (Android 14+)
-- Uses `NOTIF_CHANNEL_ID: "cue-clock-notif-v2"` with default sound and vibration
+- Uses `NOTIF_CHANNEL_ID: "cue-clock-notif-v3"` with default sound and vibration
 - Survives Doze via exact timestamp triggers
 
 **Common behaviors**
@@ -234,10 +238,12 @@ Thin wrapper around `@notifee/react-native` for scheduling and managing countdow
 - `cancelAlarm(id)` – Cancel by notification ID
 - `canUseFullScreenIntent()` – Check if app has permission to use full-screen (Android 14+)
 - `openFullScreenIntentSettings()` – Launch system settings to grant full-screen permission
-- `ensureAlarmChannel()` / `ensureNotifChannel()` – Create Android channels on first use
+- `canScheduleExactAlarms()` – Check Android 12+ SCHEDULE_EXACT_ALARM permission via Notifee's `settings.android.alarm`
+- `openAlarmPermissionSettings()` – Deep-link to the dedicated "Alarms & reminders" page
+- `ensureAlarmChannel()` / `ensureNotifChannel()` – Create Android channels on first use; explicitly delete stale `v1`/`v2` channel IDs to recover from prior broken-channel state
 - `requestAlarmPermissions()` – Request notification & scheduling permissions
 
-**Channel versioning:** Channels are versioned (`v2`) so Android recreates them with locked-in sound/vibration settings. Older installs may have stale `v1` channels; version bump forces refresh.
+**Channel versioning:** Channels are versioned (`v3`) so Android recreates them with locked-in sound/vibration settings. Notifee deletes stale `cue-clock-alarm`, `cue-clock-alarm-v2`, `cue-clock-notif`, and `cue-clock-notif-v2` IDs on first run for users upgrading from older builds.
 
 **Exact triggers:** Both alarm and notification modes use `AlarmManager.SET_EXACT_AND_ALLOW_WHILE_IDLE` to survive Doze and fire at exact scheduled time.
 

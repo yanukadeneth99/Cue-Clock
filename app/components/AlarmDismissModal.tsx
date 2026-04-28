@@ -1,7 +1,12 @@
 import { colors } from "@/constants/colors";
 import { MAX_SNOOZES } from "@/lib/alarms";
+import { useAudioPlayer } from "expo-audio";
 import React, { useEffect } from "react";
 import { Modal, Platform, Pressable, Text, Vibration, View } from "react-native";
+
+// 60s safety cap so an unattended phone doesn't sound forever during a live show.
+const MAX_ALARM_DURATION_MS = 60_000;
+const ALARM_SOURCE = require("../assets/alarm.mp3");
 
 /** Props for {@link AlarmDismissModal}. */
 interface AlarmDismissModalProps {
@@ -34,12 +39,42 @@ export default function AlarmDismissModal({
   onDismiss,
   onSnooze,
 }: Readonly<AlarmDismissModalProps>) {
-  // Start vibration while modal is visible; stop on close.
+  // expo-audio player owns the alarm tone. Loop=true keeps it ringing until the
+  // user acts or the safety cap fires. Volume forced to 1.0 so a low media-volume
+  // setting can't silence the alarm — broadcast-critical reliability.
+  const player = useAudioPlayer(ALARM_SOURCE);
+
   useEffect(() => {
-    if (!visible || Platform.OS === "web") return;
-    Vibration.vibrate(VIBRATE_PATTERN, true);
-    return () => Vibration.cancel();
-  }, [visible]);
+    if (!visible) return;
+    let cancelled = false;
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+
+    if (Platform.OS !== "web") {
+      Vibration.vibrate(VIBRATE_PATTERN, true);
+    }
+
+    try {
+      player.loop = true;
+      player.volume = 1.0;
+      player.seekTo(0);
+      player.play();
+    } catch {
+      // expo-audio not yet available on this build (e.g. fast refresh) — fall back to vibration only.
+    }
+
+    safetyTimer = setTimeout(() => {
+      if (cancelled) return;
+      try { player.pause(); } catch {}
+      Vibration.cancel();
+    }, MAX_ALARM_DURATION_MS);
+
+    return () => {
+      cancelled = true;
+      if (safetyTimer) clearTimeout(safetyTimer);
+      try { player.pause(); } catch {}
+      Vibration.cancel();
+    };
+  }, [visible, player]);
 
   const canSnooze = snoozeCount < MAX_SNOOZES;
 

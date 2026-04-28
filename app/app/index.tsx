@@ -542,6 +542,36 @@ export default function HomeScreen() {
         // silently fail — app defaults will be used
       }
       isLoadedRef.current = true;
+
+      // Cold-start path: when Android launches the app from an alarm fullScreenAction,
+      // the in-app alert queue hasn't run yet (it triggers off the live countdown tick).
+      // Notifee exposes the launching notification via getInitialNotification(); if it
+      // carries our alarm payload we open AlarmDismissModal directly so the on-air
+      // operator sees the dismiss/snooze UI and hears the alarm tone immediately.
+      if (Platform.OS === "android") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const notifee = require("@notifee/react-native").default;
+          const initial = await notifee.getInitialNotification();
+          const data = initial?.notification?.data;
+          if (data && typeof data.blockId === "string") {
+            const blockId = Number.parseInt(data.blockId, 10);
+            const minutes = Number.parseInt(data.alertMinutesBefore ?? "0", 10);
+            const snoozeCount = Number.parseInt(data.snoozeCount ?? "0", 10);
+            const block = targetBlocksRef.current.find((b) => b.id === blockId);
+            if (!Number.isNaN(blockId)) {
+              setAlarmDismissData({
+                blockId,
+                name: block?.name ?? `Target #${blockId}`,
+                minutes,
+                snoozeCount,
+              });
+            }
+          }
+        } catch {
+          // notifee unavailable (web/iOS) — no-op
+        }
+      }
     };
     loadData();
   }, []);

@@ -55,7 +55,9 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-notifications",
-      "./plugins/withFullScreenAlarm"
+      "./plugins/withFullScreenAlarm",
+      "expo-audio",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

@@ -23,6 +23,8 @@
     "@react-navigation/native": "^7.1.6",
     "@types/react": "~19.2.10",
     "expo": "~55.0.17",
+    "expo-asset": "~55.0.16",
+    "expo-audio": "~55.0.14",
     "expo-constants": "~55.0.15",
     "expo-font": "~55.0.6",
     "expo-linking": "~55.0.14",
@@ -54,7 +56,10 @@
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
-        "exclude": ["@notifee/react-native", "@microsoft/react-native-clarity"]
+        "exclude": [
+          "@notifee/react-native",
+          "@microsoft/react-native-clarity"
+        ]
       }
     }
   }

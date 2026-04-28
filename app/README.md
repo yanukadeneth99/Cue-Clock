@@ -47,7 +47,8 @@ For a deeper setup guide (optional env vars, native builds, signing), see [`../D
 | Language      | TypeScript 5.9 (strict)                  |
 | Date/Time     | Luxon 3                                  |
 | Persistence   | AsyncStorage                             |
-| Notifications | expo-notifications                       |
+| Notifications | @notifee/react-native (alarm + scheduling) + expo-notifications |
+| Audio (alarm) | expo-audio (looped in-activity playback) |
 | Analytics     | Microsoft Clarity (opt-in, GDPR consent) |
 
 ---
