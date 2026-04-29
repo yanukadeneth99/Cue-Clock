@@ -33,7 +33,7 @@ Developer reference for AI-assisted work on this repository.
 ```
 app/              # React Native (Expo) Mobile Application
   app/            # Expo Router (file-based) directory
-    _layout.tsx   # Root layout: font loading, Expo Router stack, Clarity analytics init
+    _layout.tsx   # Root layout: Expo Router stack, Clarity analytics init
     index.tsx     # Main screen: all primary state and logic lives here (~839 lines)
     +not-found.tsx# 404 catch-all route
   components/     # UI Components
@@ -45,9 +45,11 @@ app/              # React Native (Expo) Mobile Application
     AlertModal.tsx                   # Minutes-before alert configuration modal
     ConfirmModal.tsx                 # Generic yes/no confirmation dialog
     HelpModal.tsx                    # In-app help overlay with 24h toggle, controls guide, about section
+    DebugLogModal.tsx                # Internal-build-only diagnostic log viewer (renders null when flag is off)
   lib/            # Shared modules
     analytics.ts  # Firebase/Clarity analytics initialisation (extracted from _layout.tsx)
     alarms.ts     # Notifee alarm and notification scheduling wrapper
+    debugLog.ts   # Ring-buffer logger gated by EXPO_PUBLIC_DEBUG_LOGS (internal builds only)
   constants/      # App-wide constants
     colors.ts     # 14-color dark broadcast palette
     timezones.ts  # 18 broadcast timezone definitions
@@ -219,10 +221,9 @@ Colors are defined in `app/constants/colors.ts` and used via the `colors` object
 
 ### Typography
 
-- **Headline/Monospace**: `SpaceMono-Regular` (countdown timers, loaded via `useFonts` in `_layout.tsx`)
 - **Website Headline**: Space Grotesk (bold)
 - **Website Body**: Inter (regular)
-- **Countdown**: `fontVariant: ['tabular-nums']` for stable width during ticks
+- **Countdown**: System default font with `fontVariant: ['tabular-nums']` for stable width during ticks
 
 ### Alarm Scheduling (`lib/alarms.ts`)
 
@@ -246,6 +247,30 @@ Thin wrapper around `@notifee/react-native` for scheduling and managing countdow
 **Channel versioning:** Channels are versioned (`v3`) so Android recreates them with locked-in sound/vibration settings. Notifee deletes stale `cue-clock-alarm`, `cue-clock-alarm-v2`, `cue-clock-notif`, and `cue-clock-notif-v2` IDs on first run for users upgrading from older builds.
 
 **Exact triggers:** Both alarm and notification modes use `AlarmManager.SET_EXACT_AND_ALLOW_WHILE_IDLE` to survive Doze and fire at exact scheduled time.
+
+**Notifee `vibrationPattern` quirk:** Unlike native Android's `Vibrator.vibrate(long[])` (which expects `[delay, on, off, ...]` and tolerates a leading `0`), Notifee's validator rejects any non-positive value and requires an even-length array. Patterns must start with the on-duration (e.g. `[500, 500, 500, 500]`, *not* `[0, 500, 500, 500]`). A failed pattern throws synchronously inside `createChannel`/`createTriggerNotification` and — if the call site swallows the error — downstream scheduling silently no-ops. Always log the catch.
+
+### Internal-Only Debug Log (`lib/debugLog.ts`, `components/DebugLogModal.tsx`)
+
+A build-time-gated diagnostic logger for live-device debugging on testers' phones. Only ships active code in internal-track builds; in production the buffer stays empty and the UI renders `null`.
+
+**Activation:** `EXPO_PUBLIC_DEBUG_LOGS=1`, set only by `.github/workflows/android-internal.yml` (in the "Create .env" step). The release workflow (`android-release.yml`) MUST NOT export this var.
+
+**API:**
+
+- `dlog(tag, payload?)` — append to the in-memory ring buffer (200 entries max). No-op when flag is unset.
+- `isDebugLogEnabled()` — boolean for conditional UI gating.
+- `getLogs()` / `subscribeLogs(fn)` / `formatLogs()` / `clearLogs()` — buffer accessors used by the modal.
+
+**Three-layer release safety:**
+
+1. Build time: env var only injected by the internal workflow.
+2. Module init: `dlog` short-circuits when the flag is unset (≈ zero runtime cost).
+3. UI gate: `onShowDebugLog` prop is `undefined` in release, hiding the help-modal button; `DebugLogModal` itself early-returns `null` if the flag is off.
+
+**Access path on internal builds:** Help modal → "?" → Android Background Help → "View Debug Log (internal build)" → Copy. The modal uses `expo-clipboard.setStringAsync()` for paste-ready text.
+
+**Instrumented call sites:** `ensureAlarmChannel`, `ensureNotifChannel`, `scheduleAlarm`, `scheduleNotif`, `scheduleAlarmFromData`, `scheduleNotifFromData`, `cancelAlarm` (all log success and caught errors), plus the cold-start `getInitialNotification` path and `runTestAlarm` in `app/index.tsx`. Add new `dlog` calls at any platform/permission boundary you want to introspect — never at hot loops (every 1s countdown tick would flood the buffer).
 
 ### Fullscreen Layout Pattern
 
@@ -278,6 +303,10 @@ Uses a **single `View` root** (to prevent native crashes from tree remounts) wit
 | --------------------- | ---------------------- | --------------------- | ---------------- | ------------------- |
 | Push to `master`      | `android-internal.yml` | Internal Testing      | Dev team + QA    | Continuous testing  |
 | Create GitHub Release | `android-release.yml`  | Closed Testing (Beta) | Selected testers | Alpha/beta releases |
+
+**Workflow-scoped env vars** (NOT secrets, but only set in one workflow):
+
+- `EXPO_PUBLIC_DEBUG_LOGS=1` — enables the in-app debug log viewer. Set in `android-internal.yml` only. Never add to `android-release.yml` — production builds must ship with logging inert.
 
 ### Android Internal Testing Workflow (`.github/workflows/android-internal.yml`)
 
