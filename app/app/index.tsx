@@ -660,22 +660,34 @@ export default function HomeScreen() {
               seconds === 0;
 
             if (shouldFire) {
-              // The app is foregrounded (setInterval is running), so we handle the
-              // alert in-app via sendAlert. We must cancel the pre-scheduled native
-              // notification first — otherwise both the date-triggered notification
-              // AND the immediate sendAlert notification fire at the same second,
-              // producing duplicate notifications.
-              pendingCancelRef.current.push(block.notificationId);
-              alertQueueRef.current.push({
-                id: block.id,
-                name: block.name,
-                minutes: block.alertMinutesBefore,
-                snoozeCount: block.snoozeCount ?? 0,
+              // Only cancel the OS-scheduled notification if the app is truly
+              // foregrounded. Android keeps JS alive briefly after Home is pressed,
+              // and a JS-side cancel that arrives before the OS fires would suppress
+              // the OS-level notification entirely — racing AlarmManager and losing
+              // the user's alarm. When backgrounded, let the OS deliver the
+              // notification natively (cold-start path picks up dismiss/snooze).
+              const appForegrounded = AppState.currentState === "active";
+              dlog("alert:shouldFire", {
+                blockId: block.id,
+                appState: AppState.currentState,
+                willCancelOsAlarm: appForegrounded,
               });
-              updates.alertFired = true;
-              updates.alertMinutesBefore = null;
-              updates.notificationId = null;
-              changed = true;
+              if (appForegrounded) {
+                pendingCancelRef.current.push(block.notificationId);
+                alertQueueRef.current.push({
+                  id: block.id,
+                  name: block.name,
+                  minutes: block.alertMinutesBefore,
+                  snoozeCount: block.snoozeCount ?? 0,
+                });
+                updates.alertFired = true;
+                updates.alertMinutesBefore = null;
+                updates.notificationId = null;
+                changed = true;
+              }
+              // Backgrounded: do NOT mutate state. Let the OS-scheduled notification
+              // fire. When the user taps the heads-up / full-screen, app reopens and
+              // getInitialNotification surfaces the alarm payload.
             }
 
             // Reset alertFired when countdown rolls over (next day)
