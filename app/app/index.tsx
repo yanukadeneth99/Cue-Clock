@@ -1084,43 +1084,78 @@ export default function HomeScreen() {
    */
   const runTestAlarm = useCallback(async () => {
     if (Platform.OS !== "android") return;
+    // Call Notifee directly (bypassing scheduleAlarm's swallowing try/catch) so
+    // the real native error surfaces in the Alert dialog. Mirrors the production
+    // alarm config from lib/alarms.ts.
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const notifeeMod = require("@notifee/react-native");
+      const notifee = notifeeMod.default ?? notifeeMod;
+      const {
+        AndroidImportance,
+        AndroidVisibility,
+        AndroidCategory,
+        TriggerType,
+        AndroidAlarmType,
+      } = notifeeMod;
+
+      const exact = await canScheduleExactAlarms();
+      const fs = await canUseFullScreenIntent();
+      const perm = await notifee.getNotificationSettings();
+      const authStatus = perm?.authorizationStatus;
+
+      // Force fresh channel.
+      try { await notifee.deleteChannel("cue-clock-alarm-v3"); } catch {}
+      await notifee.createChannel({
+        id: "cue-clock-alarm-v3",
+        name: "Countdown Alarms",
+        importance: AndroidImportance?.HIGH ?? 4,
+        sound: "default",
+        vibration: true,
+        vibrationPattern: [0, 500, 500, 500],
+        bypassDnd: true,
+        visibility: AndroidVisibility?.PUBLIC ?? 1,
+      });
+
       const fireDate = new Date(Date.now() + 5_000);
-      const testBlock = {
-        id: 99999,
-        name: "Test Alarm",
-        targetHour: 0,
-        targetMinute: 0,
-        deductHour: 0,
-        deductMinute: 0,
-        targetZone: "zone1" as const,
-        countdown: "00:00:00",
-        isCollapsed: false,
-        isTargetPickerVisible: false,
-        isDeductPickerVisible: false,
-        isAlertModalVisible: false,
-        deductSecond: 0,
-        alertMinutesBefore: 0,
-        notificationId: null,
-        alertFired: false,
-        snoozeCount: 0,
-      };
-      const id = await scheduleAlarm(testBlock, fireDate, 0);
-      if (id) {
-        Alert.alert(
-          "Test alarm scheduled",
-          "Lock your screen now. Alarm should fire in 5 seconds.\n\nIf nothing fires:\n• Open Autostart and toggle Cue Clock ON\n• Long-press in Recent apps and tap the lock icon\n\nMIUI/HyperOS kills background AlarmManager triggers without those.",
-        );
-      } else {
-        Alert.alert(
-          "Scheduling failed",
-          "Notifee returned no notification ID. Likely cause: Alarms & reminders permission not granted, or Notifee crashed silently. Check the channel exists in Settings → Apps → Cue Clock → Notifications.",
-        );
-      }
+      const id = await notifee.createTriggerNotification(
+        {
+          title: "Test Alarm",
+          body: "If you can see this, Notifee scheduling works.",
+          data: { blockId: "99999", alertMinutesBefore: "0", snoozeCount: "0" },
+          android: {
+            channelId: "cue-clock-alarm-v3",
+            category: AndroidCategory?.ALARM ?? "alarm",
+            importance: AndroidImportance?.HIGH ?? 4,
+            visibility: AndroidVisibility?.PUBLIC ?? 1,
+            sound: "default",
+            vibrationPattern: [0, 500, 500, 500, 500, 500],
+            bypassDnd: true,
+            fullScreenAction: { id: "default" },
+            loopSound: true,
+            ongoing: true,
+            autoCancel: false,
+            pressAction: { id: "default", launchActivity: "default" },
+          },
+        },
+        {
+          type: TriggerType?.TIMESTAMP ?? 0,
+          timestamp: fireDate.getTime(),
+          alarmManager: {
+            allowWhileIdle: true,
+            type: AndroidAlarmType?.SET_EXACT_AND_ALLOW_WHILE_IDLE ?? 4,
+          },
+        },
+      );
+
+      Alert.alert(
+        "Test alarm scheduled",
+        `ID: ${id}\nExact alarms: ${exact}\nFull-screen: ${fs}\nAuth status: ${authStatus}\n\nLock your screen now. Alarm should fire in 5 seconds.\n\nIf nothing fires:\n• MIUI Autostart ON\n• Lock from Recents`,
+      );
     } catch (err: any) {
       Alert.alert(
-        "Scheduling error",
-        `Native error: ${err?.message ?? String(err)}\n\nThis is what's blocking your alarms. Most common cause on Xiaomi: Autostart is OFF.`,
+        "Scheduling error (raw)",
+        `Native error: ${err?.message ?? String(err)}\n\nStack:\n${err?.stack?.slice?.(0, 400) ?? "(none)"}`,
       );
     }
   }, []);
