@@ -1,6 +1,5 @@
 import { applyAnalyticsCollection } from "@/lib/analytics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFonts } from "expo-font";
 import Head from "expo-router/head";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
@@ -22,14 +21,10 @@ if (Platform.OS === "android") {
 
 /**
  * Root layout for the Expo Router stack.
- * Initializes fonts, conditionally initializes analytics based on user preference,
+ * Conditionally initializes analytics based on user preference,
  * and wraps the app in a SafeAreaProvider.
  */
 export default function RootLayout() {
-  const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-  });
-
   // Initialize analytics on mount, respecting the user's consent.
   // null  → first launch, consent not yet given — skip init entirely (no tracking before consent).
   // "true"  → user accepted — init Clarity and enable Firebase.
@@ -42,11 +37,6 @@ export default function RootLayout() {
       await applyAnalyticsCollection(stored === "true");
     })();
   }, []);
-
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
 
   return (
     <SafeAreaProvider>
