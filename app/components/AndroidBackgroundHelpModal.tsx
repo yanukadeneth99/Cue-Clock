@@ -23,6 +23,8 @@ interface AndroidBackgroundHelpModalProps {
   onOpenExactAlarmSettings: () => void;
   /** Schedules a real Notifee trigger 5s in the future; reports success/failure via Alert. */
   onTestAlarm?: () => void;
+  /** Internal-build-only: open the in-app debug log viewer. Undefined in release. */
+  onShowDebugLog?: () => void;
 }
 
 /**
@@ -41,6 +43,7 @@ export default function AndroidBackgroundHelpModal({
   onOpenBatterySettings,
   onOpenExactAlarmSettings,
   onTestAlarm,
+  onShowDebugLog,
 }: AndroidBackgroundHelpModalProps) {
   if (Platform.OS !== "android") return null;
 
@@ -189,6 +192,23 @@ export default function AndroidBackgroundHelpModal({
               >
                 <Text style={{ color: "#000000", fontSize: 14, fontWeight: "700" }}>
                   Test Alarm in 5 Seconds
+                </Text>
+              </Pressable>
+            )}
+            {onShowDebugLog && (
+              <Pressable
+                onPress={onShowDebugLog}
+                style={{
+                  backgroundColor: colors.background,
+                  borderColor: colors.muted,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>
+                  View Debug Log (internal build)
                 </Text>
               </Pressable>
             )}

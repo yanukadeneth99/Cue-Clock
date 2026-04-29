@@ -1,5 +1,7 @@
 import AlarmDismissModal from "@/components/AlarmDismissModal";
 import AndroidBackgroundHelpModal from "@/components/AndroidBackgroundHelpModal";
+import DebugLogModal from "@/components/DebugLogModal";
+import { dlog, isDebugLogEnabled } from "@/lib/debugLog";
 import AnalyticsConsentModal from "@/components/AnalyticsConsentModal";
 import AnalyticsOptOutModal from "@/components/AnalyticsOptOutModal";
 import ClockPicker from "@/components/ClockPicker";
@@ -301,6 +303,7 @@ export default function HomeScreen() {
   const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean | null>(null);
   const [consentModalVisible, setConsentModalVisible] = useState(false);
   const [androidBackgroundHelpVisible, setAndroidBackgroundHelpVisible] = useState(false);
+  const [debugLogVisible, setDebugLogVisible] = useState(false);
   const [optOutModalVisible, setOptOutModalVisible] = useState(false);
   const [is24Hour, setIs24Hour] = useState(true);
   const [alertMode, setAlertMode] = useState<"notification" | "alarm">("notification");
@@ -554,6 +557,7 @@ export default function HomeScreen() {
           const notifee = require("@notifee/react-native").default;
           const initial = await notifee.getInitialNotification();
           const data = initial?.notification?.data;
+          dlog("coldStart:getInitialNotification", { hasData: !!data, blockId: data?.blockId });
           if (data && typeof data.blockId === "string") {
             const blockId = Number.parseInt(data.blockId, 10);
             const minutes = Number.parseInt(data.alertMinutesBefore ?? "0", 10);
@@ -1084,6 +1088,7 @@ export default function HomeScreen() {
    */
   const runTestAlarm = useCallback(async () => {
     if (Platform.OS !== "android") return;
+    dlog("test:runTestAlarm:start");
     // Call Notifee directly (bypassing scheduleAlarm's swallowing try/catch) so
     // the real native error surfaces in the Alert dialog. Mirrors the production
     // alarm config from lib/alarms.ts.
@@ -1112,7 +1117,7 @@ export default function HomeScreen() {
         importance: AndroidImportance?.HIGH ?? 4,
         sound: "default",
         vibration: true,
-        vibrationPattern: [0, 500, 500, 500],
+        vibrationPattern: [500, 500, 500, 500],
         bypassDnd: true,
         visibility: AndroidVisibility?.PUBLIC ?? 1,
       });
@@ -1129,7 +1134,7 @@ export default function HomeScreen() {
             importance: AndroidImportance?.HIGH ?? 4,
             visibility: AndroidVisibility?.PUBLIC ?? 1,
             sound: "default",
-            vibrationPattern: [0, 500, 500, 500, 500, 500],
+            vibrationPattern: [500, 500, 500, 500, 500, 500],
             bypassDnd: true,
             fullScreenAction: { id: "default" },
             loopSound: true,
@@ -1148,11 +1153,13 @@ export default function HomeScreen() {
         },
       );
 
+      dlog("test:runTestAlarm:scheduled", { id, exact, fs, authStatus });
       Alert.alert(
         "Test alarm scheduled",
         `ID: ${id}\nExact alarms: ${exact}\nFull-screen: ${fs}\nAuth status: ${authStatus}\n\nLock your screen now. Alarm should fire in 5 seconds.\n\nIf nothing fires:\n• MIUI Autostart ON\n• Lock from Recents`,
       );
     } catch (err: any) {
+      dlog("test:runTestAlarm:error", { msg: err?.message ?? String(err) });
       Alert.alert(
         "Scheduling error (raw)",
         `Native error: ${err?.message ?? String(err)}\n\nStack:\n${err?.stack?.slice?.(0, 400) ?? "(none)"}`,
@@ -1586,7 +1593,10 @@ export default function HomeScreen() {
         onOpenBatterySettings={openBatterySettings}
         onOpenExactAlarmSettings={openExactAlarmSettings}
         onTestAlarm={runTestAlarm}
+        onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}
       />
+
+      <DebugLogModal visible={debugLogVisible} onClose={() => setDebugLogVisible(false)} />
 
       <AnalyticsOptOutModal
         visible={optOutModalVisible}

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global __dirname */
 
 /**
  * Post-build script to inject SEO meta tags into the static HTML export.
