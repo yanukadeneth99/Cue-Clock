@@ -193,7 +193,7 @@ function buildAlarmAndroid(
     sound: "default",
     vibrationPattern: [500, 500, 500, 500, 500, 500],
     bypassDnd: true,
-    fullScreenAction: { id: "default" },
+    fullScreenAction: { id: "default", launchActivity: "default" },
     loopSound: true,
     ongoing: true,
     autoCancel: false,
@@ -387,15 +387,30 @@ export async function displayNotif(title: string, body: string): Promise<void> {
   } catch {}
 }
 
-/** Cancel a Notifee trigger notification by ID. Safe to call with null/undefined. */
+/**
+ * Cancel a Notifee notification by ID. Cancels both the trigger (if unfired)
+ * AND the displayed notification (if already fired) — `cancelTriggerNotification`
+ * alone is a no-op once the alarm has fired and the heads-up is on screen.
+ * Safe to call with null/undefined.
+ */
 export async function cancelAlarm(id: string | null | undefined): Promise<void> {
   if (!id || Platform.OS !== "android") return;
   const notifee = getNotifee();
   if (!notifee) return;
+  let triggerCancelled = false;
+  let notifCancelled = false;
   try {
     await notifee.cancelTriggerNotification(id);
-    dlog("alarms:cancelAlarm:ok", { id });
+    triggerCancelled = true;
   } catch (e: any) {
-    dlog("alarms:cancelAlarm:error", { id, msg: e?.message ?? String(e) });
+    dlog("alarms:cancelAlarm:trigger:error", { id, msg: e?.message ?? String(e) });
   }
+  try {
+    // cancelNotification dismisses the displayed (already-fired) heads-up.
+    await notifee.cancelNotification(id);
+    notifCancelled = true;
+  } catch (e: any) {
+    dlog("alarms:cancelAlarm:displayed:error", { id, msg: e?.message ?? String(e) });
+  }
+  dlog("alarms:cancelAlarm:ok", { id, triggerCancelled, notifCancelled });
 }

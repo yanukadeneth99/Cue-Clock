@@ -339,6 +339,7 @@ export default function HomeScreen() {
   // passed as fired WITHOUT queuing an in-app sendAlert (native already handled it).
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
+      dlog("appState:change", { next: nextState });
       if (nextState !== "active") return;
       setTargetBlocks((blocks) => {
         let anyChanged = false;
@@ -1148,7 +1149,7 @@ export default function HomeScreen() {
             sound: "default",
             vibrationPattern: [500, 500, 500, 500, 500, 500],
             bypassDnd: true,
-            fullScreenAction: { id: "default" },
+            fullScreenAction: { id: "default", launchActivity: "default" },
             loopSound: true,
             ongoing: true,
             autoCancel: false,

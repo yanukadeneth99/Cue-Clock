@@ -23,7 +23,10 @@
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
         "RECEIVE_BOOT_COMPLETED",
-        "USE_FULL_SCREEN_INTENT"
+        "USE_FULL_SCREEN_INTENT",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "WAKE_LOCK"
       ]
     },
     "web": {

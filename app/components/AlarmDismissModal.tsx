@@ -56,10 +56,15 @@ export default function AlarmDismissModal({
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
     let vibrateInterval: ReturnType<typeof setInterval> | null = null;
 
+    let vibrateTickCount = 0;
     const triggerVibration = () => {
       if (Platform.OS === "web") return;
       try {
         Vibration.vibrate(VIBRATION_DURATION_MS);
+        vibrateTickCount += 1;
+        if (vibrateTickCount === 1 || vibrateTickCount % 5 === 0) {
+          dlog("alarmModal:vibrate:tick", { tick: vibrateTickCount, dur: VIBRATION_DURATION_MS });
+        }
       } catch (e: any) {
         dlog("alarmModal:vibrate:error", { msg: e?.message ?? String(e) });
       }
