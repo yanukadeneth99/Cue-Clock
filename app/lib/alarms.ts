@@ -101,19 +101,6 @@ export async function ensureNotifChannel(): Promise<void> {
   }
 }
 
-/** Request notification permissions via Notifee. Returns true if granted. */
-export async function requestAlarmPermissions(): Promise<boolean> {
-  if (Platform.OS !== "android") return false;
-  const notifee = getNotifee();
-  if (!notifee) return false;
-  try {
-    const settings = await notifee.requestPermission();
-    return (settings.authorizationStatus ?? 0) >= 1;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Check whether the app can launch full-screen-intent notifications.
  * Android 14+ gates this behind a per-app toggle; without it Notifee's
