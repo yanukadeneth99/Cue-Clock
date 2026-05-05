@@ -1173,10 +1173,19 @@ export default function HomeScreen() {
       );
     } catch (err: any) {
       dlog("test:runTestAlarm:error", { msg: err?.message ?? String(err) });
-      Alert.alert(
-        "Scheduling error (raw)",
-        `Native error: ${err?.message ?? String(err)}\n\nStack:\n${err?.stack?.slice?.(0, 400) ?? "(none)"}`,
-      );
+      // Gate raw native error and stack trace behind the internal-build flag so
+      // production users never see internal module paths or implementation details.
+      if (isDebugLogEnabled()) {
+        Alert.alert(
+          "Scheduling error (raw)",
+          `Native error: ${err?.message ?? String(err)}\n\nStack:\n${err?.stack?.slice?.(0, 400) ?? "(none)"}`,
+        );
+      } else {
+        Alert.alert(
+          "Scheduling error",
+          "Failed to schedule test alarm. Check that the required permissions are granted and try again.",
+        );
+      }
     }
   }, []);
 
