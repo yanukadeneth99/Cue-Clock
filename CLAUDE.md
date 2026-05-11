@@ -242,7 +242,6 @@ Thin wrapper around `@notifee/react-native` for scheduling and managing countdow
 - `canScheduleExactAlarms()` – Check Android 12+ SCHEDULE_EXACT_ALARM permission via Notifee's `settings.android.alarm`
 - `openAlarmPermissionSettings()` – Deep-link to the dedicated "Alarms & reminders" page
 - `ensureAlarmChannel()` / `ensureNotifChannel()` – Create Android channels on first use; explicitly delete stale `v1`/`v2` channel IDs to recover from prior broken-channel state
-- `requestAlarmPermissions()` – Request notification & scheduling permissions
 
 **Channel versioning:** Channels are versioned (`v3`) so Android recreates them with locked-in sound/vibration settings. Notifee deletes stale `cue-clock-alarm`, `cue-clock-alarm-v2`, `cue-clock-notif`, and `cue-clock-notif-v2` IDs on first run for users upgrading from older builds.
 
