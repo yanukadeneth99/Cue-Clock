@@ -42,8 +42,16 @@ async function handleSnooze(
   const prevCount = Number.parseInt(data.snoozeCount ?? "0", 10);
   const newCount = prevCount + 1;
 
-  if (Number.isNaN(blockId) || newCount > MAX_SNOOZES) {
-    dlog("handler:snooze:skip", { reason: Number.isNaN(blockId) ? "nan-blockId" : "max-snoozes" });
+  if (Number.isNaN(blockId) || Number.isNaN(alertMinutesBefore) || Number.isNaN(prevCount) || newCount > MAX_SNOOZES) {
+    dlog("handler:snooze:skip", {
+      reason: Number.isNaN(blockId)
+        ? "nan-blockId"
+        : Number.isNaN(alertMinutesBefore)
+          ? "nan-alertMinutes"
+          : Number.isNaN(prevCount)
+            ? "nan-snoozeCount"
+            : "max-snoozes",
+    });
     return;
   }
   if (notifId) await cancelAlarm(notifId);
