@@ -125,8 +125,10 @@ Log at platform/permission boundaries. Never at 1s-tick hot loops.
 
 Two-step wizard:
 
-1. `AndroidBackgroundHelpModal` — 6 numbered StepCards with sub-bullets and deep-links: Battery, Exact Alarms, Full-screen permission, **HyperOS Other Permissions** (Show on Lock screen + Display pop-up + Start in background), MIUI Autostart, lock-in-Recents. Color-emphasis: warning for Other Permissions, danger for Autostart.
+1. `AndroidBackgroundHelpModal` — 4 numbered StepCards with sub-bullets and deep-links: (1) Notifications + full-screen + battery via App Settings, (2) Exact Alarms, (3) **HyperOS Other Permissions** (Show on Lock screen + Display pop-up + Start in background), (4) MIUI Autostart. Color-emphasis: warning for Other Permissions, danger for Autostart. **Continue button is scroll-gated** — starts as a grey "Scroll down" label, flips to coloured "Continue" once the user reaches the bottom (16px slack). `onLayout` / `onContentSizeChange` auto-unlock when content fits without scrolling.
 2. `AnalyticsConsentModal` — non-dismissable opt-in. Opens automatically when step 1 closes IF `analyticsEnabled === null`.
+
+The native notification-permission dialog and the "Allow Exact Alarms" Alert are deliberately suppressed on first launch (in `app/index.tsx` we only call `getPermissionsAsync`, never `requestPermissionsAsync`). The wizard's deep-links cover the same ground without fragmenting the UX.
 
 iOS/web skip step 1.
 
