@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter } from "next/font/google";
+import { Space_Mono, Inter } from "next/font/google";
 import "./globals.css";
 
 /**
@@ -153,15 +153,20 @@ const jsonLd = {
   ],
 };
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+// Canonical typography pair: Inter for UI, Space Mono for all numerics
+// (clocks, countdowns, internal tags). Both expose CSS variables consumed
+// by globals.css `--font-sans` / `--font-mono` in @theme.
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
   subsets: ["latin"],
+  weight: ["400", "700"],
   display: "swap",
 });
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -254,7 +259,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
         />
       </head>
-      <body className={`${spaceGrotesk.variable} ${inter.variable} font-body bg-surface text-on-surface antialiased`}>
+      <body className={`${spaceMono.variable} ${inter.variable} font-body bg-surface text-on-surface antialiased`}>
         {children}
       </body>
     </html>

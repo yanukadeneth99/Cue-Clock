@@ -1,25 +1,22 @@
 import { colors } from "@/constants/colors";
-import React from "react";
+import { text as textStyles } from "@/constants/typography";
 import { Modal, Pressable, Text, View } from "react-native";
 
-/** Props for {@link ConfirmModal}. */
-interface ConfirmModalProps {
-  /** Whether the modal is shown. */
+type Props = {
   visible: boolean;
-  /** Dialog heading text. */
   title: string;
-  /** Body text describing the action to confirm. */
   message: string;
   /** Label for the confirm button. Defaults to "Confirm". */
   confirmLabel?: string;
-  /** Called when the user confirms the action. */
   onConfirm: () => void;
-  /** Called when the user cancels or dismisses the modal. */
   onCancel: () => void;
-}
+};
 
 /**
- * A themed confirmation dialog modal.
+ * Themed confirmation dialog — centred, compact, destructive on the right.
+ * Used for "Reset All". Other confirm flows (analytics opt-out, etc.) now use
+ * `ModalShell` for sheet-style consistency; this small dialog stays centred
+ * because it's a tight yes/no decision with no scrollable content.
  */
 export default function ConfirmModal({
   visible,
@@ -28,97 +25,93 @@ export default function ConfirmModal({
   confirmLabel = "Confirm",
   onConfirm,
   onCancel,
-}: ConfirmModalProps) {
+}: Props) {
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onCancel}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable
         onPress={onCancel}
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.7)",
+          backgroundColor: "rgba(10,11,14,0.7)",
           justifyContent: "center",
           alignItems: "center",
+          paddingHorizontal: 24,
         }}
       >
         <Pressable
           onPress={() => {}}
           style={{
-            backgroundColor: colors.surface,
+            backgroundColor: colors.background,
             borderColor: colors.surfaceBorder,
             borderWidth: 1,
             borderRadius: 16,
-            padding: 24,
-            width: "85%",
+            padding: 22,
+            width: "100%",
             maxWidth: 360,
           }}
         >
           <Text
-            style={{
-              color: colors.header,
-              fontSize: 18,
-              fontWeight: "600",
-              textAlign: "center",
-              marginBottom: 12,
-            }}
+            style={[
+              textStyles.sheetTitle,
+              { color: colors.text, textAlign: "center", marginBottom: 10 },
+            ]}
           >
             {title}
           </Text>
           <Text
-            style={{
-              color: colors.muted,
-              fontSize: 14,
-              textAlign: "center",
-              marginBottom: 24,
-            }}
+            style={[
+              textStyles.bodySmall,
+              {
+                color: colors.textMuted,
+                textAlign: "center",
+                lineHeight: 21,
+                marginBottom: 22,
+              },
+            ]}
           >
             {message}
           </Text>
-          <View style={{ flexDirection: "row", gap: 12 }}>
+          <View style={{ flexDirection: "row", gap: 10 }}>
             <Pressable
               onPress={onCancel}
-              style={{
+              style={({ pressed }) => ({
                 flex: 1,
-                backgroundColor: colors.background,
-                borderColor: colors.border,
+                backgroundColor: colors.surface,
                 borderWidth: 1,
+                borderColor: colors.surfaceBorder,
                 borderRadius: 12,
-                paddingVertical: 12,
+                paddingVertical: 13,
                 alignItems: "center",
-              }}
+                opacity: pressed ? 0.6 : 1,
+              })}
             >
               <Text
-                style={{
-                  color: colors.muted,
-                  fontSize: 14,
-                  fontWeight: "600",
-                }}
+                style={[
+                  textStyles.body,
+                  { color: colors.text, fontWeight: "600" },
+                ]}
               >
                 Cancel
               </Text>
             </Pressable>
             <Pressable
               onPress={onConfirm}
-              style={{
+              style={({ pressed }) => ({
                 flex: 1,
-                backgroundColor: colors.background,
-                borderColor: colors.danger,
+                backgroundColor: "transparent",
                 borderWidth: 1,
+                borderColor: `${colors.danger}55`,
                 borderRadius: 12,
-                paddingVertical: 12,
+                paddingVertical: 13,
                 alignItems: "center",
-              }}
+                opacity: pressed ? 0.6 : 1,
+              })}
             >
               <Text
-                style={{
-                  color: colors.danger,
-                  fontSize: 14,
-                  fontWeight: "600",
-                }}
+                style={[
+                  textStyles.body,
+                  { color: colors.danger, fontWeight: "600" },
+                ]}
               >
                 {confirmLabel}
               </Text>

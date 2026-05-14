@@ -6,8 +6,10 @@ import type { TargetBlockType } from "@/components/TargetBlock";
 import { dlog } from "@/lib/debugLog";
 
 export const SNOOZE_MS = 60_000; // 1 minute
-// Effectively unlimited: broadcast operators may need to snooze repeatedly while
-// preparing for a cue. The legacy cap (5) was too restrictive for that workflow.
+// Effectively unlimited — broadcast operators may need to snooze repeatedly
+// while preparing for a cue. The modal shows "Snoozed N times" as an
+// informational count-up; we don't enforce a hard cap. The design reference's
+// "MAX_SNOOZES = 5" is intentionally overridden here.
 export const MAX_SNOOZES = Number.POSITIVE_INFINITY;
 // Bumped to v2 so Android creates a fresh channel with sound + vibration locked
 // in. Older installs may have a v1 channel created without these settings; once
@@ -36,6 +38,7 @@ function getNotifeeEnums(): {
   AndroidNotificationSetting: any;
   TriggerType: any;
   AndroidAlarmType: any;
+  AndroidLaunchActivityFlag: any;
 } {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -48,6 +51,7 @@ function getNotifeeEnums(): {
       AndroidNotificationSetting: {},
       TriggerType: {},
       AndroidAlarmType: {},
+      AndroidLaunchActivityFlag: {},
     };
   }
 }
@@ -250,6 +254,20 @@ export async function scheduleAlarm(
   const enums = getNotifeeEnums();
   try {
     await ensureAlarmChannel();
+    // Log permission state at schedule time so we can correlate background
+    // failures to missing FSI / exact-alarm gates. If either is false the
+    // alarm will still be scheduled but FSI takeover will silently downgrade
+    // to a heads-up — that's the most common cause of "alarm doesn't go
+    // full-screen when locked / backgrounded" reports.
+    try {
+      const [fsi, exact] = await Promise.all([
+        canUseFullScreenIntent(),
+        canScheduleExactAlarms(),
+      ]);
+      dlog("alarms:scheduleAlarm:perms", { fsi, exact, blockId: block.id });
+    } catch {
+      // permissions API unavailable — schedule anyway
+    }
     const id = await notifee.createTriggerNotification(
       {
         title: "Countdown Alarm",

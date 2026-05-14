@@ -66,6 +66,15 @@ function stopBgAlarmVibration(reason: string): void {
   try { AlarmVibrator.cancel(); } catch {}
 }
 
+// Module-level queue drained by the React tree (`app/index.tsx`'s 1-Hz
+// ticker). When Notifee delivers an alarm-channel notification while the app
+// is foregrounded, the JS-side `shouldFire` ticker may miss it — the ticker
+// is target-time-relative and exact-second-matched, so snoozed alarms (which
+// fire at non-minute-aligned timestamps) slip past it. `onForegroundEvent
+// DELIVERED` is the authoritative signal regardless of fire-time alignment,
+// so we push the event here and let the React drain mount the modal.
+export const fgDeliveredQueue: { notifId: string; blockId: number }[] = [];
+
 function getNotifee(): any {
   if (Platform.OS !== "android") return null;
   try {
@@ -204,6 +213,22 @@ export function registerAlarmHandlers(): void {
     const data: Record<string, string> = detail?.notification?.data ?? {};
     const pressId: string | undefined = detail?.pressAction?.id;
     dlog("handler:fgEvent", { type, pressId, notifId, blockId: data.blockId });
+    // Push DELIVERED events for alarm-channel notifications onto the queue.
+    // The React ticker drains this every second and mounts the modal —
+    // covering snoozed alarms whose non-minute-aligned fire times slip past
+    // the JS-side `shouldFire` exact-second match.
+    if (
+      type === EventType.DELIVERED &&
+      notifId &&
+      data.blockId &&
+      detail?.notification?.android?.channelId === ALARM_CHANNEL_ID
+    ) {
+      const parsedId = Number.parseInt(data.blockId, 10);
+      if (!Number.isNaN(parsedId)) {
+        fgDeliveredQueue.push({ notifId, blockId: parsedId });
+        dlog("handler:fgEvent:queueDelivered", { notifId, blockId: parsedId });
+      }
+    }
     if (type === EventType.ACTION_PRESS) {
       if (pressId === "dismiss") {
         handleDismiss(notifId, data).catch((e) =>

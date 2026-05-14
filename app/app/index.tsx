@@ -1,14 +1,25 @@
+import { AddCueButton } from "@/components/AddCueButton";
 import AlarmDismissModal from "@/components/AlarmDismissModal";
 import AndroidBackgroundHelpModal from "@/components/AndroidBackgroundHelpModal";
 import DebugLogModal from "@/components/DebugLogModal";
 import { dlog, isDebugLogEnabled } from "@/lib/debugLog";
 import AnalyticsConsentModal from "@/components/AnalyticsConsentModal";
 import AnalyticsOptOutModal from "@/components/AnalyticsOptOutModal";
+import { ClockRail } from "@/components/ClockRail";
 import ClockPicker from "@/components/ClockPicker";
 import ConfirmModal from "@/components/ConfirmModal";
+import { CueEditModal } from "@/components/CueEditModal";
+import { Header } from "@/components/Header";
 import HelpModal from "@/components/HelpModal";
+import { OnAirView } from "@/components/OnAirView";
+import { PrimaryCard } from "@/components/PrimaryCard";
+import { QueuedRow } from "@/components/QueuedRow";
+import { SettingsModal } from "@/components/SettingsModal";
 import TargetBlock, { TargetBlockType } from "@/components/TargetBlock";
+import { ZonePickerModal } from "@/components/ZonePickerModal";
 import { colors } from "@/constants/colors";
+import { text as textStyles } from "@/constants/typography";
+import { useNow } from "@/lib/useNow";
 import { applyAnalyticsCollection } from "@/lib/analytics";
 import {
   cancelAlarm,
@@ -25,8 +36,10 @@ import {
   scheduleNotifFromData,
   SNOOZE_MS,
 } from "@/lib/alarms";
+import { fgDeliveredQueue } from "@/lib/alarmHandlers";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import * as KeepAwake from "expo-keep-awake";
 import { DateTime } from "luxon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -115,14 +128,26 @@ const BLOCK_OVERHEAD = 52;
 function computeAlertFireDate(block: TargetBlockType, zone: string): Date | null {
   if (block.alertMinutesBefore === null) return null;
   const now = DateTime.now().setZone(zone);
+  // Target snaps to the :00 second of its minute. A previous +1s offset was
+  // pulling alarms off the second boundary (firing at HH:MM:01) — broadcast
+  // ops expects "23 minutes before target → exactly XX:00 (mm:ss)" so we
+  // align to the wall-clock second the cue actually represents.
   let targetDT = now.set({ hour: block.targetHour, minute: block.targetMinute, second: 0, millisecond: 0 });
-  targetDT = targetDT.plus({ seconds: 1 });
   if (targetDT <= now) targetDT = targetDT.plus({ days: 1 });
   const deductionMs = (block.deductMinute * 60 + block.deductSecond) * 1000;
   targetDT = targetDT.minus({ milliseconds: deductionMs });
   const fireTime = targetDT.minus({ minutes: block.alertMinutesBefore });
   if (fireTime <= now) return null;
-  return fireTime.toJSDate();
+  const result = fireTime.toJSDate();
+  dlog("alarm:computeFireDate", {
+    blockId: block.id,
+    targetHM: `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`,
+    bufferMs: deductionMs,
+    alertMinBefore: block.alertMinutesBefore,
+    fireAt: result.toISOString(),
+    fireAtLocal: fireTime.toFormat("HH:mm:ss"),
+  });
+  return result;
 }
 
 /** Schedule a native push notification for a block's alert. Returns the notification ID or null. */
@@ -307,19 +332,36 @@ export default function HomeScreen() {
   const [optOutModalVisible, setOptOutModalVisible] = useState(false);
   const [is24Hour, setIs24Hour] = useState(true);
   const [alertMode, setAlertMode] = useState<"notification" | "alarm">("notification");
+  // New design settings — persisted alongside the existing keys.
+  const [showSeconds, setShowSeconds] = useState(true);
+  const [soundAlerts, setSoundAlerts] = useState(true);
+  const [keepOn, setKeepOn] = useState(true);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [alarmDismissData, setAlarmDismissData] = useState<{
     blockId: number;
     name: string;
     minutes: number;
     snoozeCount: number;
+    /** Pre-formatted target HH:MM string for the modal's Target column. */
+    targetTime: string;
   } | null>(null);
   const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
     createDefaultBlock(1),
   ]);
+  // ─── New-design modal routing ───────────────────────────────────────
+  // `editingBlockId === "new"` = the Add Cue sheet is open, awaiting save;
+  // a numeric id = editing that block in CueEditModal.
+  // `zonePickerFor` controls which display clock the ZonePickerModal targets.
+  const [editingBlockId, setEditingBlockId] = useState<number | "new" | null>(null);
+  const [zonePickerFor, setZonePickerFor] = useState<"zone1" | "zone2" | null>(null);
+  // Wall-clock-aligned 1s tick — fuels the new design's ClockRail / PrimaryCard /
+  // QueuedRow render path. The legacy TargetBlock still pulls its `countdown`
+  // string from the existing setInterval below; both run independently.
+  const now = useNow();
   const nextIdRef = useRef(2);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const isLoadedRef = useRef(false);
-  const alertQueueRef = useRef<{ id: number; name: string; minutes: number; snoozeCount: number }[]>([]);
+  const alertQueueRef = useRef<{ id: number; name: string; minutes: number; snoozeCount: number; targetTime: string }[]>([]);
   // Holds notificationIds that must be cancelled before the in-app alert fires.
   // We queue them here because the setTargetBlocks updater is a pure function and
   // cannot perform async work (cancelBlockNotification) directly.
@@ -329,7 +371,7 @@ export default function HomeScreen() {
   // didn't elevate to MainActivity (vendor downgrade) or the operator returned
   // to the app via the launcher rather than tapping the heads-up.
   const pendingBackgroundFiresRef = useRef<
-    { id: number; name: string; minutes: number; snoozeCount: number }[]
+    { id: number; name: string; minutes: number; snoozeCount: number; targetTime: string }[]
   >([]);
   const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirror of targetBlocks for use in async callbacks without stale closure issues
@@ -348,6 +390,15 @@ export default function HomeScreen() {
     const subscription = AppState.addEventListener("change", (nextState) => {
       dlog("appState:change", { next: nextState });
       if (nextState !== "active") return;
+
+      // Re-check notification permission. The user may have granted it from
+      // the system Settings page the wizard deep-linked to, and we need to
+      // reflect that without a full app restart.
+      if (Platform.OS !== "web" && Notifications) {
+        Notifications.getPermissionsAsync()
+          .then(({ status }) => setNotifBlocked(status !== "granted"))
+          .catch(() => {});
+      }
 
       // Drain alarms that fired while we were backgrounded. In alarm mode this
       // mounts the in-app AlarmDismissModal; in notification mode we just clear
@@ -392,6 +443,7 @@ export default function HomeScreen() {
                 name: block.name,
                 minutes: block.alertMinutesBefore,
                 snoozeCount: block.snoozeCount ?? 0,
+                targetTime: `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`,
               });
             }
             anyChanged = true;
@@ -405,7 +457,30 @@ export default function HomeScreen() {
     return () => subscription.remove();
   }, [zone1, zone2, alertMode]);
 
-  // Request notification permissions on mount
+  // "Keep screen on" setting — bind to expo-keep-awake. The tag scopes the
+  // wake lock to this app, so multiple call sites (if we ever add one)
+  // wouldn't fight over it. Deactivate on unmount AND when the setting flips
+  // off so the OS reclaims the lock immediately.
+  useEffect(() => {
+    const tag = "cueclock-keep-screen-on";
+    if (keepOn) {
+      KeepAwake.activateKeepAwakeAsync(tag).catch(() => {});
+    } else {
+      KeepAwake.deactivateKeepAwake(tag);
+    }
+    return () => {
+      KeepAwake.deactivateKeepAwake(tag);
+    };
+  }, [keepOn]);
+
+  // Request notification permissions on mount.
+  //
+  // On Android 13+, POST_NOTIFICATIONS must be requested explicitly — the
+  // permission isn't granted at install time and there's no way for the user
+  // to grant it without either (a) the system runtime dialog or (b) navigating
+  // deep into App Settings → Notifications. The wizard covers (b) but the
+  // dialog is far less friction, so we prompt on first launch. Subsequent
+  // calls are no-ops if the user has already responded.
   useEffect(() => {
     if (Platform.OS === "web") {
       if (typeof window !== "undefined" && "Notification" in window) {
@@ -423,15 +498,22 @@ export default function HomeScreen() {
     if (!Notifications) return;
     (async () => {
       try {
-        // Reflect the current permission state without prompting. The native
-        // notification-permission dialog and the "Allow Exact Alarms" Alert
-        // are deliberately removed — both are covered by the in-app onboarding
-        // wizard (AndroidBackgroundHelpModal), which deep-links the user to
-        // the exact settings page with clear sub-steps. Surfacing those native
-        // prompts on top of the wizard fragmented the first-launch UX.
-        const { status } = await Notifications!.getPermissionsAsync();
-        if (status !== "granted") {
-          setNotifBlocked(true);
+        dlog("perm:request:notifications:start");
+        const { status } = await Notifications!.requestPermissionsAsync();
+        dlog("perm:request:notifications:done", { status });
+        setNotifBlocked(status !== "granted");
+        if (Platform.OS === "android") {
+          // Check FSI + exact-alarm permission state for diagnostics; both are
+          // required for full-screen takeover to actually elevate over the
+          // lock screen. Missing either explains why an alarm "didn't go
+          // full-screen" while still firing the heads-up + vibration.
+          try {
+            const fsi = await canUseFullScreenIntent();
+            const exact = await canScheduleExactAlarms();
+            dlog("perm:android:state", { fsi, exact });
+          } catch (e: any) {
+            dlog("perm:android:state:error", { msg: e?.message ?? String(e) });
+          }
         }
 
         // Create the Notifee channels on Android so they're ready before the
@@ -527,7 +609,18 @@ export default function HomeScreen() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [storedZone1, storedZone2, storedTargets, storedAnalytics, storedAndroidBackgroundHelp, storedIs24Hour, storedAlertMode] = await AsyncStorage.multiGet([
+        const [
+          storedZone1,
+          storedZone2,
+          storedTargets,
+          storedAnalytics,
+          storedAndroidBackgroundHelp,
+          storedIs24Hour,
+          storedAlertMode,
+          storedShowSeconds,
+          storedSoundAlerts,
+          storedKeepOn,
+        ] = await AsyncStorage.multiGet([
           "zone1",
           "zone2",
           "targetBlocks",
@@ -535,6 +628,9 @@ export default function HomeScreen() {
           "androidBackgroundHelpSeen",
           "is24Hour",
           "alertMode",
+          "showSeconds",
+          "soundAlerts",
+          "keepOn",
         ]);
 
         if (storedZone1[1]) setZone1(storedZone1[1]);
@@ -542,6 +638,11 @@ export default function HomeScreen() {
         // Missing key defaults to 24-hour (existing behavior); explicit "false" opts into 12-hour.
         if (storedIs24Hour[1] === "false") setIs24Hour(false);
         if (storedAlertMode[1] === "alarm") setAlertMode("alarm");
+        // Defaults: showSeconds on, soundAlerts on, keepOn on. Only opt-out
+        // ("false") rehydrates a non-default value.
+        if (storedShowSeconds[1] === "false") setShowSeconds(false);
+        if (storedSoundAlerts[1] === "false") setSoundAlerts(false);
+        if (storedKeepOn[1] === "false") setKeepOn(false);
         if (storedAnalytics[1] === null) {
           // First launch — onboarding flow:
           //   Step 1 (Android only): permissions/settings guide
@@ -612,11 +713,15 @@ export default function HomeScreen() {
             const snoozeCount = Number.parseInt(data.snoozeCount ?? "0", 10);
             const block = targetBlocksRef.current.find((b) => b.id === blockId);
             if (!Number.isNaN(blockId)) {
+              const targetTime = block
+                ? `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`
+                : "--:--";
               setAlarmDismissData({
                 blockId,
                 name: block?.name ?? `Target #${blockId}`,
                 minutes,
                 snoozeCount,
+                targetTime,
               });
             }
           }
@@ -646,8 +751,11 @@ export default function HomeScreen() {
       ["targetBlocks", serialized],
       ["is24Hour", String(is24Hour)],
       ["alertMode", alertMode],
+      ["showSeconds", String(showSeconds)],
+      ["soundAlerts", String(soundAlerts)],
+      ["keepOn", String(keepOn)],
     ]).catch(() => {});
-  }, [zone1, zone2, targetBlocks, is24Hour, alertMode]);
+  }, [zone1, zone2, targetBlocks, is24Hour, alertMode, showSeconds, soundAlerts, keepOn]);
 
   // Countdown updater — returns same array reference if nothing changed
   useEffect(() => {
@@ -658,6 +766,38 @@ export default function HomeScreen() {
       const now = DateTime.now();
       const nowZone1 = now.setZone(zone1);
       const nowZone2 = now.setZone(zone2);
+
+      // Drain Notifee foreground DELIVERED events directly into
+      // `alarmDismissData`. This covers snoozed alarms whose non-minute-
+      // aligned fire times slip past the target-relative `shouldFire` check
+      // below. We bypass `alertQueueRef` because that ref is drained by a
+      // separate effect keyed on `targetBlocks` changes — and a snoozed
+      // foreground fire doesn't necessarily change block state, so the
+      // effect wouldn't re-run. Setting `alarmDismissData` directly mounts
+      // the modal in one render cycle.
+      if (fgDeliveredQueue.length > 0) {
+        const drained = fgDeliveredQueue.splice(0);
+        drained.forEach(({ notifId, blockId }) => {
+          const block = targetBlocksRef.current.find((b) => b.id === blockId);
+          if (!block) return;
+          // Defensive: if the OS race-fired multiple DELIVERED events, only
+          // mount the modal once. `setAlarmDismissData` is no-op when `prev`
+          // is already set for this block.
+          setAlarmDismissData((prev) =>
+            prev ?? {
+              blockId: block.id,
+              name: block.name,
+              minutes: block.alertMinutesBefore ?? 0,
+              snoozeCount: block.snoozeCount ?? 0,
+              targetTime: `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`,
+            },
+          );
+          // Cancel the OS-side displayed notification so the heads-up
+          // doesn't linger alongside the in-app modal.
+          pendingCancelRef.current.push(notifId);
+          dlog("alert:fgDeliveredDrain", { blockId, notifId });
+        });
+      }
 
       setTargetBlocks((blocks) => {
         let anyChanged = false;
@@ -700,7 +840,12 @@ export default function HomeScreen() {
             updates.countdown = newCountdown;
           }
 
-          // Alert detection
+          // Alert detection — exact-second match. Snooze reschedules the OS
+          // alarm at a non-aligned timestamp (e.g. snooze pressed at 10:38:03
+          // → fire at 10:39:03); the JS ticker must NOT refire during that
+          // window, so we can't loosen this to a range check. Missed-tick
+          // recovery (locked-screen / Doze suspending the JS ticker) is
+          // handled by `appState:resume:fallbackQueueModal` on resume.
           if (block.alertMinutesBefore !== null) {
             const shouldFire =
               !block.alertFired &&
@@ -727,6 +872,7 @@ export default function HomeScreen() {
                   name: block.name,
                   minutes: block.alertMinutesBefore,
                   snoozeCount: block.snoozeCount ?? 0,
+                  targetTime: `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`,
                 });
                 updates.alertFired = true;
                 updates.alertMinutesBefore = null;
@@ -742,6 +888,7 @@ export default function HomeScreen() {
                   name: block.name,
                   minutes: block.alertMinutesBefore,
                   snoozeCount: block.snoozeCount ?? 0,
+                  targetTime: `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`,
                 });
                 dlog("alert:bgFireRecorded", { blockId: block.id });
               }
@@ -783,7 +930,13 @@ export default function HomeScreen() {
         if (Platform.OS === "android" && alertMode === "alarm") {
           // Show in-app full-screen alarm modal; don't replace an existing one.
           setAlarmDismissData((prev) =>
-            prev ?? { blockId: a.id, name: a.name, minutes: a.minutes, snoozeCount: a.snoozeCount }
+            prev ?? {
+              blockId: a.id,
+              name: a.name,
+              minutes: a.minutes,
+              snoozeCount: a.snoozeCount,
+              targetTime: a.targetTime,
+            }
           );
         } else {
           sendAlert(
@@ -821,13 +974,21 @@ export default function HomeScreen() {
   // the scheduled notification in sync. Errors are swallowed because the in-app
   // alert loop remains the source of truth while the app is foregrounded.
   const rescheduleInBackground = useCallback((id: number, patch: Partial<TargetBlockType>) => {
+    // Look up the existing block (may be missing for Add-flow callers where
+    // React state hasn't flushed the new block into the ref yet). Merge with
+    // the patch — the patch is the source of truth for the new alarm config.
     const block = targetBlocksRef.current.find((b) => b.id === id);
-    if (!block || block.alertMinutesBefore === null) return;
-    const tempBlock = { ...block, ...patch };
+    const tempBlock = { ...(block ?? createDefaultBlock(id)), ...patch, id };
+    // Gate on the MERGED alertMinutesBefore, not the pre-patch value. The
+    // legacy code checked `block.alertMinutesBefore` which silently bailed
+    // when the user was either (a) adding a brand-new cue with an alert or
+    // (b) editing an existing cue to ADD an alert it didn't have — both
+    // cases left the OS alarm unscheduled.
+    if (tempBlock.alertMinutesBefore === null) return;
     const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
     (async () => {
       try {
-        if (block.notificationId) await cancelAnyAlert(block.notificationId);
+        if (block?.notificationId) await cancelAnyAlert(block.notificationId);
         const notifId = await scheduleBlockAlert(tempBlock, zone, alertMode);
         setTargetBlocks((blocks) =>
           blocks.map((b) => (b.id === id ? { ...b, notificationId: notifId } : b))
@@ -973,13 +1134,34 @@ export default function HomeScreen() {
     });
   }, []);
 
+  // New-design path: open the unified CueEditModal in add or edit mode.
+  // Pass a numeric id to edit that block; pass "new" to open the Add Cue sheet.
+  const openEditor = useCallback((id: number | "new") => {
+    setEditingBlockId(id);
+  }, []);
+  const closeEditor = useCallback(() => {
+    setEditingBlockId(null);
+  }, []);
+
   const doReset = useCallback(async () => {
     try {
-      await AsyncStorage.multiRemove(["zone1", "zone2", "targetBlocks", "is24Hour", "alertMode"]);
+      await AsyncStorage.multiRemove([
+        "zone1",
+        "zone2",
+        "targetBlocks",
+        "is24Hour",
+        "alertMode",
+        "showSeconds",
+        "soundAlerts",
+        "keepOn",
+      ]);
       setZone1("Europe/Berlin");
       setZone2("Asia/Colombo");
       setIs24Hour(true);
       setAlertMode("notification");
+      setShowSeconds(true);
+      setSoundAlerts(true);
+      setKeepOn(true);
       nextIdRef.current = 2;
       setTargetBlocks([createDefaultBlock(1)]);
     } catch {
@@ -1043,11 +1225,48 @@ export default function HomeScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alertMode]);
 
+  // When an alarm fires while the operator is in On-Air (fullscreen) mode,
+  // drop out of fullscreen so the AlarmDismissModal mounts in the normal
+  // layout context. OnAirView immersive mode + status-bar swap can interfere
+  // with native Modal mounting on some Android builds (the modal lands
+  // invisibly behind the immersive overlay).
+  //
+  // To preserve UX continuity, capture the pre-alarm fullscreen state in a
+  // ref. Both Dismiss and Snooze consult the ref to restore fullscreen once
+  // the modal unmounts — so the operator drops back into On-Air automatically
+  // without having to re-toggle it.
+  const fullScreenBeforeAlarmRef = useRef(false);
+  useEffect(() => {
+    if (alarmDismissData && fullScreen) {
+      fullScreenBeforeAlarmRef.current = true;
+      setFullScreen(false);
+    }
+  }, [alarmDismissData, fullScreen]);
+
   const handleAlarmDismiss = useCallback(() => {
+    const blockId = alarmDismissData?.blockId;
     setAlarmDismissData(null);
-    // alertMinutesBefore and alertFired are already set by the countdown timer
-    // when the foreground alert fires — no additional state cleanup needed.
-  }, []);
+    // Restore On-Air if the operator was in fullscreen when the alarm fired.
+    // Consume the ref so a subsequent unrelated alarm doesn't accidentally
+    // restore based on stale state.
+    if (fullScreenBeforeAlarmRef.current) {
+      fullScreenBeforeAlarmRef.current = false;
+      setFullScreen(true);
+    }
+    if (blockId == null) return;
+    // Background firing path doesn't run the foreground 1-Hz tick, so the
+    // block's `alertMinutesBefore` may still be set even though the alarm
+    // already played. Defensively clear it on dismiss so the UI (bell badge
+    // on PrimaryCard / QueuedRow) updates and the cue stops looking armed.
+    dlog("alarm:dismiss:clearState", { blockId });
+    setTargetBlocks((blocks) =>
+      blocks.map((b) =>
+        b.id === blockId
+          ? { ...b, alertMinutesBefore: null, alertFired: true, snoozeCount: 0, notificationId: null }
+          : b,
+      ),
+    );
+  }, [alarmDismissData]);
 
   const handleAlarmSnooze = useCallback(async () => {
     if (!alarmDismissData) return;
@@ -1059,6 +1278,13 @@ export default function HomeScreen() {
     }
 
     setAlarmDismissData(null);
+    // Same restore-fullscreen behaviour as Dismiss. The ref gets reset; if
+    // the snoozed alarm refires and the operator is in fullscreen again, the
+    // mount effect above re-captures the value.
+    if (fullScreenBeforeAlarmRef.current) {
+      fullScreenBeforeAlarmRef.current = false;
+      setFullScreen(true);
+    }
 
     const fireDate = new Date(Date.now() + SNOOZE_MS);
     const block = targetBlocksRef.current.find((b) => b.id === blockId);
@@ -1167,11 +1393,14 @@ export default function HomeScreen() {
     // Android always downgrades to heads-up when the app is foregrounded.
     // The countdown pipeline still tests OS-side scheduling via real blocks.
     if (isAlarm) {
+      const nowD = new Date();
+      const testTarget = `${String(nowD.getHours()).padStart(2, "0")}:${String(nowD.getMinutes()).padStart(2, "0")}`;
       setAlarmDismissData({
         blockId: 99999,
         name: "Test Alarm",
         minutes: 0,
         snoozeCount: 0,
+        targetTime: testTarget,
       });
       return;
     }
@@ -1287,8 +1516,8 @@ export default function HomeScreen() {
   }, [doReset]);
 
   // Compute dynamic font size for fullscreen target blocks
-  const safeTop = Math.max(insets.top + 12, Platform.OS === "web" ? 24 : 56);
-  const safeBottom = Math.max(insets.bottom + 12, Platform.OS === "web" ? 28 : 40);
+  const safeTop = Math.max(insets.top + 4, Platform.OS === "web" ? 20 : 36);
+  const safeBottom = Math.max(insets.bottom + 24, Platform.OS === "web" ? 32 : 52);
   const fullscreenAvailableHeight =
     screenHeight - FULLSCREEN_CLOCK_HEIGHT - FULLSCREEN_EXIT_BTN_HEIGHT - safeTop - safeBottom;
   const blockCount = targetBlocks.length;
@@ -1309,6 +1538,295 @@ export default function HomeScreen() {
   // Alarm mode is available when we're on Android, permissions are not blocked,
   // and we're not running in Expo Go (which lacks full notification support).
   const alarmAvailable = Platform.OS === "android" && !notifBlocked && !isExpoGo && !!Notifications;
+
+  // Shared modal stack — rendered in both the new mobile home path and the
+  // legacy web/fullscreen path, so feature surfaces (consent, alarm dismiss,
+  // setup guide) stay reachable regardless of which render branch ran.
+  const renderModalStack = () => (
+    <>
+      <ConfirmModal
+        visible={resetModalVisible}
+        title="Reset All"
+        message="This will clear all timers and settings. Are you sure?"
+        confirmLabel="Yes, Reset"
+        onConfirm={() => {
+          setResetModalVisible(false);
+          doReset();
+        }}
+        onCancel={() => setResetModalVisible(false)}
+      />
+      <HelpModal
+        visible={helpVisible}
+        onClose={() => setHelpVisible(false)}
+        onOpenAndroidBackgroundHelp={
+          Platform.OS === "android" ? () => setAndroidBackgroundHelpVisible(true) : undefined
+        }
+      />
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        is24Hour={is24Hour}
+        onToggle24Hour={setIs24Hour}
+        alertMode={alertMode}
+        onToggleAlertMode={setAlertMode}
+        alarmAvailable={alarmAvailable}
+        showSeconds={showSeconds}
+        onToggleShowSeconds={setShowSeconds}
+        keepOn={keepOn}
+        onToggleKeepOn={setKeepOn}
+        analyticsEnabled={analyticsEnabled}
+        onRequestOptOut={() => {
+          setSettingsVisible(false);
+          setOptOutModalVisible(true);
+        }}
+        onTestAlarm={isDebugLogEnabled() ? runTestAlarm : undefined}
+        onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}
+      />
+      <AnalyticsConsentModal
+        visible={consentModalVisible}
+        onAccept={() => handleAnalyticsConsent(true)}
+        onDecline={() => handleAnalyticsConsent(false)}
+      />
+      <AndroidBackgroundHelpModal
+        visible={androidBackgroundHelpVisible}
+        onClose={dismissAndroidBackgroundHelp}
+        onOpenAppSettings={openAppSettings}
+        onOpenExactAlarmSettings={openExactAlarmSettings}
+      />
+      <DebugLogModal visible={debugLogVisible} onClose={() => setDebugLogVisible(false)} />
+      <AnalyticsOptOutModal
+        visible={optOutModalVisible}
+        onConfirmOptOut={() => {
+          setOptOutModalVisible(false);
+          applyAnalyticsChoice(false);
+        }}
+        onCancel={() => setOptOutModalVisible(false)}
+      />
+      {alarmDismissData ? (
+        <AlarmDismissModal
+          visible
+          blockName={alarmDismissData.name}
+          minutes={alarmDismissData.minutes}
+          snoozeCount={alarmDismissData.snoozeCount}
+          targetTime={alarmDismissData.targetTime}
+          onDismiss={handleAlarmDismiss}
+          onSnooze={handleAlarmSnooze}
+        />
+      ) : null}
+    </>
+  );
+
+  // ─── New-design mobile path (fullscreen / On-Air) ────────────────────
+  // OnAirView is a stripped, broadcast-room layout: hero countdown +
+  // After-that follow-ups + auto-dimming exit pill. State stays in this
+  // component; OnAirView is purely a presenter.
+  if (!isWeb && fullScreen) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <OnAirView
+          blocks={targetBlocks}
+          zone1={zone1}
+          zone2={zone2}
+          is24Hour={is24Hour}
+          now={now}
+          onExit={toggleFullScreen}
+        />
+        {renderModalStack()}
+      </View>
+    );
+  }
+
+  // ─── New-design mobile path (non-fullscreen) ─────────────────────────
+  // The visual shell of the redesign lives here; editing still routes back
+  // through the legacy TargetBlock for now, rendered below the new cards when
+  // a cue is selected (replaced by CueEditModal in step 5).
+  if (!isWeb && !fullScreen) {
+    const primary = targetBlocks[0];
+    const rest = targetBlocks.slice(1);
+    const editingBlock =
+      typeof editingBlockId === "number"
+        ? targetBlocks.find((b) => b.id === editingBlockId) ?? null
+        : null;
+    const cueSheetVisible = editingBlockId === "new" || editingBlock != null;
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: safeTop }}>
+        <Header
+          onHelp={() => setHelpVisible(true)}
+          onSettings={() => setSettingsVisible(true)}
+          onFullscreen={toggleFullScreen}
+        />
+        <ScrollView
+          ref={scrollViewRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 4 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <ClockRail
+            zone1={zone1}
+            zone2={zone2}
+            now={now}
+            showSeconds={showSeconds}
+            is24Hour={is24Hour}
+            onTapZone1={() => setZonePickerFor("zone1")}
+            onTapZone2={() => setZonePickerFor("zone2")}
+          />
+          {primary ? (
+            <PrimaryCard
+              block={primary}
+              now={now}
+              zone1={zone1}
+              zone2={zone2}
+              is24Hour={is24Hour}
+              onEdit={() => openEditor(primary.id)}
+            />
+          ) : null}
+          {rest.length > 0 ? (
+            <View
+              style={{
+                marginTop: 6,
+                marginBottom: 12,
+                marginHorizontal: 20,
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+              }}
+            >
+              <Text
+                style={[
+                  textStyles.metaLabel,
+                  { color: colors.textMuted, letterSpacing: 0.5 },
+                ]}
+              >
+                Queued
+              </Text>
+              <Text style={[textStyles.hint, { color: colors.textMuted }]}>
+                {rest.length} {rest.length === 1 ? "cue" : "cues"}
+              </Text>
+            </View>
+          ) : null}
+          {rest.map((b) => (
+            <QueuedRow
+              key={b.id}
+              block={b}
+              now={now}
+              zone1={zone1}
+              zone2={zone2}
+              is24Hour={is24Hour}
+              onTap={() => openEditor(b.id)}
+            />
+          ))}
+        </ScrollView>
+        <AddCueButton onPress={() => openEditor("new")} />
+
+        <CueEditModal
+          visible={cueSheetVisible}
+          existing={editingBlock}
+          zone1={zone1}
+          zone2={zone2}
+          is24Hour={is24Hour}
+          onClose={closeEditor}
+          onSave={(patch) => {
+            if (editingBlock) {
+              // Empty name on save: fall back to the block's existing name,
+              // or to "Target #N" if the previous name was also empty. This
+              // preserves the legacy default-naming behaviour.
+              const editedName =
+                patch.name.length > 0
+                  ? patch.name
+                  : editingBlock.name.length > 0
+                  ? editingBlock.name
+                  : `Target #${editingBlock.id}`;
+              // Edit: merge patch into the existing block, reschedule via the
+              // standard handlers so alarm + notification side-effects fire.
+              setTargetBlocks((blocks) =>
+                blocks.map((b) =>
+                  b.id === editingBlock.id
+                    ? {
+                        ...b,
+                        name: editedName,
+                        targetHour: patch.targetHour,
+                        targetMinute: patch.targetMinute,
+                        deductMinute: patch.deductMinute,
+                        deductSecond: patch.deductSecond,
+                        targetZone: patch.targetZone,
+                        alertMinutesBefore: patch.alertMinutesBefore,
+                        // Reset firing state so the new alert can fire fresh.
+                        alertFired: false,
+                        snoozeCount: 0,
+                      }
+                    : b,
+                ),
+              );
+              rescheduleInBackground(editingBlock.id, {
+                name: editedName,
+                targetHour: patch.targetHour,
+                targetMinute: patch.targetMinute,
+                deductMinute: patch.deductMinute,
+                deductSecond: patch.deductSecond,
+                targetZone: patch.targetZone,
+                alertMinutesBefore: patch.alertMinutesBefore,
+                alertFired: false,
+              });
+            } else {
+              // Add: build a new block at the end of the list with patch values.
+              const newId = nextIdRef.current++;
+              const addedName = patch.name.length > 0 ? patch.name : `Target #${newId}`;
+              setTargetBlocks((blocks) => [
+                ...blocks,
+                {
+                  id: newId,
+                  name: addedName,
+                  targetHour: patch.targetHour,
+                  targetMinute: patch.targetMinute,
+                  deductMinute: patch.deductMinute,
+                  deductSecond: patch.deductSecond,
+                  targetZone: patch.targetZone,
+                  alertMinutesBefore: patch.alertMinutesBefore,
+                  countdown: "00:00:00",
+                  isTargetPickerVisible: false,
+                  isDeductPickerVisible: false,
+                  isCollapsed: true,
+                  isAlertModalVisible: false,
+                  alertFired: false,
+                  snoozeCount: 0,
+                },
+              ]);
+              if (patch.alertMinutesBefore != null) {
+                rescheduleInBackground(newId, {
+                  name: addedName,
+                  targetHour: patch.targetHour,
+                  targetMinute: patch.targetMinute,
+                  deductMinute: patch.deductMinute,
+                  deductSecond: patch.deductSecond,
+                  targetZone: patch.targetZone,
+                  alertMinutesBefore: patch.alertMinutesBefore,
+                  alertFired: false,
+                });
+              }
+            }
+            closeEditor();
+          }}
+          onDelete={() => {
+            if (editingBlock) removeBlock(editingBlock.id);
+            closeEditor();
+          }}
+        />
+
+        <ZonePickerModal
+          visible={zonePickerFor != null}
+          title={zonePickerFor === "zone1" ? "Zone 1" : "Zone 2"}
+          current={zonePickerFor === "zone1" ? zone1 : zone2}
+          onPick={(tz) => {
+            if (zonePickerFor === "zone1") setZone1(tz);
+            else if (zonePickerFor === "zone2") setZone2(tz);
+          }}
+          onClose={() => setZonePickerFor(null)}
+        />
+
+        {renderModalStack()}
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -1674,14 +2192,27 @@ export default function HomeScreen() {
       <HelpModal
         visible={helpVisible}
         onClose={() => setHelpVisible(false)}
-        analyticsEnabled={analyticsEnabled}
-        onRequestOptOut={() => setOptOutModalVisible(true)}
-        onOpenAndroidBackgroundHelp={() => setAndroidBackgroundHelpVisible(true)}
+        onOpenAndroidBackgroundHelp={
+          Platform.OS === "android" ? () => setAndroidBackgroundHelpVisible(true) : undefined
+        }
+      />
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
         is24Hour={is24Hour}
         onToggle24Hour={setIs24Hour}
         alertMode={alertMode}
         onToggleAlertMode={setAlertMode}
         alarmAvailable={alarmAvailable}
+        showSeconds={showSeconds}
+        onToggleShowSeconds={setShowSeconds}
+        keepOn={keepOn}
+        onToggleKeepOn={setKeepOn}
+        analyticsEnabled={analyticsEnabled}
+        onRequestOptOut={() => {
+          setSettingsVisible(false);
+          setOptOutModalVisible(true);
+        }}
         onTestAlarm={isDebugLogEnabled() ? runTestAlarm : undefined}
         onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}
       />
@@ -1716,6 +2247,7 @@ export default function HomeScreen() {
           blockName={alarmDismissData.name}
           minutes={alarmDismissData.minutes}
           snoozeCount={alarmDismissData.snoozeCount}
+          targetTime={alarmDismissData.targetTime}
           onDismiss={handleAlarmDismiss}
           onSnooze={handleAlarmSnooze}
         />

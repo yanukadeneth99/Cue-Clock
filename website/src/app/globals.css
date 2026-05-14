@@ -1,6 +1,61 @@
 @import "tailwindcss";
 
+/* ─── Canonical design tokens ───────────────────────────────────────
+   Mirror of app/constants/colors.ts + typography.ts. Surface stack runs
+   page → background → surface; single blue accent for CTA/brand; amber
+   `countdown` is reserved for time-urgency + alarm; red `danger` is
+   reserved for <1m critical + destructive actions only.
+
+   The legacy Material-3 tokens below are kept ONLY to keep the existing
+   landing-page renderable while step 6 (page.tsx rewrite) migrates to
+   these canonical names. New components MUST use the tokens in this
+   first block. The M3 block is slated for deletion. */
 @theme {
+  /* ─ Canonical (new) ─────────────────────────── */
+
+  /* Surface stack */
+  --color-page:           #0a0b0e;
+  --color-bg-app:         #1a1d23; /* product surface */
+  --color-card:           #252830;
+  --color-card-border:    #353840;
+  --color-divider:        #3f434d;
+
+  /* Text */
+  --color-fg:             #e8eaed;
+  --color-fg-muted:       #8b8f96;
+
+  /* Accent + brand */
+  --color-accent:         #60a5fa;
+
+  /* Zone dots */
+  --color-zone1:          #4ade80;
+  --color-zone2:          #f87171;
+
+  /* Time-urgency */
+  --color-countdown:      #fbbf24;
+  --color-danger:         #ef4444;
+
+  /* Radii */
+  --radius-row:     0.625rem; /* 10px — queued mini */
+  --radius-setting: 0.75rem;  /* 12px — settings rows */
+  --radius-card:    0.875rem; /* 14px — queued / CTA */
+  --radius-rail:    1rem;     /* 16px — clock rail */
+  --radius-primary: 1.25rem;  /* 20px — primary card */
+  --radius-sheet:   1.375rem; /* 22px — sheet top */
+
+  /* Shadows */
+  --shadow-cta:  0 8px 24px rgb(96 165 250 / 0.13);
+  --shadow-halo: 0 0 0 4px rgb(251 191 36 / 0.13);
+
+  /* Fonts — paired with next/font CSS variables set in layout.tsx */
+  --font-sans:    var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Legacy aliases kept so existing `font-body` / `font-headline` classes still resolve */
+  --font-body:    var(--font-inter);
+  --font-headline: var(--font-inter);
+  --font-label:   var(--font-inter);
+
+  /* ─ Legacy (Material-3) ─ slated for removal in step 6 ─ */
   --color-tertiary-fixed-dim: #f9bd22;
   --color-on-surface: #e1e2ea;
   --color-surface-container-highest: #32353b;
@@ -49,29 +104,82 @@
   --color-error: #ffb4ab;
   --color-on-secondary-container: #003e1c;
 
-  --font-headline: var(--font-space-grotesk);
-  --font-body: var(--font-inter);
-  --font-label: var(--font-inter);
-
   --radius-lg: 0.25rem;
   --radius-xl: 0.5rem;
   --radius-full: 0.75rem;
 }
 
+/* ─── Base layer ──────────────────────────────────────────────────── */
 @layer base {
   html {
     scroll-behavior: smooth;
   }
   body {
-    background-color: #101319;
+    background-color: #101319; /* keep until page.tsx adopts bg-page */
     color: #e1e2ea;
     font-family: var(--font-inter), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* All numerics use tabular figures to prevent layout jitter as digits change. */
+  .font-mono,
+  [class*="font-mono"],
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
+/* ─── Motion tokens — match the in-app animation spec ─────────────── */
+@layer base {
+  @keyframes cue-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.45; transform: scale(0.85); }
+  }
+  @keyframes modal-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .animate-cue-pulse  { animation: cue-pulse 1.2s ease-in-out infinite; }
+  .animate-modal-fade { animation: modal-fade 180ms ease-out; }
+  .animate-sheet-up   { animation: sheet-up 240ms cubic-bezier(0.22, 1, 0.36, 1); }
+}
+
+/* ─── Components — canonical primitives for the upcoming page rebuild ─ */
 @layer components {
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  /* Primary CTA — mirrors the in-app "Add a cue" button. */
+  .cta-primary {
+    background: var(--color-accent);
+    color: var(--color-page);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-cta);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  /* Surface card — matches QueuedRow / SettingRow chrome. */
+  .surface-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-card);
+  }
+
+  /* ─ Legacy (kept until page.tsx migrates) ─ */
   .font-mono-data {
-    font-family: var(--font-space-grotesk), monospace;
+    font-family: var(--font-space-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
   }
   .glass-panel {

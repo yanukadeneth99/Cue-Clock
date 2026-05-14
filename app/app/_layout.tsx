@@ -2,9 +2,24 @@ import { applyAnalyticsCollection } from "@/lib/analytics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Head from "expo-router/head";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
+import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+// Keep the splash screen up until fonts have loaded — without this gate, the
+// first frame ships with system fallbacks and snaps to Inter/SpaceMono on the
+// second frame, which reads as a flash.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // no-op: splash already hidden, or platform doesn't support it (web)
+});
 
 // Register Notifee background event handlers at module load time so snooze and
 // dismiss actions work even when the app process is killed. Must be outside
@@ -25,6 +40,25 @@ if (Platform.OS === "android") {
  * and wraps the app in a SafeAreaProvider.
  */
 export default function RootLayout() {
+  // Load Inter (weights 400/500/600/700) and SpaceMono — referenced by
+  // `app/constants/typography.ts`. SpaceMono-Regular.ttf is bundled locally;
+  // Inter weights ship from `@expo-google-fonts/inter`.
+  const [fontsLoaded, fontError] = useFonts({
+    "Inter": Inter_400Regular,
+    "Inter-Medium": Inter_500Medium,
+    "Inter-SemiBold": Inter_600SemiBold,
+    "Inter-Bold": Inter_700Bold,
+    "SpaceMono-Regular": require("../assets/fonts/SpaceMono-Regular.ttf"),
+  });
+
+  // Drop the splash screen the moment fonts are ready (or fatally errored —
+  // we'd rather render with fallbacks than hang forever on a bad font fetch).
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, fontError]);
+
   // Initialize analytics on mount, respecting the user's consent.
   // null  → first launch, consent not yet given — skip init entirely (no tracking before consent).
   // "true"  → user accepted — init Clarity and enable Firebase.
@@ -38,12 +72,17 @@ export default function RootLayout() {
     })();
   }, []);
 
+  if (!fontsLoaded && !fontError) {
+    // Splash is still up; render nothing so we don't flash unstyled text.
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
       {Platform.OS === "web" && (
         <Head>
           {/* Primary SEO */}
-          <title>Cue Clock — Broadcast Countdown Timer & Timezone Monitor</title>
+          <title>Cue Clock · Broadcast Countdown Timer & Timezone Monitor</title>
           <meta
             name="description"
             content="Professional broadcast countdown timer and dual-timezone clock for live TV, radio, and streaming productions. Manage multiple countdowns with deduction offsets and instant alerts."
@@ -60,7 +99,7 @@ export default function RootLayout() {
           {/* Open Graph */}
           <meta property="og:type" content="website" />
           <meta property="og:url" content="https://live.cueclock.app" />
-          <meta property="og:title" content="Cue Clock — Broadcast Countdown Timer" />
+          <meta property="og:title" content="Cue Clock · Broadcast Countdown Timer" />
           <meta
             property="og:description"
             content="Professional broadcast countdown timer and dual-timezone clock for live TV, radio, and streaming productions."
@@ -70,7 +109,7 @@ export default function RootLayout() {
 
           {/* Twitter Card */}
           <meta name="twitter:card" content="summary" />
-          <meta name="twitter:title" content="Cue Clock — Broadcast Countdown Timer" />
+          <meta name="twitter:title" content="Cue Clock · Broadcast Countdown Timer" />
           <meta
             name="twitter:description"
             content="Professional broadcast countdown timer and dual-timezone clock for live TV, radio, and streaming productions."

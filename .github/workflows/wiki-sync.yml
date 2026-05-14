@@ -8,6 +8,9 @@ on:
       - 'docs/wiki.md'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   sync:
     name: Push docs/wiki.md to GitHub Wiki

@@ -11,6 +11,9 @@ concurrency:
   group: android-release-verify-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   verify-release-build:
     name: Verify Android Release Build

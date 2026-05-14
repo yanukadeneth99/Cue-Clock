@@ -11,6 +11,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
     "@microsoft/react-native-clarity": "^4.5.3",
     "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -56,6 +57,9 @@
     "typescript": "~5.9.2"
   },
   "private": true,
+  "overrides": {
+    "postcss": "^8.5.10"
+  },
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {

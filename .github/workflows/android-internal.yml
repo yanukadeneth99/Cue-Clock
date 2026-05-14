@@ -11,6 +11,9 @@ concurrency:
   group: android-internal
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build-and-deploy:
     name: Build & Deploy to Internal Testing
