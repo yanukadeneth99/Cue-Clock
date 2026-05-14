@@ -6,14 +6,14 @@ import type { TargetBlockType } from "@/components/TargetBlock";
 import { dlog } from "@/lib/debugLog";
 
 export const SNOOZE_MS = 60_000; // 1 minute
-// Effectively unlimited — broadcast operators may need to snooze repeatedly
+// Effectively unlimited - broadcast operators may need to snooze repeatedly
 // while preparing for a cue. The modal shows "Snoozed N times" as an
 // informational count-up; we don't enforce a hard cap. The design reference's
 // "MAX_SNOOZES = 5" is intentionally overridden here.
 export const MAX_SNOOZES = Number.POSITIVE_INFINITY;
 // Bumped to v2 so Android creates a fresh channel with sound + vibration locked
 // in. Older installs may have a v1 channel created without these settings; once
-// a channel exists, Android freezes those properties — renaming forces a refresh.
+// a channel exists, Android freezes those properties - renaming forces a refresh.
 export const ALARM_CHANNEL_ID = "cue-clock-alarm-v3";
 export const NOTIF_CHANNEL_ID = "cue-clock-notif-v3";
 const STALE_ALARM_CHANNELS = ["cue-clock-alarm", "cue-clock-alarm-v2"];
@@ -257,7 +257,7 @@ export async function scheduleAlarm(
     // Log permission state at schedule time so we can correlate background
     // failures to missing FSI / exact-alarm gates. If either is false the
     // alarm will still be scheduled but FSI takeover will silently downgrade
-    // to a heads-up — that's the most common cause of "alarm doesn't go
+    // to a heads-up - that's the most common cause of "alarm doesn't go
     // full-screen when locked / backgrounded" reports.
     try {
       const [fsi, exact] = await Promise.all([
@@ -266,7 +266,7 @@ export async function scheduleAlarm(
       ]);
       dlog("alarms:scheduleAlarm:perms", { fsi, exact, blockId: block.id });
     } catch {
-      // permissions API unavailable — schedule anyway
+      // permissions API unavailable - schedule anyway
     }
     const id = await notifee.createTriggerNotification(
       {
@@ -409,7 +409,7 @@ export async function displayNotif(title: string, body: string): Promise<void> {
 
 /**
  * Cancel a Notifee notification by ID. Cancels both the trigger (if unfired)
- * AND the displayed notification (if already fired) — `cancelTriggerNotification`
+ * AND the displayed notification (if already fired) - `cancelTriggerNotification`
  * alone is a no-op once the alarm has fired and the heads-up is on screen.
  * Safe to call with null/undefined.
  */

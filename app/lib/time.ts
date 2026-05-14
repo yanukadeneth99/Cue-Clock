@@ -1,5 +1,5 @@
 /**
- * Time helpers — ports of the design reference's pure functions.
+ * Time helpers - ports of the design reference's pure functions.
  *
  * Uses `Intl.DateTimeFormat` for zone conversion so we don't depend on Luxon at
  * call sites that only need a display string. The countdown helper deducts a
@@ -7,7 +7,7 @@
  */
 
 export type ZoneTime = {
-  /** Hour string — padded ("14") in 24h mode, unpadded ("2") in 12h mode. */
+  /** Hour string - padded ("14") in 24h mode, unpadded ("2") in 12h mode. */
   h: string;
   /** Minute string, zero-padded. */
   m: string;
@@ -92,7 +92,7 @@ export function shortCity(tz: string): string {
  * The buffer is intentionally typed as a single `seconds` number rather than
  * a `{h, m}` pair: the existing data model stores buffers as
  * `(deductMinute, deductSecond)`, and the original API made it easy for
- * callers to misalign those into the wrong slots — silently under-deducting
+ * callers to misalign those into the wrong slots - silently under-deducting
  * by 60×. Centralising the unit conversion here removes that footgun.
  */
 export function computeCountdown(
@@ -133,7 +133,7 @@ export function computeCountdown(
   };
 }
 
-/** "5m left", "1h 12m left", "42s left" — used by the queued rows. */
+/** "5m left", "1h 12m left", "42s left" - used by the queued rows. */
 export function humanRemaining(total: number): string {
   if (total <= 60) return `${total}s left`;
   const hh = Math.floor(total / 3600);

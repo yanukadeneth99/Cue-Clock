@@ -2,7 +2,9 @@ import { colors } from "@/constants/colors";
 import { text } from "@/constants/typography";
 import { formatInZone, shortCity, zoneAbbr } from "@/lib/time";
 import { memo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
+
+const isWeb = Platform.OS === "web";
 
 type Props = {
   zone1: string;
@@ -15,10 +17,11 @@ type Props = {
 };
 
 /**
- * Two-zone live clock card. Sits directly under the header and renders
- * Zone 1 (green) on the left, Zone 2 (red) on the right, both tappable to
- * open the zone picker. City label, HH:MM(:SS), AM/PM (12h only), and zone
- * abbreviation share a single column each.
+ * Two-zone live clock rail. Each zone renders as its own surface card with a
+ * left-edge accent stripe in the zone's brand colour (zone1 = green, zone2 =
+ * red). Cards sit side-by-side with a small gap; the rail itself has no
+ * wrapper surface so the colored edge of each card sits flush against the
+ * page background.
  */
 function ClockRailImpl({
   zone1,
@@ -35,103 +38,126 @@ function ClockRailImpl({
       style={{
         marginTop: 4,
         marginBottom: 28,
-        marginHorizontal: 20,
-        paddingVertical: 18,
-        paddingHorizontal: 22,
-        borderRadius: 16,
-        backgroundColor: colors.surface,
-        borderWidth: 1,
-        borderColor: colors.surfaceBorder,
+        // Web: clamp the rail to ~40% of the viewport so the pair of cards
+        // doesn't sprawl. Native: standard 20dp side margins.
+        ...(isWeb
+          ? { width: "40%", minWidth: 520, alignSelf: "center" as const }
+          : { marginHorizontal: 20 }),
         flexDirection: "row",
+        gap: isWeb ? 16 : 12,
       }}
     >
-      <View style={{ flex: 1 }}>
-        <ClockCol
-          color={colors.zone1}
-          tz={zone1}
-          now={now}
-          showSeconds={showSeconds}
-          hour12={hour12}
-          align="left"
-          onPress={onTapZone1}
-        />
-      </View>
-      <View style={{ flex: 1 }}>
-        <ClockCol
-          color={colors.zone2}
-          tz={zone2}
-          now={now}
-          showSeconds={showSeconds}
-          hour12={hour12}
-          align="right"
-          onPress={onTapZone2}
-        />
-      </View>
+      <ZoneCard
+        color={colors.zone1}
+        tz={zone1}
+        now={now}
+        showSeconds={showSeconds}
+        hour12={hour12}
+        onPress={onTapZone1}
+      />
+      <ZoneCard
+        color={colors.zone2}
+        tz={zone2}
+        now={now}
+        showSeconds={showSeconds}
+        hour12={hour12}
+        onPress={onTapZone2}
+      />
     </View>
   );
 }
 
-type ColProps = {
+type CardProps = {
   color: string;
   tz: string;
   now: Date;
   showSeconds: boolean;
   hour12: boolean;
-  align: "left" | "right";
   onPress: () => void;
 };
 
-function ClockCol({ color, tz, now, showSeconds, hour12, align, onPress }: ColProps) {
+function ZoneCard({ color, tz, now, showSeconds, hour12, onPress }: CardProps) {
   const t = formatInZone(now, tz, showSeconds, hour12);
-  const justify = align === "right" ? "flex-end" : "flex-start";
-  const textAlign = align;
+  // Web bumps the clock digit size - the rail is the centrepiece on a wide
+  // browser viewport, smaller than that reads as undersized.
+  const clockFontSize = isWeb ? 64 : undefined;
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.55 : 1 })}
+      style={({ pressed }) => ({
+        flex: 1,
+        backgroundColor: colors.surface,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.surfaceBorder,
+        // Left-edge accent stripe in the zone colour. We use a fat left
+        // border rather than a child View so the stripe naturally inherits
+        // the card's border-radius corners.
+        borderLeftWidth: 4,
+        borderLeftColor: color,
+        paddingVertical: isWeb ? 18 : 14,
+        paddingHorizontal: isWeb ? 20 : 16,
+        opacity: pressed ? 0.55 : 1,
+      })}
       hitSlop={6}
     >
-      {/* Dot + city label */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, justifyContent: justify }}>
-        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color }} />
-        <Text style={[text.hint, { color, fontWeight: "500" }]}>{shortCity(tz)}</Text>
-      </View>
+      {/* City + zone abbr label */}
+      <Text
+        style={[
+          text.hint,
+          {
+            color,
+            fontWeight: "600",
+            letterSpacing: 1,
+            textTransform: "uppercase",
+          },
+        ]}
+      >
+        {shortCity(tz)} ({zoneAbbr(now, tz)})
+      </Text>
 
       {/* HH:MM[:SS] [AM/PM] */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "baseline",
-          justifyContent: justify,
-          marginTop: 8,
+          marginTop: 6,
         }}
       >
-        <Text style={[text.clockLarge, { color: colors.text, textAlign }]}>
+        <Text
+          style={[
+            text.clockLarge,
+            { color: colors.text, textAlign: "left" },
+            clockFontSize ? { fontSize: clockFontSize, lineHeight: clockFontSize } : null,
+          ]}
+        >
           {t.h}:{t.m}
         </Text>
         {showSeconds ? (
-          <Text style={[text.clockSeconds, { color: colors.textMuted }]}>:{t.s}</Text>
+          <Text
+            style={[
+              text.clockSeconds,
+              {
+                color: colors.textMuted,
+                fontSize: isWeb ? 24 : 13,
+                lineHeight: isWeb ? 24 : 13,
+                marginLeft: 2,
+              },
+            ]}
+          >
+            :{t.s}
+          </Text>
         ) : null}
         {hour12 && t.ampm ? (
-          <Text style={[text.hint, { color: colors.textMuted, marginLeft: 5 }]}>{t.ampm}</Text>
+          <Text style={[text.hint, { color: colors.textMuted, marginLeft: 6 }]}>{t.ampm}</Text>
         ) : null}
       </View>
-
-      {/* Zone abbr */}
-      <Text
-        style={[
-          text.footnote,
-          { color: colors.textMuted, marginTop: 6, textAlign },
-        ]}
-      >
-        {zoneAbbr(now, tz)}
-      </Text>
     </Pressable>
   );
 }
 
-// Memo on second-bucket — see PrimaryCard for the rationale. The clock rail
+// Memo on second-bucket - see PrimaryCard for the rationale. The clock rail
 // displays minutes / seconds, so a sub-second re-render contributes nothing.
 export const ClockRail = memo(ClockRailImpl, (prev, next) => {
   if (Math.floor(prev.now.getTime() / 1000) !== Math.floor(next.now.getTime() / 1000)) {

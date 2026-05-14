@@ -7,7 +7,7 @@
 #   3. (optional --wipe) clears app data via `pm clear` so onboarding,
 #      AsyncStorage, and HyperOS per-app permission grants reset
 #   4. Starts a fresh Metro with `--clear` (so the transformer cache is
-#      rebuilt from scratch — never trust the warm cache)
+#      rebuilt from scratch - never trust the warm cache)
 #   5. Waits for Metro to report "Waiting on http://localhost:8081"
 #   6. `adb reverse tcp:8081 tcp:8081` so the device can reach Metro
 #   7. Launches the app via `monkey`, which fires Metro's first cold bundle
@@ -16,7 +16,7 @@
 #   ./scripts/cold-reload.sh          # restart Metro + relaunch app, keep data
 #   ./scripts/cold-reload.sh --wipe   # also wipe app data (re-fires onboarding)
 #
-# Metro logs stream to /tmp/cueclock-metro.log — `tail -f` it if a bundle
+# Metro logs stream to /tmp/cueclock-metro.log - `tail -f` it if a bundle
 # fails or you want to see logcat-style output.
 
 set -euo pipefail

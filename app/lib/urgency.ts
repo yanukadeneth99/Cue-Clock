@@ -1,5 +1,5 @@
 /**
- * Continuous urgency factor — drives PrimaryCard scaling.
+ * Continuous urgency factor - drives PrimaryCard scaling.
  *
  * Returns 0 when the countdown is calm (>5 min), 1 in the last minute, and
  * linearly interpolates across the 300s → 60s window in between. Consumers use
@@ -7,7 +7,7 @@
  * halo radius simultaneously so the calm-to-critical transition reads as a
  * single coordinated motion rather than three stepped colour swaps.
  *
- * Note: this does NOT account for the buffer — pass already-buffer-deducted
+ * Note: this does NOT account for the buffer - pass already-buffer-deducted
  * seconds, matching `computeCountdown(...).total`.
  */
 export function urgencyFactor(totalSeconds: number): number {

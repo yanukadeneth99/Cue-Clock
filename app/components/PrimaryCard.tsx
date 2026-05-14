@@ -17,7 +17,7 @@ type Props = {
 };
 
 /**
- * Up Next card — the headline countdown for the next cue.
+ * Up Next card - the headline countdown for the next cue.
  *
  * Three things scale continuously with `urgencyFactor` (0 when calm, 1 in the
  * last minute, linear across 300s→60s):
@@ -56,7 +56,7 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) 
   const haloWidth = u > 0.3 ? lerpRound(1, 4, u) : 0;
   const haloColor = cd.crit ? `${colors.danger}22` : `${colors.countdown}22`;
 
-  // Pulsing dot — only animates in crit state.
+  // Pulsing dot - only animates in crit state.
   const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!cd.crit) {

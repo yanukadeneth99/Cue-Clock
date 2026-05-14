@@ -6,7 +6,9 @@ import { text as textStyles } from "@/constants/typography";
 import { computeCountdown, shortCity } from "@/lib/time";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+
+const isWeb = Platform.OS === "web";
 
 type Props = {
   visible: boolean;
@@ -45,12 +47,12 @@ type FormState = {
  * `TargetBlock` and the separate `AlertModal` (folded into the chip row here).
  *
  * Fields:
- *  - Name        — plain text input
- *  - Target time — hours+minutes stepper, tap-to-open native picker
- *  - Zone        — toggles between zone1 and zone2 (matches stored shape).
+ *  - Name        - plain text input
+ *  - Target time - hours+minutes stepper, tap-to-open native picker
+ *  - Zone        - toggles between zone1 and zone2 (matches stored shape).
  *                  A future change can widen this to free IANA tz per cue.
- *  - Buffer      — minutes+seconds stepper (seconds snap to 5)
- *  - Alert       — preset chips: None / 1m / 2m / 5m / 10m / 15m / Custom
+ *  - Buffer      - minutes+seconds stepper (seconds snap to 5)
+ *  - Alert       - preset chips: None / 1m / 2m / 5m / 10m / 15m / Custom
  *                  Custom chip toggles to a stepper +/- 1, capped by
  *                  min(60, secondsUntilTarget/60 - 1) so the alert can never
  *                  fire after the target
@@ -68,7 +70,7 @@ export function CueEditModal({
   const editing = existing != null;
   // IMPORTANT: depend on `existing?.id`, not `existing` itself. The parent
   // (HomeScreen) replaces every cue's object reference every second when the
-  // 1-Hz countdown ticker writes new `countdown` strings — if we keyed the
+  // 1-Hz countdown ticker writes new `countdown` strings - if we keyed the
   // memo on `existing`, the seed would rebuild on every tick and the
   // re-seed `useEffect` below would wipe in-progress stepper edits. The id
   // is a stable primitive across ticks, so the seed stays put while the
@@ -99,7 +101,7 @@ export function CueEditModal({
   }, [existingId]);
   const [form, setForm] = useState<FormState>(seed);
   // The alert picker is a nested sheet rendered as an in-tree absolute overlay
-  // (not a second native Modal — Android struggles with two stacked Modals).
+  // (not a second native Modal - Android struggles with two stacked Modals).
   // Local boolean controls whether it's visible.
   const [alertPickerOpen, setAlertPickerOpen] = useState(false);
 
@@ -112,30 +114,36 @@ export function CueEditModal({
     setAlertPickerOpen(false);
   }, [visible, seed]);
 
-  // Recompute "alert max" each render — depends on chosen target + zone.
+  // Recompute "alert max" each render - depends on chosen target + zone +
+  // buffer. The buffer (`deductMinute/Second`) shifts the *effective* fire
+  // moment, so it MUST be included here. A negative buffer (e.g. -13:00,
+  // meaning "fire 13 minutes after the target") otherwise makes the picker
+  // expose alerts that are longer than the displayed countdown - exactly
+  // the symptom we hit when this argument was hard-coded to 0.
   const tz = form.targetZone === "zone1" ? zone1 : zone2;
   const cd = computeCountdown(
     new Date(),
     tz,
     { h: form.targetHour, m: form.targetMinute },
-    0,
+    form.deductMinute * 60 + form.deductSecond,
   );
-  // Cap the picker at 60 — the in-app rationale is "1 hour before a cue is
-  // already a planning task, not a heads-up." Below 1 the picker shows
-  // "Countdown too short" copy and disables selection.
+  // `Math.floor((total - 1) / 60)` gives the largest N where the alert
+  // (N min before target) still fires strictly *before* the target. With
+  // 6:23 (383s) remaining, that's `floor(382/60) = 6` - so "6 minutes
+  // before" is selectable and will fire ~23 seconds from now.
   //
-  // `Math.floor((total - 1) / 60)` gives the largest N where the alert (N min
-  // before target) still fires strictly *before* the target. With 6:23 (383s)
-  // remaining, that's `floor(382/60) = 6` — so "6 minutes before" is
-  // selectable and will fire ~23 seconds from now. The previous
-  // `floor(total / 60) - 1` was off-by-one and hid the legitimate top choice.
-  const maxAlertMins = Math.min(60, Math.max(0, Math.floor((cd.total - 1) / 60)));
+  // No upper cap: broadcast operators legitimately want long lead-times
+  // (e.g. a 2-hour "go to studio" cue before a live show). The list scrolls,
+  // so a long countdown just gives the user a longer scroll list to pick
+  // from. Below 1 the picker shows "Countdown too short" copy and disables
+  // selection.
+  const maxAlertMins = Math.max(0, Math.floor((cd.total - 1) / 60));
 
-  // Name is optional — fall back to a placeholder name on save.
+  // Name is optional - fall back to a placeholder name on save.
   const canSave = true;
 
   // Picker content lives inline so it can be passed to ModalShell's `overlay`
-  // slot. The parent sheet stays mounted while this slides up over it —
+  // slot. The parent sheet stays mounted while this slides up over it -
   // single coordinated transition instead of two chained Modal swaps.
   //
   // Layout: fixed handle + title row, then a flex-1 ScrollView holding the
@@ -240,6 +248,13 @@ export function CueEditModal({
       visible={visible}
       title={editing ? "Edit cue" : "Add a cue"}
       onClose={onClose}
+      variant={isWeb ? "centered" : "sheet"}
+      // Backdrop-tap and Android back-press do NOT dismiss the cue editor -
+      // the form holds unsaved state and a stray tap shouldn't discard it.
+      // The X button in the header (always visible) and the Save / Delete
+      // actions in the footer remain the explicit exits. Native-only:
+      // backdrop is still tappable, but its handler is a no-op.
+      dismissable={false}
       overlay={pickerContent}
       overlayVisible={alertPickerOpen}
       onOverlayDismiss={() => setAlertPickerOpen(false)}
@@ -310,12 +325,12 @@ export function CueEditModal({
       <Label>Target time</Label>
       <View
         style={{
-          padding: 12,
+          padding: isWeb ? 8 : 12,
           borderRadius: 12,
           backgroundColor: colors.surface,
           borderWidth: 1,
           borderColor: colors.surfaceBorder,
-          marginBottom: 10,
+          marginBottom: isWeb ? 8 : 10,
         }}
       >
         <TimeStepper
@@ -325,15 +340,20 @@ export function CueEditModal({
           h={form.targetHour}
           m={form.targetMinute}
           onChange={(th, tm) => setForm((f) => ({ ...f, targetHour: th, targetMinute: tm }))}
-          large
+          // Skip `large` on web - the centered modal is height-constrained
+          // and the smaller (fs=28) digits are still very readable on
+          // desktop pixels.
+          large={!isWeb}
           mode="hm"
           hour12={!is24Hour}
-          autoOpen={!editing}
+          // autoOpen pops the native picker which doesn't exist on web; web
+          // has the inline TextInput in TimeStepper instead.
+          autoOpen={!editing && !isWeb}
         />
       </View>
 
       <Label>Zone</Label>
-      <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: isWeb ? 8 : 12 }}>
         <ZoneToggle
           active={form.targetZone === "zone1"}
           color={colors.zone1}
@@ -353,22 +373,26 @@ export function CueEditModal({
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "baseline",
-          marginBottom: 6,
+          marginBottom: isWeb ? 4 : 6,
         }}
       >
         <Label noBottom>Buffer</Label>
-        <Text style={[textStyles.footnote, { color: colors.textMuted }]}>
-          Ready this much early · mm:ss
-        </Text>
+        {/* Description suppressed on web to save vertical room - the label +
+            mm:ss formatting is self-evident in a desktop context. */}
+        {!isWeb ? (
+          <Text style={[textStyles.footnote, { color: colors.textMuted }]}>
+            Ready this much early · mm:ss
+          </Text>
+        ) : null}
       </View>
       <View
         style={{
-          padding: 10,
+          padding: isWeb ? 6 : 10,
           borderRadius: 12,
           backgroundColor: colors.surface,
           borderWidth: 1,
           borderColor: colors.surfaceBorder,
-          marginBottom: 12,
+          marginBottom: isWeb ? 8 : 12,
         }}
       >
         <TimeStepper
@@ -380,7 +404,7 @@ export function CueEditModal({
         />
       </View>
 
-      {/* Alert — collapsed row showing the current value + chevron. Tapping
+      {/* Alert - collapsed row showing the current value + chevron. Tapping
           opens the per-minute picker as a nested sheet (see below). */}
       <Label>Alert before</Label>
       <Pressable
@@ -390,7 +414,7 @@ export function CueEditModal({
         }}
         disabled={maxAlertMins < 1}
         style={({ pressed }) => ({
-          paddingVertical: 12,
+          paddingVertical: isWeb ? 10 : 12,
           paddingHorizontal: 14,
           borderRadius: 12,
           backgroundColor: colors.surface,
@@ -400,7 +424,7 @@ export function CueEditModal({
           alignItems: "center",
           justifyContent: "space-between",
           opacity: maxAlertMins < 1 ? 0.5 : pressed ? 0.6 : 1,
-          marginBottom: 4,
+          marginBottom: isWeb ? 8 : 4,
         })}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -436,7 +460,7 @@ export function CueEditModal({
         ) : null}
       </Pressable>
 
-      {/* Name — optional, last field. No autofocus: the time picker is the
+      {/* Name - optional, last field. No autofocus: the time picker is the
           primary input and the name is just a label that helps later. Empty
           name saves as "Untitled cue" (see onSave handler). */}
       <Label>Name (optional)</Label>
@@ -452,7 +476,7 @@ export function CueEditModal({
             borderWidth: 1,
             borderColor: colors.surfaceBorder,
             borderRadius: 12,
-            paddingVertical: 12,
+            paddingVertical: isWeb ? 10 : 12,
             paddingHorizontal: 14,
             color: colors.text,
             fontSize: 15,

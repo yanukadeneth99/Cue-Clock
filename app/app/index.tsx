@@ -9,6 +9,7 @@ import { ClockRail } from "@/components/ClockRail";
 import ClockPicker from "@/components/ClockPicker";
 import ConfirmModal from "@/components/ConfirmModal";
 import { CueEditModal } from "@/components/CueEditModal";
+import { MobileWebInstallModal } from "@/components/MobileWebInstallModal";
 import { Header } from "@/components/Header";
 import HelpModal from "@/components/HelpModal";
 import { OnAirView } from "@/components/OnAirView";
@@ -79,12 +80,34 @@ if (!isExpoGo && Platform.OS !== "web") {
       }),
     });
     // On Android we use Notifee (see lib/alarms.ts) for both alarm and
-    // notification-mode alerts — exact-alarm scheduling requires it. We still
+    // notification-mode alerts - exact-alarm scheduling requires it. We still
     // load expo-notifications for permission helpers and iOS scheduling.
     Notifications = mod;
   } catch {
-    // expo-notifications failed to initialize — will fall back to Alert.alert
+    // expo-notifications failed to initialize - will fall back to Alert.alert
   }
+}
+
+/**
+ * Request Notification permission on web from a user gesture. Modern browsers
+ * (Chrome, Firefox, Safari) silently ignore `Notification.requestPermission()`
+ * unless it's invoked synchronously inside a click / keypress handler - a
+ * mount-time call from useEffect returns `"default"` without prompting the
+ * user, which is what bricked notifications on web before this fix.
+ *
+ * Safe to call multiple times: it's a no-op once the user has granted or
+ * denied. Returns void; the new permission state is read back by `sendAlert`
+ * directly when the alarm later fires.
+ */
+function ensureWebNotificationPermission(): void {
+  if (Platform.OS !== "web") return;
+  if (typeof window === "undefined") return;
+  if (!("Notification" in window)) return;
+  const perm = (window as any).Notification.permission;
+  if (perm !== "default") return;
+  try {
+    (window as any).Notification.requestPermission().catch(() => {});
+  } catch {}
 }
 
 /** Send a push notification, or fall back to web/alert fallbacks if unavailable */
@@ -131,7 +154,7 @@ function computeAlertFireDate(block: TargetBlockType, zone: string): Date | null
   if (block.alertMinutesBefore === null) return null;
   const now = DateTime.now().setZone(zone);
   // Target snaps to the :00 second of its minute. A previous +1s offset was
-  // pulling alarms off the second boundary (firing at HH:MM:01) — broadcast
+  // pulling alarms off the second boundary (firing at HH:MM:01) - broadcast
   // ops expects "23 minutes before target → exactly XX:00 (mm:ss)" so we
   // align to the wall-clock second the cue actually represents.
   let targetDT = now.set({ hour: block.targetHour, minute: block.targetMinute, second: 0, millisecond: 0 });
@@ -316,7 +339,7 @@ function HeaderIconButton({
  * Persists state to AsyncStorage and rehydrates on mount.
  */
 export default function HomeScreen() {
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [zone1, setZone1] = useState("Europe/Berlin");
   const [zone2, setZone2] = useState("Asia/Colombo");
@@ -334,7 +357,7 @@ export default function HomeScreen() {
   const [optOutModalVisible, setOptOutModalVisible] = useState(false);
   const [is24Hour, setIs24Hour] = useState(true);
   const [alertMode, setAlertMode] = useState<"notification" | "alarm">("notification");
-  // New design settings — persisted alongside the existing keys.
+  // New design settings - persisted alongside the existing keys.
   const [showSeconds, setShowSeconds] = useState(true);
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [keepOn, setKeepOn] = useState(true);
@@ -356,7 +379,7 @@ export default function HomeScreen() {
   // `zonePickerFor` controls which display clock the ZonePickerModal targets.
   const [editingBlockId, setEditingBlockId] = useState<number | "new" | null>(null);
   const [zonePickerFor, setZonePickerFor] = useState<"zone1" | "zone2" | null>(null);
-  // Wall-clock-aligned 1s tick — fuels the new design's ClockRail / PrimaryCard /
+  // Wall-clock-aligned 1s tick - fuels the new design's ClockRail / PrimaryCard /
   // QueuedRow render path. The legacy TargetBlock still pulls its `countdown`
   // string from the existing setInterval below; both run independently.
   const now = useNow();
@@ -438,7 +461,7 @@ export default function HomeScreen() {
     });
   }, []);
 
-  // Confirmation dialog state for the × button on a PassedStrip — deletes
+  // Confirmation dialog state for the × button on a PassedStrip - deletes
   // the underlying cue (via `removeBlock`) after the user confirms.
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
@@ -479,7 +502,7 @@ export default function HomeScreen() {
         let anyChanged = false;
         const next = blocks.map((block) => {
           if (block.alertMinutesBefore === null || block.alertFired) return block;
-          // Block has a recorded background fire — finalize state.
+          // Block has a recorded background fire - finalize state.
           if (firedBlockIds.has(block.id)) {
             pendingCancelRef.current.push(block.notificationId);
             anyChanged = true;
@@ -488,7 +511,7 @@ export default function HomeScreen() {
           // Defensive: catch the case where JS shouldFire didn't run (locked
           // screen suspending the JS ticker, or Doze killing it before fire
           // time). The block still has alertMinutesBefore set, alertFired
-          // false, but the alert moment is now in the past — so fireDate
+          // false, but the alert moment is now in the past - so fireDate
           // returns null. Mount the modal in alarm mode so FSI-launched apps
           // still see the alarm UX.
           const zone = block.targetZone === "zone1" ? zone1 : zone2;
@@ -520,7 +543,7 @@ export default function HomeScreen() {
     return () => subscription.remove();
   }, [zone1, zone2, alertMode]);
 
-  // "Keep screen on" setting — bind to expo-keep-awake. The tag scopes the
+  // "Keep screen on" setting - bind to expo-keep-awake. The tag scopes the
   // wake lock to this app, so multiple call sites (if we ever add one)
   // wouldn't fight over it. Deactivate on unmount AND when the setting flips
   // off so the OS reclaims the lock immediately.
@@ -538,7 +561,7 @@ export default function HomeScreen() {
 
   // Request notification permissions on mount.
   //
-  // On Android 13+, POST_NOTIFICATIONS must be requested explicitly — the
+  // On Android 13+, POST_NOTIFICATIONS must be requested explicitly - the
   // permission isn't granted at install time and there's no way for the user
   // to grant it without either (a) the system runtime dialog or (b) navigating
   // deep into App Settings → Notifications. The wizard covers (b) but the
@@ -546,15 +569,16 @@ export default function HomeScreen() {
   // calls are no-ops if the user has already responded.
   useEffect(() => {
     if (Platform.OS === "web") {
+      // On web we ONLY read the current permission state at mount - we do
+      // NOT call `Notification.requestPermission()` here. Modern browsers
+      // (Chrome 80+, Firefox 72+, Safari 16+) silently drop that call
+      // outside a user gesture; it returns `"default"` without prompting,
+      // which is what bricked the prompt for the redesign. The real
+      // permission request fires from the cue-save click handler - see
+      // `ensureWebNotificationPermission` and its call site below.
       if (typeof window !== "undefined" && "Notification" in window) {
         const perm = (window as any).Notification.permission;
-        if (perm === "denied") {
-          setNotifBlocked(true);
-        } else if (perm === "default") {
-          (window as any).Notification.requestPermission().then((result: string) => {
-            setNotifBlocked(result === "denied");
-          }).catch(() => {});
-        }
+        if (perm === "denied") setNotifBlocked(true);
       }
       return;
     }
@@ -587,7 +611,7 @@ export default function HomeScreen() {
           await ensureAlarmChannel();
         }
       } catch {
-        // Permissions API unavailable — alerts will use Alert.alert fallback
+        // Permissions API unavailable - alerts will use Alert.alert fallback
       }
     })();
   }, []);
@@ -707,7 +731,7 @@ export default function HomeScreen() {
         if (storedSoundAlerts[1] === "false") setSoundAlerts(false);
         if (storedKeepOn[1] === "false") setKeepOn(false);
         if (storedAnalytics[1] === null) {
-          // First launch — onboarding flow:
+          // First launch - onboarding flow:
           //   Step 1 (Android only): permissions/settings guide
           //   Step 2: analytics consent
           // On iOS/web there's no settings step, so consent runs immediately.
@@ -754,7 +778,7 @@ export default function HomeScreen() {
           nextIdRef.current = maxId + 1;
         }
       } catch {
-        // silently fail — app defaults will be used
+        // silently fail - app defaults will be used
       }
       isLoadedRef.current = true;
 
@@ -789,7 +813,7 @@ export default function HomeScreen() {
             }
           }
         } catch {
-          // notifee unavailable (web/iOS) — no-op
+          // notifee unavailable (web/iOS) - no-op
         }
       }
     };
@@ -797,7 +821,7 @@ export default function HomeScreen() {
   }, []);
 
   // Save changes (batched); analyticsEnabled is saved explicitly in its handlers.
-  // We strip `countdown` before persisting — it's derived state recomputed every
+  // We strip `countdown` before persisting - it's derived state recomputed every
   // second from targetHour/targetMinute/deduct/zone, so writing it on every tick
   // would churn the disk unnecessarily. Stripping it also prevents the write from
   // firing at all on pure countdown ticks (the persisted slice is reference-equal).
@@ -820,7 +844,7 @@ export default function HomeScreen() {
     ]).catch(() => {});
   }, [zone1, zone2, targetBlocks, is24Hour, alertMode, showSeconds, soundAlerts, keepOn]);
 
-  // Countdown updater — returns same array reference if nothing changed
+  // Countdown updater - returns same array reference if nothing changed
   useEffect(() => {
     const timer = setInterval(() => {
       // Capture a single instant so all blocks compute their "now" from the same
@@ -834,7 +858,7 @@ export default function HomeScreen() {
       // `alarmDismissData`. This covers snoozed alarms whose non-minute-
       // aligned fire times slip past the target-relative `shouldFire` check
       // below. We bypass `alertQueueRef` because that ref is drained by a
-      // separate effect keyed on `targetBlocks` changes — and a snoozed
+      // separate effect keyed on `targetBlocks` changes - and a snoozed
       // foreground fire doesn't necessarily change block state, so the
       // effect wouldn't re-run. Setting `alarmDismissData` directly mounts
       // the modal in one render cycle.
@@ -903,23 +927,36 @@ export default function HomeScreen() {
             updates.countdown = newCountdown;
           }
 
-          // Alert detection — exact-second match. Snooze reschedules the OS
-          // alarm at a non-aligned timestamp (e.g. snooze pressed at 10:38:03
-          // → fire at 10:39:03); the JS ticker must NOT refire during that
-          // window, so we can't loosen this to a range check. Missed-tick
-          // recovery (locked-screen / Doze suspending the JS ticker) is
-          // handled by `appState:resume:fallbackQueueModal` on resume.
+          // Alert detection - exact-second match on native, range-based on
+          // web. Native MUST be exact-second because snooze reschedules the
+          // OS alarm at a non-aligned timestamp (e.g. snooze at 10:38:03 →
+          // fire at 10:39:03); a range check would refire instantly because
+          // `remaining <= alertMinutesBefore*60` already holds for the rest
+          // of the snooze window.
+          //
+          // Web has no alarm-mode snooze (notification mode only) AND
+          // browser tabs throttle `setInterval` even in foreground, so the
+          // exact-second tick frequently misses the :00 boundary - the
+          // alert silently never fires. Range-based shouldFire catches the
+          // first tick at or past the trigger time, which is the right
+          // semantics for the web's notification-only model.
+          const isWebPlatform = Platform.OS === "web";
           if (block.alertMinutesBefore !== null) {
-            const shouldFire =
-              !block.alertFired &&
-              totalMinutes === block.alertMinutesBefore &&
-              seconds === 0;
+            const remainingSeconds = totalMinutes * 60 + seconds;
+            const triggerSeconds = block.alertMinutesBefore * 60;
+            const shouldFire = isWebPlatform
+              ? !block.alertFired &&
+                remainingSeconds <= triggerSeconds &&
+                remainingSeconds > 0
+              : !block.alertFired &&
+                totalMinutes === block.alertMinutesBefore &&
+                seconds === 0;
 
             if (shouldFire) {
               // Only cancel the OS-scheduled notification if the app is truly
               // foregrounded. Android keeps JS alive briefly after Home is pressed,
               // and a JS-side cancel that arrives before the OS fires would suppress
-              // the OS-level notification entirely — racing AlarmManager and losing
+              // the OS-level notification entirely - racing AlarmManager and losing
               // the user's alarm. When backgrounded, let the OS deliver the
               // notification natively (cold-start path picks up dismiss/snooze).
               const appForegrounded = AppState.currentState === "active";
@@ -980,7 +1017,7 @@ export default function HomeScreen() {
 
   // Process queued alerts via push notification (or Alert.alert fallback).
   // We first drain pendingCancelRef so the pre-scheduled native notification is
-  // cancelled BEFORE the in-app alert fires — preventing duplicate notifications.
+  // cancelled BEFORE the in-app alert fires - preventing duplicate notifications.
   // When alarm mode is active on Android, show AlarmDismissModal instead.
   useEffect(() => {
     if (pendingCancelRef.current.length > 0) {
@@ -1011,10 +1048,122 @@ export default function HomeScreen() {
     }
   }, [targetBlocks, alertMode]);
 
-  const toggleFullScreen = useCallback(
-    () => setFullScreen((prev) => !prev),
-    []
-  );
+  const toggleFullScreen = useCallback(() => {
+    setFullScreen((prev) => {
+      const next = !prev;
+      // Web: also drive the browser's real Fullscreen API. Must run
+      // synchronously inside this click handler (the Header's icon press) -
+      // browsers require a user gesture to enter fullscreen. Exit doesn't
+      // require a gesture but we keep it symmetric. Swallowing rejections
+      // is intentional: some embeds (iframes without `allow="fullscreen"`)
+      // refuse, and the in-app On-Air mode still works as a fallback.
+      if (Platform.OS === "web" && typeof document !== "undefined") {
+        try {
+          if (next) {
+            const el = document.documentElement as HTMLElement & {
+              webkitRequestFullscreen?: () => Promise<void>;
+            };
+            (el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.())?.catch(
+              () => {},
+            );
+          } else if (document.fullscreenElement) {
+            const d = document as Document & {
+              webkitExitFullscreen?: () => Promise<void>;
+            };
+            (d.exitFullscreen?.() ?? d.webkitExitFullscreen?.())?.catch(
+              () => {},
+            );
+          }
+        } catch {}
+      }
+      return next;
+    });
+  }, []);
+
+  // Web: when the user exits browser fullscreen via Esc / the OS, sync our
+  // React `fullScreen` state down to false so the On-Air view also exits.
+  // Without this, Esc would dismiss the browser fullscreen window but leave
+  // OnAirView mounted (with no way back to the regular layout aside from
+  // tapping "Exit full screen").
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const handler = () => {
+      if (!document.fullscreenElement) setFullScreen(false);
+    };
+    document.addEventListener("fullscreenchange", handler);
+    document.addEventListener("webkitfullscreenchange", handler);
+    return () => {
+      document.removeEventListener("fullscreenchange", handler);
+      document.removeEventListener("webkitfullscreenchange", handler);
+    };
+  }, []);
+
+  // Web: keyboard shortcuts. We use refs to read the latest handler each
+  // keypress so the listener doesn't need to re-bind on every render.
+  // Shortcuts are skipped when the user is typing in a TextInput / select /
+  // contenteditable element - otherwise pressing "a" inside the cue-name
+  // field would also open the Add-cue sheet, which would be very confusing.
+  // Snapshot of the latest visibility flags + handlers. Each shortcut is a
+  // TOGGLE: pressing it while the matching modal is open closes the modal
+  // (i.e. the same key both opens and dismisses). The ref pattern lets the
+  // keydown listener read the latest open/closed state without re-binding
+  // every render.
+  const shortcutHandlersRef = useRef<{
+    toggleFullScreen: () => void;
+    openEditor: (id: number | "new") => void;
+    closeEditor: () => void;
+    setHelpVisible: (v: boolean) => void;
+    setSettingsVisible: (v: boolean) => void;
+    helpVisible: boolean;
+    settingsVisible: boolean;
+    editorOpen: boolean;
+  }>({
+    toggleFullScreen,
+    openEditor: () => {},
+    closeEditor: () => {},
+    setHelpVisible,
+    setSettingsVisible,
+    helpVisible: false,
+    settingsVisible: false,
+    editorOpen: false,
+  });
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const isEditable = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+      if (target.isContentEditable) return true;
+      return false;
+    };
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isEditable(e.target)) return;
+      const k = e.key.toLowerCase();
+      const h = shortcutHandlersRef.current;
+      if (k === "a") {
+        e.preventDefault();
+        // Open-only - deliberately NOT a toggle. The Add-cue sheet holds
+        // unsaved form state; an accidental second `a` shouldn't discard
+        // what the user just typed. Closure is explicit via the X button
+        // or Save / Delete actions.
+        if (!h.editorOpen) h.openEditor("new");
+      } else if (k === "f") {
+        e.preventDefault();
+        // `toggleFullScreen` is already symmetric (flip prev) - no
+        // open/closed branch needed.
+        h.toggleFullScreen();
+      } else if (k === "s") {
+        e.preventDefault();
+        h.setSettingsVisible(!h.settingsVisible);
+      } else if (k === "h" || k === "?" || k === "/") {
+        e.preventDefault();
+        h.setHelpVisible(!h.helpVisible);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const toggleTargetPicker = useCallback((id: number, show: boolean) => {
     setTargetBlocks((blocks) =>
@@ -1039,13 +1188,13 @@ export default function HomeScreen() {
   const rescheduleInBackground = useCallback((id: number, patch: Partial<TargetBlockType>) => {
     // Look up the existing block (may be missing for Add-flow callers where
     // React state hasn't flushed the new block into the ref yet). Merge with
-    // the patch — the patch is the source of truth for the new alarm config.
+    // the patch - the patch is the source of truth for the new alarm config.
     const block = targetBlocksRef.current.find((b) => b.id === id);
     const tempBlock = { ...(block ?? createDefaultBlock(id)), ...patch, id };
     // Gate on the MERGED alertMinutesBefore, not the pre-patch value. The
     // legacy code checked `block.alertMinutesBefore` which silently bailed
     // when the user was either (a) adding a brand-new cue with an alert or
-    // (b) editing an existing cue to ADD an alert it didn't have — both
+    // (b) editing an existing cue to ADD an alert it didn't have - both
     // cases left the OS alarm unscheduled.
     if (tempBlock.alertMinutesBefore === null) return;
     const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
@@ -1184,7 +1333,7 @@ export default function HomeScreen() {
       if (status === "granted") {
         setNotifBlocked(false);
       } else {
-        // Permanently denied — send user to app settings
+        // Permanently denied - send user to app settings
         await Linking.openSettings();
       }
     } catch {}
@@ -1205,6 +1354,31 @@ export default function HomeScreen() {
   const closeEditor = useCallback(() => {
     setEditingBlockId(null);
   }, []);
+
+  // Keep the keyboard-shortcut ref pointed at the latest handler closures
+  // AND the latest visibility flags. The listener reads `editorOpen`,
+  // `helpVisible`, `settingsVisible` from the ref each keypress to decide
+  // whether the shortcut should open or close - making each key a true
+  // toggle without scattering open/close branches in the listener body.
+  useEffect(() => {
+    shortcutHandlersRef.current = {
+      toggleFullScreen,
+      openEditor,
+      closeEditor,
+      setHelpVisible,
+      setSettingsVisible,
+      helpVisible,
+      settingsVisible,
+      editorOpen: editingBlockId !== null,
+    };
+  }, [
+    toggleFullScreen,
+    openEditor,
+    closeEditor,
+    helpVisible,
+    settingsVisible,
+    editingBlockId,
+  ]);
 
   const doReset = useCallback(async () => {
     try {
@@ -1228,7 +1402,7 @@ export default function HomeScreen() {
       nextIdRef.current = 2;
       setTargetBlocks([createDefaultBlock(1)]);
     } catch {
-      // silently fail — state already reset above
+      // silently fail - state already reset above
     }
   }, []);
 
@@ -1296,7 +1470,7 @@ export default function HomeScreen() {
   //
   // To preserve UX continuity, capture the pre-alarm fullscreen state in a
   // ref. Both Dismiss and Snooze consult the ref to restore fullscreen once
-  // the modal unmounts — so the operator drops back into On-Air automatically
+  // the modal unmounts - so the operator drops back into On-Air automatically
   // without having to re-toggle it.
   const fullScreenBeforeAlarmRef = useRef(false);
   useEffect(() => {
@@ -1371,7 +1545,7 @@ export default function HomeScreen() {
         if (Platform.OS === "android" && alertMode === "alarm") {
           newId = await scheduleAlarm(tempBlock, fireDate, newSnoozeCount);
         } else if (Platform.OS === "android") {
-          // Notification-mode snooze on Android — exact-alarm Notifee trigger.
+          // Notification-mode snooze on Android - exact-alarm Notifee trigger.
           newId = await scheduleNotifFromData(blockId, tempBlock.name, minutes, fireDate);
         } else if (Notifications) {
           // iOS path (web is already filtered out above by alarmAvailable gating).
@@ -1443,7 +1617,7 @@ export default function HomeScreen() {
    * Diagnostic: schedule a real Notifee alarm-mode trigger 5s in the future and
    * report success/failure with the actual native error. This isolates Notifee
    * scheduling from the countdown/alert pipeline so the user can verify whether
-   * AlarmManager triggers are firing at all on their device — without waiting
+   * AlarmManager triggers are firing at all on their device - without waiting
    * a full minute for a snooze to fire (or fail).
    */
   const runTestAlarm = useCallback(async () => {
@@ -1452,7 +1626,7 @@ export default function HomeScreen() {
     dlog("test:runTestAlarm:start", { mode: alertMode });
     // Alarm mode: directly mount the in-app AlarmDismissModal with test data.
     // This exercises the full alarm UX (sound + vibration + dismiss/snooze)
-    // without depending on the OS to deliver a full-screen intent — which
+    // without depending on the OS to deliver a full-screen intent - which
     // Android always downgrades to heads-up when the app is foregrounded.
     // The countdown pipeline still tests OS-side scheduling via real blocks.
     if (isAlarm) {
@@ -1602,7 +1776,7 @@ export default function HomeScreen() {
   // and we're not running in Expo Go (which lacks full notification support).
   const alarmAvailable = Platform.OS === "android" && !notifBlocked && !isExpoGo && !!Notifications;
 
-  // Shared modal stack — rendered in both the new mobile home path and the
+  // Shared modal stack - rendered in both the new mobile home path and the
   // legacy web/fullscreen path, so feature surfaces (consent, alarm dismiss,
   // setup guide) stay reachable regardless of which render branch ran.
   const pendingDeleteBlock =
@@ -1673,12 +1847,21 @@ export default function HomeScreen() {
         onAccept={() => handleAnalyticsConsent(true)}
         onDecline={() => handleAnalyticsConsent(false)}
       />
-      <AndroidBackgroundHelpModal
-        visible={androidBackgroundHelpVisible}
-        onClose={dismissAndroidBackgroundHelp}
-        onOpenAppSettings={openAppSettings}
-        onOpenExactAlarmSettings={openExactAlarmSettings}
-      />
+      {/* Hard Platform guard: don't mount the AndroidBackgroundHelpModal on
+          non-Android at all. The modal logic already only flips visible to
+          true behind a Platform.OS check, but RN-Web briefly hydrates
+          inactive Modal children during the first render pass before
+          applying `visible={false}` - leading to the flash the user saw on
+          web refresh. Hard-skipping the JSX entirely on non-Android closes
+          that race conclusively. */}
+      {Platform.OS === "android" ? (
+        <AndroidBackgroundHelpModal
+          visible={androidBackgroundHelpVisible}
+          onClose={dismissAndroidBackgroundHelp}
+          onOpenAppSettings={openAppSettings}
+          onOpenExactAlarmSettings={openExactAlarmSettings}
+        />
+      ) : null}
       <DebugLogModal visible={debugLogVisible} onClose={() => setDebugLogVisible(false)} />
       <AnalyticsOptOutModal
         visible={optOutModalVisible}
@@ -1706,7 +1889,11 @@ export default function HomeScreen() {
   // OnAirView is a stripped, broadcast-room layout: hero countdown +
   // After-that follow-ups + auto-dimming exit pill. State stays in this
   // component; OnAirView is purely a presenter.
-  if (!isWeb && fullScreen) {
+  // Both native and web take the OnAirView branch when fullscreen is on.
+  // OnAirView uses only cross-platform RN primitives (StatusBar / safe-area
+  // are graceful no-ops on web), so the legacy fullscreen rendering below
+  // is now unreachable.
+  if (fullScreen) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <OnAirView
@@ -1714,6 +1901,7 @@ export default function HomeScreen() {
           zone1={zone1}
           zone2={zone2}
           is24Hour={is24Hour}
+          showSeconds={showSeconds}
           now={now}
           onExit={toggleFullScreen}
         />
@@ -1726,7 +1914,12 @@ export default function HomeScreen() {
   // The visual shell of the redesign lives here; editing still routes back
   // through the legacy TargetBlock for now, rendered below the new cards when
   // a cue is selected (replaced by CueEditModal in step 5).
-  if (!isWeb && !fullScreen) {
+  // Web now uses the new design too (legacy render below is dead code that
+  // we keep around until a follow-up cleanup commit). The `!fullScreen` gate
+  // means web-fullscreen falls through to OnAirView via the branch above on
+  // native and to legacy on web - but web has no fullscreen entry-point in
+  // the new Header, so this never executes.
+  if (!fullScreen) {
     // Split blocks into passed (compressed strips) and active (primary + queue).
     // Active list preserves the user's drag order; passed list is sorted by
     // when each cue fired so the most recent expiry sits closest to primary.
@@ -1736,7 +1929,7 @@ export default function HomeScreen() {
       .sort((a, b) => passedIds[a.id] - passedIds[b.id]);
     // Auto-sort active cues by seconds-remaining (ascending). Zones drop out
     // of the ordering because `computeCountdown` already projects the target
-    // into the cue's own zone — total is in real wall-clock seconds-from-now.
+    // into the cue's own zone - total is in real wall-clock seconds-from-now.
     const totalFor = (b: TargetBlockType) => {
       const tz = b.targetZone === "zone1" ? zone1 : zone2;
       const ds = b.deductMinute * 60 + b.deductSecond;
@@ -1753,12 +1946,22 @@ export default function HomeScreen() {
         ? targetBlocks.find((b) => b.id === editingBlockId) ?? null
         : null;
     const cueSheetVisible = editingBlockId === "new" || editingBlock != null;
+    // Width-based mobile detection for the web build. We funnel phone-sized
+    // visitors to the Play Store: the native app has features the web build
+    // can't match (FSI alarms over lock screen, ALARM-class vibration, exact
+    // AlarmManager). The threshold matches Tailwind's `md` breakpoint.
+    const isMobileWeb = isWeb && screenWidth < 768;
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: safeTop }}>
         <Header
           onHelp={() => setHelpVisible(true)}
           onSettings={() => setSettingsVisible(true)}
           onFullscreen={toggleFullScreen}
+          // Web: replace the pinned-bottom AddCueButton with a compact
+          // circular CTA next to the icon row (matches the legacy desktop
+          // layout). Native keeps the pinned bottom CTA as the primary
+          // entry-point so it sits within thumb reach.
+          onAddCue={isWeb ? () => openEditor("new") : undefined}
         />
         <ScrollView
           ref={scrollViewRef}
@@ -1775,64 +1978,77 @@ export default function HomeScreen() {
             onTapZone1={() => setZonePickerFor("zone1")}
             onTapZone2={() => setZonePickerFor("zone2")}
           />
-          {passedBlocks.map((b) => (
-            <PassedStrip
-              key={`passed-${b.id}`}
-              block={b}
-              now={now}
-              passedAt={passedAt[b.id]}
-              is24Hour={is24Hour}
-              onTap={() => openEditor(b.id)}
-              onRequestDelete={() => setPendingDeleteId(b.id)}
-            />
-          ))}
-          {primary ? (
-            <PrimaryCard
-              block={primary}
-              now={now}
-              zone1={zone1}
-              zone2={zone2}
-              is24Hour={is24Hour}
-              onEdit={() => openEditor(primary.id)}
-            />
-          ) : null}
-          {rest.length > 0 ? (
-            <View
-              style={{
-                marginTop: 6,
-                marginBottom: 12,
-                marginHorizontal: 20,
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-              }}
-            >
-              <Text
-                style={[
-                  textStyles.metaLabel,
-                  { color: colors.textMuted, letterSpacing: 0.5 },
-                ]}
+          {/* Cue list - on web we clamp it to a max-width column wider than
+              the ClockRail (60% / minWidth 720). The cards have meaningful
+              content (countdown + meta + edit button) that needs more
+              horizontal room than the dual clock card, but full-viewport
+              looks like a poorly-defined band on a desktop monitor.
+              `alignSelf: center` keeps it visually balanced under the rail. */}
+          <View
+            style={isWeb ? { width: "60%", minWidth: 720, alignSelf: "center" } : undefined}
+          >
+            {passedBlocks.map((b) => (
+              <PassedStrip
+                key={`passed-${b.id}`}
+                block={b}
+                now={now}
+                passedAt={passedAt[b.id]}
+                is24Hour={is24Hour}
+                onTap={() => openEditor(b.id)}
+                onRequestDelete={() => setPendingDeleteId(b.id)}
+              />
+            ))}
+            {primary ? (
+              <PrimaryCard
+                block={primary}
+                now={now}
+                zone1={zone1}
+                zone2={zone2}
+                is24Hour={is24Hour}
+                onEdit={() => openEditor(primary.id)}
+              />
+            ) : null}
+            {rest.length > 0 ? (
+              <View
+                style={{
+                  marginTop: 6,
+                  marginBottom: 12,
+                  marginHorizontal: 20,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                }}
               >
-                Queued
-              </Text>
-              <Text style={[textStyles.hint, { color: colors.textMuted }]}>
-                {rest.length} {rest.length === 1 ? "cue" : "cues"}
-              </Text>
-            </View>
-          ) : null}
-          {rest.map((b) => (
-            <QueuedRow
-              key={b.id}
-              block={b}
-              now={now}
-              zone1={zone1}
-              zone2={zone2}
-              is24Hour={is24Hour}
-              onTap={() => openEditor(b.id)}
-            />
-          ))}
+                <Text
+                  style={[
+                    textStyles.metaLabel,
+                    { color: colors.textMuted, letterSpacing: 0.5 },
+                  ]}
+                >
+                  Queued
+                </Text>
+                <Text style={[textStyles.hint, { color: colors.textMuted }]}>
+                  {rest.length} {rest.length === 1 ? "cue" : "cues"}
+                </Text>
+              </View>
+            ) : null}
+            {rest.map((b) => (
+              <QueuedRow
+                key={b.id}
+                block={b}
+                now={now}
+                zone1={zone1}
+                zone2={zone2}
+                is24Hour={is24Hour}
+                onTap={() => openEditor(b.id)}
+              />
+            ))}
+          </View>
         </ScrollView>
-        <AddCueButton onPress={() => openEditor("new")} />
+        {/* Web hides the pinned-bottom button - the header's circular "+"
+            handles "add cue" on desktop. Native keeps the pinned CTA as the
+            primary entry point so it sits within thumb reach. */}
+        {!isWeb ? <AddCueButton onPress={() => openEditor("new")} /> : null}
 
         <CueEditModal
           visible={cueSheetVisible}
@@ -1842,6 +2058,15 @@ export default function HomeScreen() {
           is24Hour={is24Hour}
           onClose={closeEditor}
           onSave={(patch) => {
+            // Web: ask for Notification permission from this click handler.
+            // Mount-time `Notification.requestPermission()` is silently
+            // dropped by Chrome / Firefox / Safari as a user-gesture
+            // protection - only a synchronous call inside a click / keypress
+            // event is honoured. We only prompt if the user is actually
+            // saving an alert (no alert = no need for notifications).
+            if (patch.alertMinutesBefore != null) {
+              ensureWebNotificationPermission();
+            }
             if (editingBlock) {
               // Empty name on save: fall back to the block's existing name,
               // or to "Target #N" if the previous name was also empty. This
@@ -1940,6 +2165,11 @@ export default function HomeScreen() {
         />
 
         {renderModalStack()}
+        {/* Mobile-web visitors get a blurred install prompt over the home.
+            Rendered AFTER the modal stack so it sits above any open sheet - a
+            mobile-web visitor shouldn't be able to interact with any modal
+            until they acknowledge the install prompt (or open Play Store). */}
+        {isMobileWeb ? <MobileWebInstallModal /> : null}
       </View>
     );
   }
@@ -1950,7 +2180,7 @@ export default function HomeScreen() {
       style={{ flex: 1, paddingTop: safeTop, width: "100%" }}
       onTouchStart={fullScreen ? resetOpacityTimer : undefined}
     >
-      {/* Header — normal mode only */}
+      {/* Header - normal mode only */}
       {!fullScreen && (
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: isWeb ? 32 : 16, marginBottom: 8, zIndex: 100, maxWidth: isWeb ? 1100 : undefined, alignSelf: "center", width: "100%" }}>
           <Text style={{ color: colors.header, fontSize: 20, letterSpacing: 3, textTransform: "uppercase", fontWeight: "300", flex: 1 }}>
@@ -2132,7 +2362,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Clock section — always visible, not scrollable in fullscreen */}
+      {/* Clock section - always visible, not scrollable in fullscreen */}
       {fullScreen && (
         <ClockPicker
           zone1={zone1}
@@ -2156,11 +2386,11 @@ export default function HomeScreen() {
           alignItems: fullScreen ? ("stretch" as const) : "center",
           paddingBottom: fullScreen ? 0 : (isWeb ? safeBottom + 16 : 16),
           ...(isWeb && { maxWidth: 1100, alignSelf: "center" as const, width: "100%" }),
-          ...(fullScreen && !fullscreenNeedsScroll && { flexGrow: 1, justifyContent: "center" as const }),
+          ...(fullScreen && !fullscreenNeedsScroll ? { flexGrow: 1, justifyContent: "center" as const } : {}),
         }}
         showsVerticalScrollIndicator={fullScreen ? fullscreenNeedsScroll : true}
       >
-        {/* Clock section in normal mode — scrolls with content */}
+        {/* Clock section in normal mode - scrolls with content */}
         {!fullScreen && (
           <ClockPicker
             zone1={zone1}
@@ -2198,7 +2428,7 @@ export default function HomeScreen() {
 
       </ScrollView>
 
-      {/* Fixed bottom controls — mobile normal mode: 2-column action grid */}
+      {/* Fixed bottom controls - mobile normal mode: 2-column action grid */}
       {!isWeb && !fullScreen && (
         <View
           style={{
@@ -2237,7 +2467,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Fixed bottom — mobile fullscreen: fading exit button */}
+      {/* Fixed bottom - mobile fullscreen: fading exit button */}
       {!isWeb && fullScreen && (
         <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, opacity: exitButtonOpacity }}>
           <Pressable
@@ -2258,7 +2488,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Fixed bottom — web fullscreen: exit button */}
+      {/* Fixed bottom - web fullscreen: exit button */}
       {isWeb && fullScreen ? (
         <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, alignItems: "center" }}>
           <Pressable
@@ -2339,12 +2569,21 @@ export default function HomeScreen() {
         onDecline={() => handleAnalyticsConsent(false)}
       />
 
-      <AndroidBackgroundHelpModal
-        visible={androidBackgroundHelpVisible}
-        onClose={dismissAndroidBackgroundHelp}
-        onOpenAppSettings={openAppSettings}
-        onOpenExactAlarmSettings={openExactAlarmSettings}
-      />
+      {/* Hard Platform guard: don't mount the AndroidBackgroundHelpModal on
+          non-Android at all. The modal logic already only flips visible to
+          true behind a Platform.OS check, but RN-Web briefly hydrates
+          inactive Modal children during the first render pass before
+          applying `visible={false}` - leading to the flash the user saw on
+          web refresh. Hard-skipping the JSX entirely on non-Android closes
+          that race conclusively. */}
+      {Platform.OS === "android" ? (
+        <AndroidBackgroundHelpModal
+          visible={androidBackgroundHelpVisible}
+          onClose={dismissAndroidBackgroundHelp}
+          onOpenAppSettings={openAppSettings}
+          onOpenExactAlarmSettings={openExactAlarmSettings}
+        />
+      ) : null}
 
       <DebugLogModal visible={debugLogVisible} onClose={() => setDebugLogVisible(false)} />
 

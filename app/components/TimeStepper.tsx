@@ -2,9 +2,11 @@ import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 
-// Native time picker — same package the legacy TargetBlock used.
+const isWeb = Platform.OS === "web";
+
+// Native time picker - same package the legacy TargetBlock used.
 // Web has no equivalent here; web edit flow isn't part of the redesign yet.
 const DateTimePickerModal:
   | typeof import("react-native-modal-datetime-picker").default
@@ -29,7 +31,7 @@ type Props = {
   mode?: Mode;
   /**
    * In `"hm"` mode, render a 12-hour display + AM/PM toggle. Storage stays
-   * 0–23 — only the displayed digits and the native picker config change.
+   * 0–23 - only the displayed digits and the native picker config change.
    * Ignored in `"ms"` mode.
    */
   hour12?: boolean;
@@ -47,7 +49,7 @@ type Props = {
  *
  * Behaviour:
  * - Up / down chevrons step the column. Minutes-column ticks by 5 in "ms" mode
- *   so seconds snap (matches the design's buffer ergonomics — 0/5/10/15/…).
+ *   so seconds snap (matches the design's buffer ergonomics - 0/5/10/15/…).
  * - Tap on either digit opens the native time picker pre-seeded with the
  *   current value. The picker's `is24Hour` flag follows `hour12`.
  * - Bumping minutes past 59 carries over into the hours column; bumping below
@@ -128,6 +130,18 @@ export function TimeStepper({
         onUp={() => bumpH(1)}
         onDown={() => bumpH(-1)}
         onPressValue={openPicker}
+        max={display12 ? 13 : hMax}
+        onCommitTyped={(raw) => {
+          const n = Number.parseInt(raw, 10);
+          if (Number.isNaN(n)) return;
+          // 12-hour input: 12 means 0 in AM mode, 12 means 12 in PM mode.
+          if (display12) {
+            const base = n === 12 ? 0 : Math.max(0, Math.min(11, n));
+            onChange(isPM ? base + 12 : base, m);
+          } else {
+            onChange(Math.max(0, Math.min(hMax - 1, n)), m);
+          }
+        }}
       />
       <Text
         style={[
@@ -150,6 +164,12 @@ export function TimeStepper({
         onUp={() => bumpM(mStep)}
         onDown={() => bumpM(-mStep)}
         onPressValue={openPicker}
+        max={60}
+        onCommitTyped={(raw) => {
+          const n = Number.parseInt(raw, 10);
+          if (Number.isNaN(n)) return;
+          onChange(h, Math.max(0, Math.min(59, n)));
+        }}
       />
 
       {display12 ? (
@@ -211,6 +231,8 @@ function StepperCol({
   onUp,
   onDown,
   onPressValue,
+  onCommitTyped,
+  max,
 }: {
   value: number;
   fs: number;
@@ -218,7 +240,60 @@ function StepperCol({
   onUp: () => void;
   onDown: () => void;
   onPressValue: () => void;
+  /** Web-only: clamp + commit a typed value. */
+  onCommitTyped?: (raw: string) => void;
+  /** Web-only: caps numeric range when typing (exclusive upper bound). */
+  max?: number;
 }) {
+  // Web: render the value as a TextInput so the user can type digits
+  // directly. Chevrons are still rendered above/below so power-users have
+  // both interactions. Native: read-only Pressable that opens the picker.
+  if (isWeb) {
+    const colWidth = Math.round(fs * 1.6);
+    return (
+      <View style={{ alignItems: "center", gap: 2, width: colWidth }}>
+        <Pressable
+          onPress={onUp}
+          hitSlop={8}
+          focusable={false}
+          tabIndex={-1}
+          style={({ pressed }) => ({
+            width: colWidth,
+            height: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed ? 0.45 : 1,
+          })}
+        >
+          <MaterialIcons name="keyboard-arrow-up" size={16} color={colors.textMuted} />
+        </Pressable>
+        <WebDigitInput
+          value={value}
+          fs={fs}
+          color={color}
+          colWidth={colWidth}
+          max={max ?? 60}
+          onCommitTyped={onCommitTyped}
+        />
+        <Pressable
+          onPress={onDown}
+          hitSlop={8}
+          focusable={false}
+          tabIndex={-1}
+          style={({ pressed }) => ({
+            width: colWidth,
+            height: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed ? 0.45 : 1,
+          })}
+        >
+          <MaterialIcons name="keyboard-arrow-down" size={16} color={colors.textMuted} />
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={{ alignItems: "center", gap: 4 }}>
       <Pressable
@@ -265,5 +340,93 @@ function StepperCol({
         <MaterialIcons name="keyboard-arrow-down" size={18} color={colors.textMuted} />
       </Pressable>
     </View>
+  );
+}
+
+/**
+ * Web-only digit TextInput with a focus-aware local edit buffer. While the
+ * field is focused, the value the user sees is *exactly* what they have
+ * typed - unpadded, including transient mid-edit states like "0" or "020".
+ * On blur (or when an external nudge bumps `value`, e.g. via the chevron
+ * arrows), the field re-syncs to the canonical 2-digit padded form.
+ *
+ * The naive controlled-input approach (always show `String(value).padStart(2, "0")`)
+ * causes a notorious cursor-positioning bug: typing "0" commits 0, the
+ * parent re-renders with "00", and the user's cursor lands between the two
+ * zeros. Their next keystroke ("2") inserts at index 1 -> "020" -> the
+ * slice(-2) parser reads "20" and commits 20 - not 02. The local buffer
+ * fixes this by keeping the displayed string in sync with what the user
+ * actually typed for the duration of the edit session.
+ */
+function WebDigitInput({
+  value,
+  fs,
+  color,
+  colWidth,
+  max,
+  onCommitTyped,
+}: {
+  value: number;
+  fs: number;
+  color: string;
+  colWidth: number;
+  max: number;
+  onCommitTyped?: (raw: string) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [buf, setBuf] = useState<string>(String(value).padStart(2, "0"));
+
+  // Sync the buffer to the external value whenever it changes while we're
+  // NOT focused. This catches chevron clicks and external resets without
+  // overwriting an in-progress typed edit.
+  useEffect(() => {
+    if (!focused) setBuf(String(value).padStart(2, "0"));
+  }, [value, focused]);
+
+  return (
+    <TextInput
+      value={focused ? buf : String(value).padStart(2, "0")}
+      onChangeText={(raw) => {
+        // Strip non-digits, keep at most the last 2 digits typed.
+        const cleaned = raw.replace(/[^0-9]/g, "").slice(-2);
+        setBuf(cleaned);
+        if (cleaned.length === 0) return;
+        const n = Number.parseInt(cleaned, 10);
+        if (Number.isNaN(n)) return;
+        const clamped = Math.max(0, Math.min(max - 1, n));
+        onCommitTyped?.(String(clamped));
+      }}
+      onFocus={(e) => {
+        setFocused(true);
+        // Select-all on focus so the user can immediately type a new value
+        // without having to clear the existing digits manually.
+        try {
+          (e.currentTarget as unknown as { select?: () => void }).select?.();
+        } catch {}
+      }}
+      onBlur={() => {
+        setFocused(false);
+        // On blur, sync local buffer back to the canonical padded form so
+        // a half-typed edit ("0", "") doesn't linger visually.
+        setBuf(String(value).padStart(2, "0"));
+      }}
+      keyboardType="number-pad"
+      style={[
+        textStyles.countdownPrimary,
+        {
+          fontSize: fs,
+          lineHeight: fs,
+          color,
+          letterSpacing: -fs * 0.02,
+          width: colWidth,
+          textAlign: "center",
+          padding: 0,
+          borderWidth: 0,
+          backgroundColor: "transparent",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ...({ outlineWidth: 0, outlineStyle: "none" } as any),
+        },
+      ]}
+    />
   );
 }

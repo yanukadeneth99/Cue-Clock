@@ -1,5 +1,5 @@
 /**
- * Dark broadcast palette — canonical design tokens.
+ * Dark broadcast palette - canonical design tokens.
  *
  * Three-tier surface stack: `page` (deepest) → `background` (default) → `surface` (cards).
  * Single accent (blue) for CTA/brand. Amber `countdown` is reserved for time-urgency +
@@ -28,12 +28,12 @@ export const colors = {
   zone2: "#f87171",            // red (calm)
 
   // Time-urgency tokens (use ONLY for countdown + alarm)
-  countdown: "#fbbf24",        // amber — warn (<5m) + alarm surface tint
-  danger: "#ef4444",           // red — critical (<1m) + destructive actions
+  countdown: "#fbbf24",        // amber - warn (<5m) + alarm surface tint
+  danger: "#ef4444",           // red - critical (<1m) + destructive actions
 
   // ─── Legacy aliases (do not use in new code) ─────────────────────────
   header: "#e8eaed",           // alias of `text`
   pickerText: "#e8eaed",       // alias of `text`
-  pickerBg: "#2f323a",         // legacy picker fill — slated for removal with ClockPicker
+  pickerBg: "#2f323a",         // legacy picker fill - slated for removal with ClockPicker
   muted: "#8b8f96",            // alias of `textMuted`
 };

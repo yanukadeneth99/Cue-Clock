@@ -11,7 +11,7 @@ type Props = {
 
 /**
  * Confirmation sheet when the user requests "Turn off analytics" from
- * Settings. Two-button choice — neutral "Keep on" + red destructive "Turn
+ * Settings. Two-button choice - neutral "Keep on" + red destructive "Turn
  * off". Uses the standard ModalShell so it inherits the dismissable behaviour
  * the consent modal intentionally doesn't have.
  */

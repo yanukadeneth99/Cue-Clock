@@ -20,12 +20,12 @@ type Props = {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  /** Sticky footer below the scroll content — primary actions live here. */
+  /** Sticky footer below the scroll content - primary actions live here. */
   footer?: ReactNode;
   /** Hide the header close (×) button. Useful for non-dismissable wizards. */
   hideClose?: boolean;
   /**
-   * When false, backdrop tap and Android back-button no-op — the only way to
+   * When false, backdrop tap and Android back-button no-op - the only way to
    * close the sheet is via an explicit action in the body / footer. Useful
    * for blocking onboarding wizards. Defaults to true.
    */
@@ -34,7 +34,7 @@ type Props = {
    * Optional overlay rendered above the sheet's title/body/footer when
    * `overlayVisible` is true. Slides up from the bottom with its own animation
    * so a "nested picker" stays inside the parent sheet (no second native
-   * Modal — Android can't reliably stack two). The parent stays mounted, so
+   * Modal - Android can't reliably stack two). The parent stays mounted, so
    * any in-progress form state survives the interaction.
    */
   overlay?: ReactNode;
@@ -42,6 +42,13 @@ type Props = {
   overlayVisible?: boolean;
   /** Called when the user taps the overlay's dimmed area. */
   onOverlayDismiss?: () => void;
+  /**
+   * Visual presentation. "sheet" (default) anchors to the bottom edge,
+   * full-width. "centered" floats a max-width card in the middle of the
+   * viewport - better for desktop web where a full-width bottom sheet looks
+   * like a footer pinned to the page.
+   */
+  variant?: "sheet" | "centered";
 };
 
 /**
@@ -50,7 +57,7 @@ type Props = {
  * Performance: native RN `<Modal>` on Android adds a 150–250ms animation cost
  * even with `animationType="fade"`, which is why every tap that opened a
  * sheet felt sluggish. We use `animationType="none"` and run the sheet rise
- * + backdrop fade through `Animated` ourselves — the first frame after a tap
+ * + backdrop fade through `Animated` ourselves - the first frame after a tap
  * already shows the sheet at its starting position, so press → reaction
  * latency drops to one frame (~16ms).
  *
@@ -68,6 +75,7 @@ export function ModalShell({
   dismissable = true,
   overlay,
   overlayVisible = false,
+  variant = "sheet",
   onOverlayDismiss,
 }: Props) {
   // If an overlay is open and the user presses back / taps the backdrop, the
@@ -88,7 +96,7 @@ export function ModalShell({
   const insets = useSafeAreaInsets();
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslate = useRef(new Animated.Value(60)).current;
-  // Overlay animation values — start off-screen / transparent so the first
+  // Overlay animation values - start off-screen / transparent so the first
   // open animates in. `overlayMounted` keeps the overlay in the tree during
   // its exit transition so its slide-down completes before unmount.
   const overlayBackdrop = useRef(new Animated.Value(0)).current;
@@ -167,7 +175,15 @@ export function ModalShell({
         // visible. Without this, tapping the cue-name input pushed it under
         // the keyboard with no way to see typed text.
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1, justifyContent: "flex-end" }}
+        style={{
+          flex: 1,
+          // Sheet variant pins to bottom; centered floats in the middle (used
+          // by web Help / About-style popups where a full-width bottom strip
+          // looks awkward on a desktop browser).
+          justifyContent: variant === "centered" ? "center" : "flex-end",
+          alignItems: variant === "centered" ? "center" : "stretch",
+          padding: variant === "centered" ? 20 : 0,
+        }}
       >
         {/* Dimmed backdrop. Tap-to-close only when `dismissable`; otherwise
             the Pressable still captures the touch so it doesn't reach the
@@ -189,16 +205,30 @@ export function ModalShell({
         <Animated.View
           style={{
             backgroundColor: colors.background,
-            borderTopLeftRadius: 22,
-            borderTopRightRadius: 22,
-            borderTopWidth: 1,
+            // Centered variant: all four corners rounded, max-width card.
+            // Sheet variant: top-only radius, full width, anchored to bottom.
+            ...(variant === "centered"
+              ? {
+                  borderRadius: 18,
+                  borderWidth: 1,
+                  width: "100%",
+                  maxWidth: 520,
+                  maxHeight: "86%",
+                }
+              : {
+                  borderTopLeftRadius: 22,
+                  borderTopRightRadius: 22,
+                  borderTopWidth: 1,
+                  maxHeight: "88%",
+                  paddingBottom: Math.max(insets.bottom, 8),
+                }),
             borderColor: colors.surfaceBorder,
-            maxHeight: "88%",
-            paddingBottom: Math.max(insets.bottom, 8),
             transform: [{ translateY: sheetTranslate }],
           }}
         >
-          {/* Grab handle */}
+          {/* Grab handle - only meaningful on the bottom-sheet variant; on a
+              centered card it reads as a stray decoration. */}
+          {variant === "sheet" ? (
           <View style={{ alignItems: "center", paddingTop: 10, paddingBottom: 4 }}>
             <View
               style={{
@@ -209,6 +239,7 @@ export function ModalShell({
               }}
             />
           </View>
+          ) : null}
 
           {/* Title row */}
           <View
@@ -267,11 +298,11 @@ export function ModalShell({
             </View>
           ) : null}
 
-          {/* In-tree overlay — slides UP from the bottom and fills the entire
+          {/* In-tree overlay - slides UP from the bottom and fills the entire
               parent sheet. Single Animated.View with a solid background, so
               there's no half-transparent-half-collapsed state. The slide-up
               animation comes from the `translateY` interpolating between
-              `parentSheetHeight` and 0 — we use a fixed 600dp travel which
+              `parentSheetHeight` and 0 - we use a fixed 600dp travel which
               is taller than the sheet's max-height on any phone, so the
               overlay is fully off-screen at rest.
               `paddingBottom: insets.bottom` keeps the overlay's content
@@ -305,7 +336,7 @@ export function ModalShell({
   );
 }
 
-// Equivalent of StyleSheet.absoluteFillObject — inlined so we don't pull in
+// Equivalent of StyleSheet.absoluteFillObject - inlined so we don't pull in
 // StyleSheet just for this one constant.
 const StyleSheetAbsoluteFill = {
   position: "absolute" as const,

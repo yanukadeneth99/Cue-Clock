@@ -5,7 +5,7 @@ import { text as textStyles } from "@/constants/typography";
 import { shortCity } from "@/lib/time";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 
 type Props = {
   visible: boolean;
@@ -27,7 +27,12 @@ export function ZonePickerModal({ visible, title, current, onPick, onClose }: Pr
   const filtered = needle ? timezones.filter((tz) => tz.toLowerCase().includes(needle)) : timezones;
 
   return (
-    <ModalShell visible={visible} title={title} onClose={onClose}>
+    <ModalShell
+      visible={visible}
+      title={title}
+      onClose={onClose}
+      variant={Platform.OS === "web" ? "centered" : "sheet"}
+    >
       <View
         style={{
           flexDirection: "row",

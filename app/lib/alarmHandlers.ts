@@ -68,7 +68,7 @@ function stopBgAlarmVibration(reason: string): void {
 
 // Module-level queue drained by the React tree (`app/index.tsx`'s 1-Hz
 // ticker). When Notifee delivers an alarm-channel notification while the app
-// is foregrounded, the JS-side `shouldFire` ticker may miss it — the ticker
+// is foregrounded, the JS-side `shouldFire` ticker may miss it - the ticker
 // is target-time-relative and exact-second-matched, so snoozed alarms (which
 // fire at non-minute-aligned timestamps) slip past it. `onForegroundEvent
 // DELIVERED` is the authoritative signal regardless of fire-time alignment,
@@ -214,7 +214,7 @@ export function registerAlarmHandlers(): void {
     const pressId: string | undefined = detail?.pressAction?.id;
     dlog("handler:fgEvent", { type, pressId, notifId, blockId: data.blockId });
     // Push DELIVERED events for alarm-channel notifications onto the queue.
-    // The React ticker drains this every second and mounts the modal —
+    // The React ticker drains this every second and mounts the modal -
     // covering snoozed alarms whose non-minute-aligned fire times slip past
     // the JS-side `shouldFire` exact-second match.
     if (

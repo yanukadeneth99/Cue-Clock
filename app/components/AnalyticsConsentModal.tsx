@@ -18,7 +18,7 @@ const COLLECTED = [
 ];
 
 /**
- * First-launch analytics consent. GDPR-compliant opt-in — non-dismissable,
+ * First-launch analytics consent. GDPR-compliant opt-in - non-dismissable,
  * the user must explicitly Accept or Decline. Bottom-sheet styled but doesn't
  * use `ModalShell` because it sits at a higher z-index (above other modals)
  * and intentionally has no grab handle / close button.
@@ -50,7 +50,7 @@ export default function AnalyticsConsentModal({ visible, onAccept, onDecline }: 
             paddingBottom: Math.max(insets.bottom + 8, 20),
           }}
         >
-          {/* Grab handle — visually consistent with ModalShell even though we
+          {/* Grab handle - visually consistent with ModalShell even though we
               don't allow drag-to-dismiss here */}
           <View style={{ alignItems: "center", marginBottom: 14 }}>
             <View
@@ -98,7 +98,7 @@ export default function AnalyticsConsentModal({ visible, onAccept, onDecline }: 
             No personal data, no cue names, no configurations.
           </Text>
 
-          {/* What we collect — surface card with hairline rows */}
+          {/* What we collect - surface card with hairline rows */}
           <View
             style={{
               paddingVertical: 4,
@@ -142,7 +142,7 @@ export default function AnalyticsConsentModal({ visible, onAccept, onDecline }: 
             ))}
           </View>
 
-          {/* Provider meta bar — matches PrimaryCard meta vocabulary */}
+          {/* Provider meta bar - matches PrimaryCard meta vocabulary */}
           <View
             style={{
               flexDirection: "row",
@@ -181,7 +181,7 @@ export default function AnalyticsConsentModal({ visible, onAccept, onDecline }: 
             </View>
           </View>
 
-          {/* Actions — accent primary, ghost decline */}
+          {/* Actions - accent primary, ghost decline */}
           <View style={{ gap: 8 }}>
             <Pressable
               onPress={onAccept}

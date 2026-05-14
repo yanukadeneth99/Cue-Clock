@@ -5,7 +5,7 @@ import { Platform } from "react-native";
  * Crashlytics, and (when accepted) Microsoft Clarity.
  *
  * Native-only: returns early on web/other platforms. Safe to call when
- * Firebase isn't configured — silently skips if no Firebase apps exist.
+ * Firebase isn't configured - silently skips if no Firebase apps exist.
  *
  * @param enabled - Whether analytics collection should be enabled.
  */

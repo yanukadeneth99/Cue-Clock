@@ -1,7 +1,9 @@
 import { ModalShell } from "@/components/ModalShell";
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
+
+const isWeb = Platform.OS === "web";
 
 type Props = {
   visible: boolean;
@@ -31,7 +33,7 @@ type Props = {
  *
  * Internal-build extras (Run test alarm, View debug log) live at the bottom
  * inside a single labelled card. They only render when their handlers are
- * defined — which means they're gated by `isDebugLogEnabled()` upstream and
+ * defined - which means they're gated by `isDebugLogEnabled()` upstream and
  * never appear in production builds.
  */
 export function SettingsModal({
@@ -52,7 +54,12 @@ export function SettingsModal({
   onShowDebugLog,
 }: Props) {
   return (
-    <ModalShell visible={visible} title="Settings" onClose={onClose}>
+    <ModalShell
+      visible={visible}
+      title="Settings"
+      onClose={onClose}
+      variant={isWeb ? "centered" : "sheet"}
+    >
       <SettingRow
         label="24-hour clock"
         description={
@@ -63,34 +70,41 @@ export function SettingsModal({
         toggle={is24Hour}
         onToggle={() => onToggle24Hour(!is24Hour)}
       />
-      <SettingRow
-        label="Alarm mode"
-        description={
-          !alarmAvailable
-            ? "Allow notifications first. Tap a cue's bell to test."
-            : alertMode === "alarm"
-            ? "Cue alerts take over the screen and must be dismissed."
-            : "Cue alerts are quiet heads-up notifications."
-        }
-        toggle={alertMode === "alarm"}
-        disabled={!alarmAvailable}
-        tone={alertMode === "alarm" ? colors.countdown : undefined}
-        onToggle={() =>
-          onToggleAlertMode(alertMode === "alarm" ? "notification" : "alarm")
-        }
-      />
+      {/* Alarm mode + Keep screen on are native-only - web has no FSI takeover
+          (browsers can't elevate over a locked OS) and no equivalent of
+          `FLAG_KEEP_SCREEN_ON` that matters in a desktop context. */}
+      {!isWeb ? (
+        <SettingRow
+          label="Alarm mode"
+          description={
+            !alarmAvailable
+              ? "Allow notifications first. Tap a cue's bell to test."
+              : alertMode === "alarm"
+              ? "Cue alerts take over the screen and must be dismissed."
+              : "Cue alerts are quiet heads-up notifications."
+          }
+          toggle={alertMode === "alarm"}
+          disabled={!alarmAvailable}
+          tone={alertMode === "alarm" ? colors.countdown : undefined}
+          onToggle={() =>
+            onToggleAlertMode(alertMode === "alarm" ? "notification" : "alarm")
+          }
+        />
+      ) : null}
       <SettingRow
         label="Show seconds"
         description="Include the seconds digits on the two top clocks."
         toggle={showSeconds}
         onToggle={() => onToggleShowSeconds(!showSeconds)}
       />
-      <SettingRow
-        label="Keep screen on"
-        description="Prevent the display from sleeping while Cue Clock is on screen."
-        toggle={keepOn}
-        onToggle={() => onToggleKeepOn(!keepOn)}
-      />
+      {!isWeb ? (
+        <SettingRow
+          label="Keep screen on"
+          description="Prevent the display from sleeping while Cue Clock is on screen."
+          toggle={keepOn}
+          onToggle={() => onToggleKeepOn(!keepOn)}
+        />
+      ) : null}
 
       {analyticsEnabled !== false ? (
         <Pressable
@@ -113,7 +127,7 @@ export function SettingsModal({
         </Pressable>
       ) : null}
 
-      {/* Internal-build extras — moved here from Help. Only renders when at
+      {/* Internal-build extras - moved here from Help. Only renders when at
           least one of the handlers is wired, which only happens when
           EXPO_PUBLIC_DEBUG_LOGS is set at build time (internal CI track). */}
       {(onTestAlarm || onShowDebugLog) ? (

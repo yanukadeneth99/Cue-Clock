@@ -6,7 +6,7 @@ import { Linking, Platform, Pressable, Text, View } from "react-native";
 /**
  * Open MIUI/HyperOS Autostart screen via the documented Xiaomi Security Center
  * intent. Falls back to generic app settings when the intent isn't resolvable.
- * MIUI silently kills AlarmManager triggers without Autostart — even when
+ * MIUI silently kills AlarmManager triggers without Autostart - even when
  * "Battery: Unrestricted" and "Alarms & reminders" are on.
  */
 function openMIUIAutostart() {
@@ -59,7 +59,7 @@ type Step = {
  * MIUI Autostart in step 04), but the chrome is the new design language:
  * bottom sheet via `ModalShell`, surface cards with numbered mono labels,
  * Inter typography, canonical accent/countdown/danger tokens. Each step has
- * substeps and a dedicated action button — tapping that button deep-links
+ * substeps and a dedicated action button - tapping that button deep-links
  * to the relevant settings page.
  *
  * No header close: this is a non-dismissable wizard on first launch. The
@@ -140,7 +140,7 @@ export default function AndroidBackgroundHelpModal({
       hideClose
       dismissable={false}
     >
-      {/* Intro chip — matches the Up Next vocabulary on the home screen. */}
+      {/* Intro chip - matches the Up Next vocabulary on the home screen. */}
       <View
         style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}
       >
@@ -172,7 +172,7 @@ export default function AndroidBackgroundHelpModal({
         ))}
       </View>
 
-      {/* Primary action — lives inline at the end of the scroll content so
+      {/* Primary action - lives inline at the end of the scroll content so
           reaching it means the user has read past every step. */}
       <Pressable
         onPress={onClose}
@@ -203,7 +203,7 @@ function StepCard({ step }: { step: Step }) {
     step;
 
   // Border / number / button accent picks up the right tier of emphasis. We
-  // intentionally restrict red (danger) to the single Autostart step — that's
+  // intentionally restrict red (danger) to the single Autostart step - that's
   // the highest-failure-rate gate on HyperOS and deserves the strongest
   // visual cue without overloading the rest of the wizard.
   const accent =

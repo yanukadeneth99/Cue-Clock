@@ -1,7 +1,7 @@
 // Internal-build-only diagnostic logger. Gated by EXPO_PUBLIC_DEBUG_LOGS, which
 // is injected at build time only by .github/workflows/android-internal.yml.
 // In release builds the flag is unset, so dlog() is a no-op and the ring buffer
-// stays empty — even though the module ships in the JS bundle.
+// stays empty - even though the module ships in the JS bundle.
 //
 // Use via:  dlog("alarm:scheduled", { id, fireDate });
 

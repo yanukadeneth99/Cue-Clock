@@ -575,7 +575,7 @@ function TargetBlockInner({
               )}
             </View>
 
-            {/* Zone selector — full width */}
+            {/* Zone selector - full width */}
             <View style={{ marginTop: 12 }}>
               <Text
                 style={{
@@ -699,7 +699,7 @@ function TargetBlockInner({
   );
 }
 
-/** Memoized countdown card — re-renders only when its own props change. */
+/** Memoized countdown card - re-renders only when its own props change. */
 const TargetBlock = React.memo(TargetBlockInner);
 export default TargetBlock;
 

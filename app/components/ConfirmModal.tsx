@@ -13,7 +13,7 @@ type Props = {
 };
 
 /**
- * Themed confirmation dialog — centred, compact, destructive on the right.
+ * Themed confirmation dialog - centred, compact, destructive on the right.
  * Used for "Reset All". Other confirm flows (analytics opt-out, etc.) now use
  * `ModalShell` for sheet-style consistency; this small dialog stays centred
  * because it's a tight yes/no decision with no scrollable content.

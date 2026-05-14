@@ -2,7 +2,7 @@ import { ModalShell } from "@/components/ModalShell";
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
-import { Linking, Pressable, Text, View } from "react-native";
+import { Linking, Platform, Pressable, Text, View } from "react-native";
 
 type Props = {
   visible: boolean;
@@ -12,7 +12,7 @@ type Props = {
   version?: string;
 };
 
-// Glossary entries — expanded from the slim 5-row redesign to cover the
+// Glossary entries - expanded from the slim 5-row redesign to cover the
 // concepts users actually run into (snooze, zones, fullscreen, persistence,
 // permissions). Each entry has a short headline + one or two sentences.
 const GLOSSARY: { term: string; definition: string }[] = [
@@ -29,7 +29,7 @@ const GLOSSARY: { term: string; definition: string }[] = [
   {
     term: "Auto sort",
     definition:
-      "Cues are always ordered by remaining time — across both zones — so the next thing happening is always Up Next. You don't reorder cues; the clock does.",
+      "Cues are always ordered by remaining time - across both zones - so the next thing happening is always Up Next. You don't reorder cues; the clock does.",
   },
   {
     term: "Passed strip",
@@ -86,7 +86,7 @@ const GLOSSARY: { term: string; definition: string }[] = [
 /**
  * "How to use" reference sheet. Glossary, an Android-background warning
  * card (Android only), and the about panel. Settings live in their own
- * `SettingsModal` — this surface is purely informational so a user looking
+ * `SettingsModal` - this surface is purely informational so a user looking
  * up "what's a buffer" never has to wade through toggles.
  */
 export default function HelpModal({
@@ -96,7 +96,15 @@ export default function HelpModal({
   version = "1.5.0",
 }: Props) {
   return (
-    <ModalShell visible={visible} title="How to use" onClose={onClose}>
+    <ModalShell
+      visible={visible}
+      title="How to use"
+      onClose={onClose}
+      // On desktop web, a bottom-sheet that spans the full viewport reads
+      // like a footer. Centered card looks intentional and matches the
+      // ConfirmModal idiom the user expects.
+      variant={Platform.OS === "web" ? "centered" : "sheet"}
+    >
       <Text
         style={[
           textStyles.metaLabel,
@@ -199,6 +207,100 @@ export default function HelpModal({
         </View>
       ) : null}
 
+      {/* Keyboard shortcuts - web only. Native users have no physical keyboard
+          by default and `tabIndex` shortcuts wouldn't fire from a touch
+          gesture anyway. The list mirrors the four event-driven shortcuts
+          registered in `app/index.tsx`'s keydown listener. */}
+      {Platform.OS === "web" ? (
+        <View
+          style={{
+            padding: 16,
+            borderRadius: 12,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.surfaceBorder,
+            marginBottom: 14,
+          }}
+        >
+          <Text
+            style={[
+              textStyles.body,
+              { color: colors.text, fontWeight: "700", textAlign: "center" },
+            ]}
+          >
+            Keyboard shortcuts
+          </Text>
+          <Text
+            style={[
+              textStyles.hint,
+              {
+                color: colors.textMuted,
+                marginTop: 8,
+                lineHeight: 19,
+                textAlign: "center",
+              },
+            ]}
+          >
+            Single-key shortcuts work anywhere except when you&apos;re typing
+            in a text field.
+          </Text>
+          <View style={{ gap: 8, marginTop: 12 }}>
+            <ShortcutRow keys={["A"]} label="Add a cue" />
+            <ShortcutRow keys={["F"]} label="Toggle full screen" />
+            <ShortcutRow keys={["S"]} label="Open settings" />
+            <ShortcutRow keys={["H", "?"]} label="Open this help panel" />
+          </View>
+        </View>
+      ) : null}
+
+      {/* Feedback / bugs - mirrors the visual structure of the About card
+          below so the two read as a pair. Single mail-icon button opens the
+          user's default mail client at hello@yashura.io. */}
+      <View
+        style={{
+          padding: 16,
+          borderRadius: 12,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.surfaceBorder,
+          marginBottom: 14,
+        }}
+      >
+        <Text
+          style={[
+            textStyles.body,
+            { color: colors.text, fontWeight: "700", textAlign: "center" },
+          ]}
+        >
+          Feedback / Bugs
+        </Text>
+        <Text
+          style={[
+            textStyles.hint,
+            {
+              color: colors.textMuted,
+              marginTop: 8,
+              lineHeight: 19,
+              textAlign: "center",
+            },
+          ]}
+        >
+          Found a bug or have a suggestion? Get in touch - every report helps
+          make Cue Clock more reliable for live broadcast.
+        </Text>
+        <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+          <AboutCard
+            label="Email"
+            icon={<MaterialIcons name="mail-outline" size={20} color={colors.accent} />}
+            onPress={() =>
+              Linking.openURL(
+                "mailto:hello@yashura.io?subject=Cue%20Clock%20feedback",
+              ).catch(() => {})
+            }
+          />
+        </View>
+      </View>
+
       {/* About the developer */}
       <View
         style={{
@@ -257,6 +359,54 @@ export default function HelpModal({
         Cue Clock · v{version} · AGPL-3.0
       </Text>
     </ModalShell>
+  );
+}
+
+/** Single row in the keyboard-shortcuts list - kbd-style pills on the right,
+ *  human-readable label on the left. Multi-key arrays render as
+ *  `[H] or [?]` so alternate bindings read clearly. */
+function ShortcutRow({ keys, label }: { keys: string[]; label: string }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+      }}
+    >
+      <Text style={[textStyles.body, { color: colors.text, flex: 1 }]}>{label}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        {keys.map((k, i) => (
+          <View key={`${k}-${i}`} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            {i > 0 ? (
+              <Text style={[textStyles.hint, { color: colors.textMuted }]}>or</Text>
+            ) : null}
+            <View
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 6,
+                backgroundColor: colors.background,
+                borderWidth: 1,
+                borderColor: colors.surfaceBorder,
+                minWidth: 28,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={[
+                  textStyles.hint,
+                  { color: colors.text, fontWeight: "600", letterSpacing: 0.5 },
+                ]}
+              >
+                {k}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 

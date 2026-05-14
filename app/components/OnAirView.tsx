@@ -6,7 +6,9 @@ import { lerpRound, urgencyFactor } from "@/lib/urgency";
 import { MaterialIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { Animated, Easing, Pressable, ScrollView, Text, View } from "react-native";
+import { Animated, Easing, Platform, Pressable, ScrollView, Text, View } from "react-native";
+
+const isWeb = Platform.OS === "web";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
@@ -14,12 +16,14 @@ type Props = {
   zone1: string;
   zone2: string;
   is24Hour: boolean;
+  /** Mirrors the home setting - when true, OAZone shows trailing `:SS`. */
+  showSeconds: boolean;
   now: Date;
   onExit: () => void;
 };
 
 /**
- * Full-screen "On-Air" view — broadcast-room readability.
+ * Full-screen "On-Air" view - broadcast-room readability.
  *
  * Layout: two compact zone clocks across the top, the hero cue card in the
  * middle (giant centred mono countdown, ringed in amber as urgency rises),
@@ -28,10 +32,10 @@ type Props = {
  * brightens back on any touch.
  *
  * Differs from `PrimaryCard`: bigger countdown (72→90sp), centred everything,
- * no Edit button, no progress hairline at the bottom — the visual hierarchy
+ * no Edit button, no progress hairline at the bottom - the visual hierarchy
  * is solely about the count.
  */
-export function OnAirView({ blocks, zone1, zone2, is24Hour, now, onExit }: Props) {
+export function OnAirView({ blocks, zone1, zone2, is24Hour, showSeconds, now, onExit }: Props) {
   const insets = useSafeAreaInsets();
   const primary = blocks[0] ?? null;
   const rest = blocks.slice(1);
@@ -115,11 +119,16 @@ export function OnAirView({ blocks, zone1, zone2, is24Hour, now, onExit }: Props
         flex: 1,
         backgroundColor: colors.background,
         // Status bar is hidden in this view, but we still pad below the
-        // device's true top edge — most phones have a camera notch / cutout
+        // device's true top edge - most phones have a camera notch / cutout
         // that the layout shouldn't crash into. Take the safe-area inset
         // when it's larger than our minimum (44dp covers most cutouts).
         paddingTop: Math.max(insets.top + 12, 44),
-        paddingHorizontal: 22,
+        // On web we widen the side gutters substantially - a broadcast-room
+        // monitor viewing distance plus a 1920px viewport means the target
+        // cards shouldn't span the full screen. Per-side 15% padding leaves
+        // ~70% width for content, comfortably wider than the dual zone row
+        // but not flush with the screen edges.
+        paddingHorizontal: isWeb ? "15%" : 22,
         paddingBottom: Math.max(insets.bottom + 6, 14),
       }}
     >
@@ -137,8 +146,8 @@ export function OnAirView({ blocks, zone1, zone2, is24Hour, now, onExit }: Props
           gap: 60,
         }}
       >
-        <OAZone color={colors.zone1} tz={zone1} now={now} hour12={hour12} align="right" />
-        <OAZone color={colors.zone2} tz={zone2} now={now} hour12={hour12} align="left" />
+        <OAZone color={colors.zone1} tz={zone1} now={now} hour12={hour12} showSeconds={showSeconds} align="right" />
+        <OAZone color={colors.zone2} tz={zone2} now={now} hour12={hour12} showSeconds={showSeconds} align="left" />
       </View>
 
       {/* Hero cue card */}
@@ -358,7 +367,7 @@ export function OnAirView({ blocks, zone1, zone2, is24Hour, now, onExit }: Props
         >
           <MaterialIcons name="fullscreen-exit" size={13} color={colors.text} />
           <Text style={[textStyles.footnote, { color: colors.text, fontWeight: "600" }]}>
-            Exit full screen
+            {isWeb ? "Exit fullscreen  /  Press F" : "Exit full screen"}
           </Text>
         </Pressable>
       </Animated.View>
@@ -371,16 +380,18 @@ function OAZone({
   tz,
   now,
   hour12,
+  showSeconds,
   align,
 }: {
   color: string;
   tz: string;
   now: Date;
   hour12: boolean;
+  showSeconds: boolean;
   align: "left" | "right";
 }) {
-  const t = formatInZone(now, tz, false, hour12);
-  // Center each column's contents — both the dot+label row and the clock row
+  const t = formatInZone(now, tz, showSeconds, hour12);
+  // Center each column's contents - both the dot+label row and the clock row
   // share a common vertical axis through their visual centers. This is what
   // makes the left and right zones look symmetric; anchoring to flex-end /
   // flex-start instead makes one row protrude further than the other (the
@@ -392,10 +403,38 @@ function OAZone({
         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color }} />
         <Text style={[textStyles.hint, { color, fontWeight: "600" }]}>{shortCity(tz)}</Text>
       </View>
-      <View style={{ flexDirection: "row", alignItems: "baseline", marginTop: 4 }}>
-        <Text style={[textStyles.clockLarge, { color: colors.text, fontSize: 26, lineHeight: 26 }]}>
+      <View style={{ flexDirection: "row", alignItems: "baseline", marginTop: isWeb ? 6 : 4 }}>
+        <Text
+          style={[
+            textStyles.clockLarge,
+            {
+              color: colors.text,
+              // Web On-Air mode is meant to be readable from across a
+              // broadcast room - pump the zone clock up substantially.
+              fontSize: isWeb ? 72 : 26,
+              lineHeight: isWeb ? 72 : 26,
+            },
+          ]}
+        >
           {t.h}:{t.m}
         </Text>
+        {showSeconds ? (
+          <Text
+            style={[
+              textStyles.clockSeconds,
+              {
+                color: colors.textMuted,
+                // Scale the seconds digit proportional to the main clock
+                // size so it stays a clean subscript on web's larger fs.
+                fontSize: isWeb ? 28 : 13,
+                lineHeight: isWeb ? 28 : 13,
+                marginLeft: 2,
+              },
+            ]}
+          >
+            :{t.s}
+          </Text>
+        ) : null}
         {hour12 && t.ampm ? (
           <Text style={[textStyles.footnote, { color: colors.textMuted, marginLeft: 4 }]}>
             {t.ampm}

@@ -13,19 +13,19 @@ const path = require("path");
 const distPath = path.join(__dirname, "../dist");
 const indexPath = path.join(distPath, "index.html");
 
-const seoMetaTags = `<title>Cue Clock — Broadcast Countdown Timer &amp; Timezone Monitor</title>
+const seoMetaTags = `<title>Cue Clock - Broadcast Countdown Timer &amp; Timezone Monitor</title>
 <meta name="description" content="Professional broadcast countdown timer and dual-timezone clock for live TV, radio, and streaming productions. Manage multiple countdowns with deduction offsets and instant alerts." />
 <meta name="keywords" content="broadcast clock, countdown timer, timezone monitor, live TV clock, cue clock, broadcast timer, on-air clock" />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://live.cueclock.app" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://live.cueclock.app" />
-<meta property="og:title" content="Cue Clock — Broadcast Countdown Timer" />
+<meta property="og:title" content="Cue Clock - Broadcast Countdown Timer" />
 <meta property="og:description" content="Professional broadcast countdown timer and dual-timezone clock for live TV, radio, and streaming productions." />
 <meta property="og:image" content="https://live.cueclock.app/favicon.png" />
 <meta property="og:site_name" content="Cue Clock" />
 <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="Cue Clock — Broadcast Countdown Timer" />
+<meta name="twitter:title" content="Cue Clock - Broadcast Countdown Timer" />
 <meta name="twitter:description" content="Professional broadcast countdown timer and dual-timezone clock for live TV, radio, and streaming productions." />
 <meta name="twitter:image" content="https://live.cueclock.app/favicon.png" />
 <meta name="theme-color" content="#1a1d23" />
@@ -48,7 +48,7 @@ try {
   if (html.includes(headClosing)) {
     html = html.replace(
       /<title[^>]*>[^<]*<\/title>/,
-      `<title>Cue Clock — Broadcast Countdown Timer &amp; Timezone Monitor</title>`
+      `<title>Cue Clock - Broadcast Countdown Timer &amp; Timezone Monitor</title>`
     );
 
     // Insert SEO meta tags before </head>

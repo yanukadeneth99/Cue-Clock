@@ -1,7 +1,7 @@
 import { Platform, TextStyle } from "react-native";
 
 /**
- * Typography spec — Inter for all UI, Space Mono for numerics.
+ * Typography spec - Inter for all UI, Space Mono for numerics.
  *
  * On native, families resolve to fonts loaded via expo-font in the root layout.
  * Inter weights 400/500/600/700 must be registered there before these names work;
@@ -13,7 +13,7 @@ import { Platform, TextStyle } from "react-native";
  */
 
 export const fonts = {
-  // sans (Inter) — use these as `fontFamily` values
+  // sans (Inter) - use these as `fontFamily` values
   sans: Platform.select({
     web: "Inter, system-ui, -apple-system, sans-serif",
     default: "Inter",
@@ -30,7 +30,7 @@ export const fonts = {
     web: "Inter, system-ui, -apple-system, sans-serif",
     default: "Inter-Bold",
   }),
-  // mono (Space Mono) — numeric/clock displays only
+  // mono (Space Mono) - numeric/clock displays only
   mono: Platform.select({
     web: '"Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
     default: "SpaceMono-Regular",
@@ -38,7 +38,7 @@ export const fonts = {
 } as const;
 
 /**
- * Named text-style presets — measured straight from the design reference.
+ * Named text-style presets - measured straight from the design reference.
  * Keys match the role, not the size, so renames in design propagate cleanly.
  */
 export const text: Record<string, TextStyle> = {
@@ -75,7 +75,7 @@ export const text: Record<string, TextStyle> = {
   hint: { fontFamily: fonts.sansMedium, fontSize: 12 },
   footnote: { fontFamily: fonts.sansMedium, fontSize: 11 },
 
-  // Cue name (PrimaryCard) — base size; grows with urgency at runtime
+  // Cue name (PrimaryCard) - base size; grows with urgency at runtime
   cueName: { fontFamily: fonts.sansSemibold, fontSize: 19, letterSpacing: -0.19, lineHeight: 25 },
   cueNameQueued: { fontFamily: fonts.sansMedium, fontSize: 14.5 },
 
@@ -97,7 +97,7 @@ export const text: Record<string, TextStyle> = {
 };
 
 /**
- * Linear interpolation between two text presets — used by PrimaryCard to grow
+ * Linear interpolation between two text presets - used by PrimaryCard to grow
  * countdown font size as urgency rises 0 → 1.
  */
 export function lerpFontSize(min: number, max: number, t: number): number {

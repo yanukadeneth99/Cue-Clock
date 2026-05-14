@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // 60s safety cap so an unattended phone doesn't sound forever during a live show.
 const MAX_ALARM_DURATION_MS = 60_000;
 // Pulse vibration every 1.2s. Each call vibrates for VIBRATION_DURATION_MS via
-// the local expo-alarm-vibrator module (USAGE_ALARM — bypasses the per-user
+// the local expo-alarm-vibrator module (USAGE_ALARM - bypasses the per-user
 // "Vibrate on Tap" gate that silently suppresses RN's Vibration.vibrate()).
 const VIBRATION_INTERVAL_MS = 1_200;
 const VIBRATION_DURATION_MS = 600;
@@ -46,7 +46,7 @@ type Props = {
  * wordmark + RINGING pill) over a single full-bleed amber card that holds the
  * cue name, a 96sp ticking elapsed timer, and the Status / Snoozes meta row.
  * Two stacked buttons at the bottom: primary Dismiss (accent) and ghost
- * Snooze (always visible — `MAX_SNOOZES` is unlimited for broadcast use, so
+ * Snooze (always visible - `MAX_SNOOZES` is unlimited for broadcast use, so
  * the snooze count is purely informational).
  *
  * Audio + vibration lifecycle is unchanged from the previous implementation:
@@ -66,7 +66,7 @@ export default function AlarmDismissModal({
   const insets = useSafeAreaInsets();
   const player = useAudioPlayer(ALARM_SOURCE);
 
-  // Ticking elapsed counter — for the 96sp mono display in the centre of the card.
+  // Ticking elapsed counter - for the 96sp mono display in the centre of the card.
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!visible) {
@@ -163,7 +163,7 @@ export default function AlarmDismissModal({
   const rSs = String(remaining % 60).padStart(2, "0");
   // `eMm:eSs` covers both the main display when we're past target AND the
   // small "elapsed since alarm" line shown while the countdown is still
-  // running — same maths, different visual weight.
+  // running - same maths, different visual weight.
   const eMm = String(Math.floor(elapsed / 60)).padStart(2, "0");
   const eSs = String(elapsed % 60).padStart(2, "0");
 
@@ -179,7 +179,7 @@ export default function AlarmDismissModal({
         }}
       >
         {/* Header: pulsing dot + wordmark. The standalone RINGING pill was
-            removed — the pulsing dot already signals active alarm state,
+            removed - the pulsing dot already signals active alarm state,
             and the "Cue alarm" chip inside the card carries the urgency
             language. Two signals were one too many. */}
         <View
@@ -202,7 +202,7 @@ export default function AlarmDismissModal({
           <Text style={[textStyles.brand, { color: colors.text }]}>Cue Clock</Text>
         </View>
 
-        {/* Alarm card — full-bleed, amber border + glow */}
+        {/* Alarm card - full-bleed, amber border + glow */}
         <View
           style={{
             flex: 1,
@@ -226,7 +226,7 @@ export default function AlarmDismissModal({
             }),
           }}
         >
-          {/* Header chip dropped — pulsing brand dot above already says
+          {/* Header chip dropped - pulsing brand dot above already says
               "active alarm". Adding "Cue alarm" / "Nm before" chips read as
               decorative noise in a screen whose only purpose is dismiss/snooze. */}
 
@@ -298,7 +298,7 @@ export default function AlarmDismissModal({
 
           {/* Meta row: When (Nm before / Now) + Snoozes count-up. Replaces a
               prior "Status: Ringing" row that read as redundant next to the
-              RINGING pill in the header — duplicate signal, no extra info. */}
+              RINGING pill in the header - duplicate signal, no extra info. */}
           <View
             style={{
               flexDirection: "row",

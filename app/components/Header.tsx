@@ -7,6 +7,12 @@ type Props = {
   onHelp: () => void;
   onSettings: () => void;
   onFullscreen: () => void;
+  /**
+   * Optional circular "+" button rendered before the Help icon. Used by the
+   * web build where the pinned-bottom AddCueButton is hidden in favour of a
+   * compact header CTA (matches the legacy desktop layout).
+   */
+  onAddCue?: () => void;
 };
 
 /**
@@ -14,7 +20,7 @@ type Props = {
  * Padding `14 / 24 / 16` matches the design reference; icon buttons are 40×40 hit
  * targets centred on 18sp glyphs.
  */
-export function Header({ onHelp, onSettings, onFullscreen }: Props) {
+export function Header({ onHelp, onSettings, onFullscreen, onAddCue }: Props) {
   return (
     <View
       style={{
@@ -32,7 +38,24 @@ export function Header({ onHelp, onSettings, onFullscreen }: Props) {
         />
         <Text style={[text.brand, { color: colors.text }]}>Cue Clock</Text>
       </View>
-      <View style={{ flexDirection: "row", gap: 2 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        {onAddCue ? (
+          <Pressable
+            onPress={onAddCue}
+            style={({ pressed }) => ({
+              width: 34,
+              height: 34,
+              borderRadius: 17,
+              backgroundColor: colors.accent,
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: 4,
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <MaterialIcons name="add" size={18} color={colors.page} />
+          </Pressable>
+        ) : null}
         <HeaderButton onPress={onHelp}>
           <MaterialIcons name="help-outline" size={19} color={colors.textMuted} />
         </HeaderButton>
