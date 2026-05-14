@@ -22,7 +22,8 @@ app/                            React Native (Expo SDK 55) mobile app
     Header                      brand dot + wordmark + Help/Settings/Fullscreen
     ClockRail                   two-zone live clocks (tap → ZonePickerModal)
     PrimaryCard                 "Up Next" card, continuous urgency scaling
-    QueuedRow                   compact secondary cue row
+    PassedStrip                 compressed one-line strip for cues that just crossed zero (× deletes w/ confirm, auto-expires after 5 min)
+    QueuedRow                   compact secondary cue row (list is auto-sorted by remaining time)
     AddCueButton                pinned-bottom accent CTA, safe-area aware
     OnAirView                   fullscreen broadcast layout, auto-dimming exit
     ModalShell                  shared bottom-sheet chrome (handle / title / body / footer); wraps content in `KeyboardAvoidingView` (padding iOS / height Android) so any TextInput stays above the keyboard — every modal in the app inherits this
@@ -96,6 +97,10 @@ Key persisted keys: `zone1`, `zone2`, `targetBlocks`, `is24Hour`, `alertMode` (`
 **Countdown.** `setInterval(1s)` in HomeScreen. Per-block: target time in zone, +1 day if past, minus deduction, formatted `HH:MM:SS`. Skip React reconciliation if formatted string didn't change.
 
 **Fire-and-forget async.** `handleTargetConfirm`, `handleAlertConfirm`, `removeBlock` update state synchronously, then reschedule notifications in a background IIFE so UI stays <16ms.
+
+**Passed-cue rotation.** `computeCountdown` rolls past zero to ~86400 (next-day rollover), so "expired" isn't a native state. `HomeScreen` watches the per-block prev≤5s → next≥86395s transition each tick via `lastTotalsRef` and stamps the id into a `passedAt: Record<id, ms>` map. The render path filters those ids out of the primary/queue split and renders them as `PassedStrip`s above the (new) primary card — promoting the next cue automatically. Entries auto-evict after `PASSED_TTL_MS` (5 min); × on the strip evicts immediately. Strips never reschedule alarms — they're a pure presentation layer.
+
+**Auto-sort by remaining time.** The render path sorts active blocks by `computeCountdown(...).total` ascending each tick — soonest cue is always primary, the rest fall in line below it. Zones are not part of the sort key: `computeCountdown` already projects each target into its own zone, so `total` is in real wall-clock seconds-from-now regardless of where the cue lives. The persisted order in `targetBlocks` no longer drives display; cues are reordered purely visually as time advances.
 
 ---
 

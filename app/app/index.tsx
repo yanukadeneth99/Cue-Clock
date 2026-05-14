@@ -12,6 +12,7 @@ import { CueEditModal } from "@/components/CueEditModal";
 import { Header } from "@/components/Header";
 import HelpModal from "@/components/HelpModal";
 import { OnAirView } from "@/components/OnAirView";
+import { PassedStrip } from "@/components/PassedStrip";
 import { PrimaryCard } from "@/components/PrimaryCard";
 import { QueuedRow } from "@/components/QueuedRow";
 import { SettingsModal } from "@/components/SettingsModal";
@@ -20,6 +21,7 @@ import { ZonePickerModal } from "@/components/ZonePickerModal";
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
 import { useNow } from "@/lib/useNow";
+import { computeCountdown } from "@/lib/time";
 import { applyAnalyticsCollection } from "@/lib/analytics";
 import {
   cancelAlarm,
@@ -379,6 +381,67 @@ export default function HomeScreen() {
 
   // Keep ref in sync with state for use in async callbacks
   useEffect(() => { targetBlocksRef.current = targetBlocks; }, [targetBlocks]);
+
+  // ─── Passed-cue detection ──────────────────────────────────────────
+  // When a block's countdown crosses zero, `computeCountdown` snaps total
+  // back near 86400 (next-day rollover). We watch for that prev≤5 → next≥86395
+  // transition per block on each tick, stamp the id into `passedAt`, and the
+  // render path lifts that block out of the primary/queued positions and
+  // shows a compressed strip above the primary card. Strips auto-expire
+  // after PASSED_TTL_MS so the UI doesn't grow indefinitely.
+  const PASSED_TTL_MS = 5 * 60 * 1000;
+  const [passedAt, setPassedAt] = useState<Record<number, number>>({});
+  const passedAtRef = useRef<Record<number, number>>({});
+  useEffect(() => { passedAtRef.current = passedAt; }, [passedAt]);
+  const lastTotalsRef = useRef<Record<number, number>>({});
+  useEffect(() => {
+    const updates: Record<number, number> = {};
+    let mutated = false;
+    const nowMs = now.getTime();
+    for (const b of targetBlocks) {
+      const tz = b.targetZone === "zone1" ? zone1 : zone2;
+      const deductSec = b.deductMinute * 60 + b.deductSecond;
+      const cd = computeCountdown(now, tz, { h: b.targetHour, m: b.targetMinute }, deductSec);
+      const prev = lastTotalsRef.current[b.id];
+      if (
+        prev !== undefined &&
+        prev <= 5 &&
+        cd.total >= 86395 &&
+        !passedAtRef.current[b.id]
+      ) {
+        updates[b.id] = nowMs;
+        mutated = true;
+      }
+      lastTotalsRef.current[b.id] = cd.total;
+    }
+    // Expire stale entries.
+    for (const id of Object.keys(passedAtRef.current)) {
+      if (nowMs - passedAtRef.current[+id] > PASSED_TTL_MS) mutated = true;
+    }
+    if (mutated) {
+      setPassedAt((prev) => {
+        const next: Record<number, number> = { ...prev, ...updates };
+        for (const id of Object.keys(next)) {
+          if (nowMs - next[+id] > PASSED_TTL_MS) delete next[+id];
+        }
+        return next;
+      });
+    }
+  }, [now, targetBlocks, zone1, zone2]);
+
+  const dismissPassed = useCallback((id: number) => {
+    setPassedAt((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
+  // Confirmation dialog state for the × button on a PassedStrip — deletes
+  // the underlying cue (via `removeBlock`) after the user confirms.
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
 
   // Background-to-foreground guard: when the app returns to the foreground the JS
   // setInterval was paused, so alertFired was never set while the native scheduled
@@ -1542,6 +1605,10 @@ export default function HomeScreen() {
   // Shared modal stack — rendered in both the new mobile home path and the
   // legacy web/fullscreen path, so feature surfaces (consent, alarm dismiss,
   // setup guide) stay reachable regardless of which render branch ran.
+  const pendingDeleteBlock =
+    pendingDeleteId != null
+      ? targetBlocks.find((b) => b.id === pendingDeleteId) ?? null
+      : null;
   const renderModalStack = () => (
     <>
       <ConfirmModal
@@ -1554,6 +1621,25 @@ export default function HomeScreen() {
           doReset();
         }}
         onCancel={() => setResetModalVisible(false)}
+      />
+      <ConfirmModal
+        visible={pendingDeleteId != null}
+        title="Delete cue?"
+        message={
+          pendingDeleteBlock
+            ? `Remove "${pendingDeleteBlock.name}" permanently? This can't be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onConfirm={() => {
+          const id = pendingDeleteId;
+          setPendingDeleteId(null);
+          if (id != null) {
+            dismissPassed(id);
+            removeBlock(id);
+          }
+        }}
+        onCancel={() => setPendingDeleteId(null)}
       />
       <HelpModal
         visible={helpVisible}
@@ -1641,8 +1727,27 @@ export default function HomeScreen() {
   // through the legacy TargetBlock for now, rendered below the new cards when
   // a cue is selected (replaced by CueEditModal in step 5).
   if (!isWeb && !fullScreen) {
-    const primary = targetBlocks[0];
-    const rest = targetBlocks.slice(1);
+    // Split blocks into passed (compressed strips) and active (primary + queue).
+    // Active list preserves the user's drag order; passed list is sorted by
+    // when each cue fired so the most recent expiry sits closest to primary.
+    const passedIds = passedAt;
+    const passedBlocks = targetBlocks
+      .filter((b) => passedIds[b.id] != null)
+      .sort((a, b) => passedIds[a.id] - passedIds[b.id]);
+    // Auto-sort active cues by seconds-remaining (ascending). Zones drop out
+    // of the ordering because `computeCountdown` already projects the target
+    // into the cue's own zone — total is in real wall-clock seconds-from-now.
+    const totalFor = (b: TargetBlockType) => {
+      const tz = b.targetZone === "zone1" ? zone1 : zone2;
+      const ds = b.deductMinute * 60 + b.deductSecond;
+      return computeCountdown(now, tz, { h: b.targetHour, m: b.targetMinute }, ds).total;
+    };
+    const activeBlocks = targetBlocks
+      .filter((b) => passedIds[b.id] == null)
+      .slice()
+      .sort((a, b) => totalFor(a) - totalFor(b));
+    const primary = activeBlocks[0];
+    const rest = activeBlocks.slice(1);
     const editingBlock =
       typeof editingBlockId === "number"
         ? targetBlocks.find((b) => b.id === editingBlockId) ?? null
@@ -1670,6 +1775,17 @@ export default function HomeScreen() {
             onTapZone1={() => setZonePickerFor("zone1")}
             onTapZone2={() => setZonePickerFor("zone2")}
           />
+          {passedBlocks.map((b) => (
+            <PassedStrip
+              key={`passed-${b.id}`}
+              block={b}
+              now={now}
+              passedAt={passedAt[b.id]}
+              is24Hour={is24Hour}
+              onTap={() => openEditor(b.id)}
+              onRequestDelete={() => setPendingDeleteId(b.id)}
+            />
+          ))}
           {primary ? (
             <PrimaryCard
               block={primary}

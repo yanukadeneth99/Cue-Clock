@@ -24,7 +24,17 @@ const GLOSSARY: { term: string; definition: string }[] = [
   {
     term: "Queued",
     definition:
-      "Every cue after the first one. They line up below Up Next; tap any row to edit that cue.",
+      "Every cue after the first one. They line up below Up Next, automatically sorted by how soon each one fires (closest first). Tap any row to edit that cue.",
+  },
+  {
+    term: "Auto sort",
+    definition:
+      "Cues are always ordered by remaining time — across both zones — so the next thing happening is always Up Next. You don't reorder cues; the clock does.",
+  },
+  {
+    term: "Passed strip",
+    definition:
+      "When Up Next reaches zero, that cue collapses into a thin strip above the new Up Next and the next-soonest cue is promoted. Tap the strip to re-edit the cue, or × to delete it (with confirmation). Strips clear themselves after 5 minutes.",
   },
   {
     term: "Target time",
