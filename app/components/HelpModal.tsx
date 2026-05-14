@@ -20,6 +20,10 @@ interface HelpModalProps {
   onToggleAlertMode: (mode: "notification" | "alarm") => void;
   /** Whether alarm mode is available (false if permission denied or non-Android). */
   alarmAvailable: boolean;
+  /** Internal-build-only: trigger a 5s test alarm. Undefined → button hidden. */
+  onTestAlarm?: () => void;
+  /** Internal-build-only: open the in-app debug log viewer. Undefined → button hidden. */
+  onShowDebugLog?: () => void;
 }
 
 /** Static help entries, excluding the notification and About entries which are rendered separately. */
@@ -113,7 +117,10 @@ export default function HelpModal({
   alertMode,
   onToggleAlertMode,
   alarmAvailable,
+  onTestAlarm,
+  onShowDebugLog,
 }: HelpModalProps) {
+  const showDevTools = onTestAlarm !== undefined && onShowDebugLog !== undefined;
   return (
     <Modal
       visible={visible}
@@ -232,6 +239,33 @@ export default function HelpModal({
                 </Pressable>
               </View>
             </View>
+
+            {/* Internal-build dev tools row — only rendered when EXPO_PUBLIC_DEBUG_LOGS=1
+                is set at bundle time (callbacks are passed/undefined accordingly by
+                the caller). Two side-by-side buttons: trigger a 5s test alarm and
+                open the in-app debug log viewer. */}
+            {showDevTools && (
+              <View style={styles.devToolsRow}>
+                <Pressable
+                  onPress={() => {
+                    onClose();
+                    onTestAlarm?.();
+                  }}
+                  style={[styles.devToolsButton, styles.devToolsButtonPrimary]}
+                >
+                  <Text style={styles.devToolsButtonPrimaryText}>Test Alarm</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    onClose();
+                    onShowDebugLog?.();
+                  }}
+                  style={[styles.devToolsButton, styles.devToolsButtonSecondary]}
+                >
+                  <Text style={styles.devToolsButtonSecondaryText}>Debug Log</Text>
+                </Pressable>
+              </View>
+            )}
 
             {analyticsEnabled === true && (
               <Pressable
@@ -409,6 +443,35 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 11,
     fontWeight: "500",
+  },
+  devToolsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 16,
+  },
+  devToolsButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  devToolsButtonPrimary: {
+    backgroundColor: colors.countdown,
+  },
+  devToolsButtonPrimaryText: {
+    color: "#000000",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  devToolsButtonSecondary: {
+    backgroundColor: colors.background,
+    borderColor: colors.muted,
+    borderWidth: 1,
+  },
+  devToolsButtonSecondaryText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "600",
   },
   optOutButton: {
     backgroundColor: colors.background,

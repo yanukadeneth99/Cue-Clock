@@ -1,6 +1,16 @@
 import { colors } from "@/constants/colors";
-import React from "react";
-import { Linking, Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import React, { useState } from "react";
+import {
+  Linking,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 /**
  * Open MIUI/HyperOS Autostart screen via the documented Xiaomi Security Center
@@ -14,37 +24,149 @@ function openMIUIAutostart() {
   });
 }
 
-/** Props for {@link AndroidBackgroundHelpModal}. */
+/**
+ * Open the app's "Other permissions" page on Xiaomi/HyperOS where the
+ * vendor-specific gates "Show on Lock screen" and "Display pop-up windows
+ * while running in background" live. These gates are required for full-screen
+ * alarms to elevate over the lock screen. Falls back to generic app settings.
+ */
+function openOtherPermissions() {
+  // Documented MIUI intent for the App Permissions page where Other
+  // permissions are nested. Fallback to generic app info → user navigates
+  // manually if the intent isn't resolvable.
+  Linking.sendIntent("miui.intent.action.APP_PERM_EDITOR", [
+    { key: "extra_pkgname", value: "com.yanukadeneth99.cueclock" },
+  ]).catch(() => {
+    Linking.openSettings().catch(() => {});
+  });
+}
+
 interface AndroidBackgroundHelpModalProps {
   visible: boolean;
   onClose: () => void;
   onOpenAppSettings: () => void;
-  onOpenBatterySettings: () => void;
   onOpenExactAlarmSettings: () => void;
-  /** Schedules a real Notifee trigger 5s in the future; reports success/failure via Alert. */
-  onTestAlarm?: () => void;
-  /** Internal-build-only: open the in-app debug log viewer. Undefined in release. */
-  onShowDebugLog?: () => void;
+}
+
+interface StepCardProps {
+  number: number;
+  title: string;
+  description: string;
+  substeps?: string[];
+  buttonLabel: string;
+  onPress: () => void;
+  emphasis?: "default" | "danger" | "warning";
+}
+
+function StepCard({
+  number,
+  title,
+  description,
+  substeps,
+  buttonLabel,
+  onPress,
+  emphasis = "default",
+}: StepCardProps) {
+  const accentColor =
+    emphasis === "danger"
+      ? colors.danger
+      : emphasis === "warning"
+        ? colors.countdown
+        : colors.accent;
+  return (
+    <View
+      style={{
+        backgroundColor: colors.background,
+        borderColor: emphasis === "default" ? colors.border : accentColor,
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 14,
+        gap: 8,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View
+          style={{
+            backgroundColor: accentColor,
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: "#000000", fontSize: 13, fontWeight: "700" }}>{number}</Text>
+        </View>
+        <Text style={{ color: colors.header, fontSize: 14, fontWeight: "700", flex: 1 }}>
+          {title}
+        </Text>
+      </View>
+      <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19 }}>{description}</Text>
+      {substeps && substeps.length > 0 && (
+        <View style={{ gap: 4, paddingLeft: 8 }}>
+          {substeps.map((s, i) => (
+            <Text
+              key={i}
+              style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}
+            >
+              {`• ${s}`}
+            </Text>
+          ))}
+        </View>
+      )}
+      <Pressable
+        onPress={onPress}
+        style={{
+          backgroundColor: accentColor,
+          borderRadius: 10,
+          paddingVertical: 10,
+          alignItems: "center",
+          marginTop: 4,
+        }}
+      >
+        <Text style={{ color: "#000000", fontSize: 13, fontWeight: "700" }}>
+          {buttonLabel}
+        </Text>
+      </Pressable>
+    </View>
+  );
 }
 
 /**
- * Modal shown to Android users to help them configure background permissions.
+ * First-launch onboarding step 1: a guided, numbered checklist that walks the
+ * operator through each permission and vendor-specific toggle needed for
+ * reliable broadcast alarms. Each step deep-links to the exact settings page
+ * and explains what to enable once inside.
  *
- * @param visible - Whether the modal is shown.
- * @param onClose - Callback to dismiss the modal.
- * @param onOpenAppSettings - Handler to open general app settings.
- * @param onOpenBatterySettings - Handler to open battery optimization settings.
- * @param onOpenExactAlarmSettings - Handler to open exact alarm permissions.
+ * Step 2 (analytics consent) is presented separately after this modal closes.
  */
 export default function AndroidBackgroundHelpModal({
   visible,
   onClose,
   onOpenAppSettings,
-  onOpenBatterySettings,
   onOpenExactAlarmSettings,
-  onTestAlarm,
-  onShowDebugLog,
 }: AndroidBackgroundHelpModalProps) {
+  // Gate the Continue button on the operator having scrolled to the bottom of
+  // the steps. If the content fits without scrolling (tall device), onLayout
+  // / onContentSizeChange detect that and unlock immediately.
+  const [hasReachedEnd, setHasReachedEnd] = useState(false);
+  const [contentHeight, setContentHeight] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+
+  const checkFits = (content: number, viewport: number) => {
+    if (content > 0 && viewport > 0 && content <= viewport + 4) {
+      setHasReachedEnd(true);
+    }
+  };
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+    // 16px slack so the last bit of content/padding doesn't strand the gate.
+    if (contentOffset.y + layoutMeasurement.height >= contentSize.height - 16) {
+      setHasReachedEnd(true);
+    }
+  };
+
   if (Platform.OS !== "android") return null;
 
   return (
@@ -55,7 +177,7 @@ export default function AndroidBackgroundHelpModal({
           backgroundColor: "rgba(0,0,0,0.8)",
           justifyContent: "center",
           alignItems: "center",
-          paddingHorizontal: 24,
+          paddingHorizontal: 20,
         }}
       >
         <View
@@ -64,166 +186,138 @@ export default function AndroidBackgroundHelpModal({
             borderColor: colors.surfaceBorder,
             borderWidth: 1,
             borderRadius: 16,
-            padding: 24,
+            padding: 20,
             width: "100%",
-            maxWidth: 420,
-            gap: 14,
+            maxWidth: 440,
+            maxHeight: "90%",
+            gap: 12,
           }}
         >
-          <Text
-            style={{
-              color: colors.header,
-              fontSize: 19,
-              fontWeight: "700",
-              textAlign: "center",
-            }}
-          >
-            Important Android Setup
-          </Text>
-          <Text
-            style={{
-              color: colors.muted,
-              fontSize: 14,
-              lineHeight: 21,
-              textAlign: "center",
-            }}
-          >
-            Countdown alerts can be blocked by Android power management even when notifications are enabled.
-          </Text>
-
-          <View
-            style={{
-              backgroundColor: colors.background,
-              borderColor: colors.border,
-              borderWidth: 1,
-              borderRadius: 12,
-              padding: 14,
-              gap: 10,
-            }}
-          >
-            <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19 }}>
-              1. Open app settings and disable &quot;Pause app activity if unused&quot;.
+          <View style={{ gap: 4 }}>
+            <Text
+              style={{
+                color: colors.accent,
+                fontSize: 12,
+                fontWeight: "700",
+                textAlign: "center",
+                letterSpacing: 1,
+              }}
+            >
+              STEP 1 OF 2
             </Text>
-            <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19 }}>
-              2. Open battery settings and set Cue Clock to &quot;No restrictions&quot; or &quot;Unrestricted&quot;.
+            <Text
+              style={{
+                color: colors.header,
+                fontSize: 19,
+                fontWeight: "700",
+                textAlign: "center",
+              }}
+            >
+              Enable Alarm Settings
             </Text>
-            <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19 }}>
-              3. Open Alarms & reminders and allow exact alarms if your device shows that setting.
-            </Text>
-            <Text style={{ color: colors.danger, fontSize: 13, lineHeight: 19, fontWeight: "600" }}>
-              4. Xiaomi / Redmi / POCO only: Open Autostart and toggle Cue Clock ON. Without this, MIUI / HyperOS silently kills scheduled alarms even with every other permission granted.
-            </Text>
-            <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19 }}>
-              5. From Recent apps, long-press Cue Clock and tap the lock icon (or &quot;Lock&quot; option) so the system can&apos;t terminate it during cleanup.
+            <Text
+              style={{
+                color: colors.muted,
+                fontSize: 13,
+                lineHeight: 19,
+                textAlign: "center",
+              }}
+            >
+              Cue Clock needs these permissions to reliably fire alarms during a live show. Tap each step to jump to the right setting page.
             </Text>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-            <Pressable
+          <ScrollView
+            showsVerticalScrollIndicator
+            contentContainerStyle={{ gap: 10, paddingBottom: 4 }}
+            onScroll={handleScroll}
+            scrollEventThrottle={32}
+            onLayout={(e) => {
+              const vh = e.nativeEvent.layout.height;
+              setViewportHeight(vh);
+              checkFits(contentHeight, vh);
+            }}
+            onContentSizeChange={(_w, h) => {
+              setContentHeight(h);
+              checkFits(h, viewportHeight);
+            }}
+          >
+            <StepCard
+              number={1}
+              title="Notifications, full-screen alarms & battery"
+              description="Required so the alarm fires, wakes the device, shows the full alarm UI when the screen is locked, and isn't paused by Android's battery saver."
+              substeps={[
+                "Tap the button below to open app settings.",
+                "Open Notifications → Allow.",
+                "Open Notifications again → tap the Cue Clock notification settings (sometimes labelled 'Advanced') → enable 'Full-screen notifications' / 'Allow lock screen notifications'.",
+                "Back to app info → open Battery → set Cue Clock to 'No restrictions' (or 'Unrestricted').",
+              ]}
+              buttonLabel="Open App Settings"
               onPress={onOpenAppSettings}
-              style={{
-                backgroundColor: colors.background,
-                borderColor: colors.accent,
-                borderWidth: 1,
-                borderRadius: 12,
-                paddingVertical: 12,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: colors.accent, fontSize: 14, fontWeight: "600" }}>
-                Open App Settings
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={onOpenBatterySettings}
-              style={{
-                backgroundColor: colors.background,
-                borderColor: colors.accent,
-                borderWidth: 1,
-                borderRadius: 12,
-                paddingVertical: 12,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: colors.accent, fontSize: 14, fontWeight: "600" }}>
-                Open Battery Settings
-              </Text>
-            </Pressable>
-            <Pressable
+            />
+
+            <StepCard
+              number={2}
+              title="Allow exact alarms"
+              description="Android 12+ requires explicit permission for second-accurate scheduling."
+              substeps={[
+                "Tap the button below to open Alarms & reminders.",
+                "Toggle Cue Clock ON.",
+              ]}
+              buttonLabel="Open Alarms & Reminders"
               onPress={onOpenExactAlarmSettings}
-              style={{
-                backgroundColor: colors.background,
-                borderColor: colors.accent,
-                borderWidth: 1,
-                borderRadius: 12,
-                paddingVertical: 12,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: colors.accent, fontSize: 14, fontWeight: "600" }}>
-                Open Alarms & Reminders
-              </Text>
-            </Pressable>
-            <Pressable
+            />
+
+            <StepCard
+              number={3}
+              title="Other permissions (Xiaomi / Redmi / POCO)"
+              description="HyperOS hides two critical toggles inside an 'Other permissions' page that no other Android vendor uses. Without these the full-screen alarm cannot launch over the lock screen or over other apps."
+              substeps={[
+                "Tap the button below to open App permissions.",
+                "Scroll down and open 'Other permissions'.",
+                "Enable 'Show on Lock screen'.",
+                "Enable 'Display pop-up windows while running in background'.",
+                "Enable 'Start in background' if present.",
+              ]}
+              buttonLabel="Open Other Permissions"
+              onPress={openOtherPermissions}
+              emphasis="warning"
+            />
+
+            <StepCard
+              number={4}
+              title="Autostart (Xiaomi / Redmi / POCO)"
+              description="MIUI / HyperOS silently kills scheduled alarms even with every other permission granted. This is the single most common reason alarms fail on Xiaomi devices."
+              substeps={[
+                "Tap the button below to open the Autostart list.",
+                "Find Cue Clock and toggle it ON.",
+              ]}
+              buttonLabel="Open Autostart"
               onPress={openMIUIAutostart}
-              style={{
-                backgroundColor: colors.background,
-                borderColor: colors.danger,
-                borderWidth: 1,
-                borderRadius: 12,
-                paddingVertical: 12,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: colors.danger, fontSize: 14, fontWeight: "600" }}>
-                Open Autostart (Xiaomi / MIUI)
-              </Text>
-            </Pressable>
-            {onTestAlarm && (
-              <Pressable
-                onPress={onTestAlarm}
-                style={{
-                  backgroundColor: colors.countdown,
-                  borderRadius: 12,
-                  paddingVertical: 12,
-                  alignItems: "center",
-                  marginTop: 8,
-                }}
-              >
-                <Text style={{ color: "#000000", fontSize: 14, fontWeight: "700" }}>
-                  Test Alarm in 5 Seconds
-                </Text>
-              </Pressable>
-            )}
-            {onShowDebugLog && (
-              <Pressable
-                onPress={onShowDebugLog}
-                style={{
-                  backgroundColor: colors.background,
-                  borderColor: colors.muted,
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  paddingVertical: 12,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>
-                  View Debug Log (internal build)
-                </Text>
-              </Pressable>
-            )}
+              emphasis="danger"
+            />
           </ScrollView>
 
           <Pressable
-            onPress={onClose}
+            onPress={hasReachedEnd ? onClose : undefined}
+            disabled={!hasReachedEnd}
             style={{
-              backgroundColor: colors.accent,
+              backgroundColor: hasReachedEnd ? colors.accent : colors.border,
               borderRadius: 12,
               paddingVertical: 14,
               alignItems: "center",
+              opacity: hasReachedEnd ? 1 : 0.7,
             }}
           >
-            <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "600" }}>Continue</Text>
+            <Text
+              style={{
+                color: hasReachedEnd ? "#ffffff" : colors.muted,
+                fontSize: 15,
+                fontWeight: "700",
+              }}
+            >
+              {hasReachedEnd ? "Continue" : "Scroll down"}
+            </Text>
           </Pressable>
         </View>
       </View>

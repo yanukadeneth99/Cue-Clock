@@ -1,481 +1,261 @@
-# Cue Clock: CLAUDE.md
+# Cue Clock — Developer Reference
 
-Developer reference for AI-assisted work on this repository.
+> ⚠ **Public repo.** No secrets, internal URLs, unreleased names, or partner info in commits.
 
-> **⚠ This is a public repository.**
-> Before committing or pushing anything, double-check:
->
-> - **Security**: No secrets, API keys, tokens, credentials, internal URLs, or private config (check `.env`, `google-services.json`, keystores, etc.).
-> - **Brand**: No unreleased feature names, internal codenames, partner names, or confidential roadmap details.
->   When in doubt, ask before pushing.
+**Cue Clock** is a minimal, distraction-free clock app built specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously.
 
----
+## Important
 
-## What This App Does
-
-**Cue Clock** is a specialized time management tool for broadcast professionals. It allows users to monitor multiple timezones and track countdown timers simultaneously with high reliability and precision.
-
-### Core Features
-
-- **Dual live clocks**: Display two side-by-side clocks, each configurable to any of 18 broadcast timezones.
-- **Multiple countdown timers**: Create, name, and manage infinite countdowns tied to specific timezones.
-- **Deduction offsets**: Subtract "pre-show buffer" durations from countdown targets (useful for live show prep).
-- **On-air (Full-screen) mode**: A distraction-free display that strips away controls for studio use.
-- **Persistent state**: All settings, zones, and timers are saved locally across sessions via AsyncStorage.
-- **Per-timer alerts**: Configurable "minutes-before" push notifications and in-app alerts.
-- **12/24-hour clock format**: User-selectable display preference (toggle in Help modal), persisted across sessions. Affects live clocks and target time displays; countdown duration stays in 24h style.
-- **In-app help**: Integrated guide explaining all controls and usage patterns.
+- This document must only contain useful information as briefly and concise as possible.
+- This application NEEDS to be minimal and fast while being intuitive.
 
 ---
 
-## Project Structure
+## Project Layout
 
 ```
-app/              # React Native (Expo) Mobile Application
-  app/            # Expo Router (file-based) directory
-    _layout.tsx   # Root layout: Expo Router stack, Clarity analytics init
-    index.tsx     # Main screen: all primary state and logic lives here (~839 lines)
-    +not-found.tsx# 404 catch-all route
-  components/     # UI Components
-    AnalyticsConsentModal.tsx        # First-launch GDPR-compliant opt-in modal (non-dismissable)
-    AnalyticsOptOutModal.tsx         # Opt-out confirmation modal (shown when user turns off analytics)
-    AndroidBackgroundHelpModal.tsx   # Step-by-step guide to enable Android background activity
-    ClockPicker.tsx                  # Dual live-clock with timezone pickers
-    TargetBlock.tsx                  # Countdown card with name, times, zone, alert, collapse, delete
-    AlertModal.tsx                   # Minutes-before alert configuration modal
-    ConfirmModal.tsx                 # Generic yes/no confirmation dialog
-    HelpModal.tsx                    # In-app help overlay with 24h toggle, controls guide, about section
-    DebugLogModal.tsx                # Internal-build-only diagnostic log viewer (renders null when flag is off)
-  lib/            # Shared modules
-    analytics.ts      # Firebase/Clarity analytics initialisation (extracted from _layout.tsx)
-    alarms.ts         # Notifee alarm and notification scheduling wrapper
-    alarmHandlers.ts  # Notifee background/foreground event dispatcher + bg vibration loop
-    debugLog.ts       # Ring-buffer logger gated by EXPO_PUBLIC_DEBUG_LOGS (internal builds only)
-  constants/      # App-wide constants
-    colors.ts     # 14-color dark broadcast palette
-    timezones.ts  # 18 broadcast timezone definitions
-  modules/        # Local Expo modules (autolinked via file: dep)
-    expo-alarm-vibrator/  # Native Kotlin module: routes vibration through
-                          # AudioAttributes.USAGE_ALARM so it bypasses the
-                          # per-user "Vibrate on Tap"/haptic-feedback toggle
-                          # that silently suppresses RN's Vibration.vibrate().
-  plugins/        # Expo Config Plugins
-    withFullScreenAlarm.js # Adds showWhenLocked and turnScreenOn to MainActivity
-  assets/         # Icons, splash screens, fonts (SpaceMono-Regular.ttf), alarm.mp3 (alarm tone)
-  scripts/        # Maintenance and utility scripts
-  .env.example    # Template for environment variables (safe, no secrets)
-  app.json        # Expo configuration (slug, bundle ID, plugins)
-  app.config.js   # Dynamic Expo config: injects EAS projectId/owner from env at build time
-  eas.json        # EAS build configs: development (internal), preview (APK), production
-  package.json    # Mobile app dependencies and scripts
-  metro.config.js # Metro bundler configuration
-  babel.config.js # Expo preset
-
-website/          # Next.js Landing Page & Documentation
-  src/app/
-    page.tsx      # Landing page with GSAP animations, contributor grid, download buttons
-    layout.tsx    # Root layout: SEO metadata, fonts, dark theme
-    privacy/page.tsx  # Privacy policy explaining data collection and user rights
-    globals.css   # Tailwind 4, material icons, glassmorphism components
-    robots.ts     # SEO robots.txt generation
-    sitemap.ts    # SEO sitemap (cueclock.app)
-  public/         # Static assets (SVGs)
-  package.json    # Website dependencies and scripts
-
-
+app/                            React Native (Expo SDK 55) mobile app
+  app/                          Expo Router screens
+    _layout.tsx                 Root layout, analytics init
+    index.tsx                   HomeScreen — all primary state lives here
+  components/                   UI: ClockPicker, TargetBlock, *Modal
+  lib/
+    alarms.ts                   Notifee wrapper (schedule/cancel/channels/permissions)
+    alarmHandlers.ts            Notifee bg/fg event dispatcher + bg vibration loop
+    analytics.ts                Firebase/Clarity init
+    debugLog.ts                 Ring-buffer logger, gated by EXPO_PUBLIC_DEBUG_LOGS
+  modules/expo-alarm-vibrator/  Local native Kotlin module (ALARM-class vibration)
+  plugins/withFullScreenAlarm.js  Adds showWhenLocked + turnScreenOn to MainActivity
+  constants/                    colors.ts, timezones.ts (18 zones)
+  assets/                       icons, splash, SpaceMono, alarm.mp3
+website/                        Next.js 16 landing page (Tailwind 4, GSAP)
 .github/workflows/
-  android-internal.yml # CI/CD: build + sign AAB + upload to Google Play internal track (master pushes)
-  android-release.yml  # CI/CD: build + sign AAB + upload to Google Play beta track (GitHub releases)
-
-Root Documentation
-  DEVELOPMENT.md              # How to run the app locally (zero setup required)
-  GITHUB_SECRETS_SETUP.md     # How to configure GitHub Secrets for CI/CD
-  CONTRIBUTING.md             # Contributing guidelines
-  CODE_OF_CONDUCT.md          # Community standards
-  LICENSE                     # AGPL-3.0
-  SECURITY.md                 # Security vulnerability reporting
+  android-internal.yml          push→master → signed AAB → Play internal track
+  android-release.yml           GH Release → signed AAB → Play beta track
 ```
 
 ---
 
-## Tech Stack
+## Tech Stack (Mobile)
 
-### Mobile (`app/`)
+React Native 0.83, Expo SDK 55, TypeScript 5.9 (strict), Expo Router, Luxon 3, AsyncStorage, `@notifee/react-native` 9.1.8, `expo-audio` 55, `@react-native-firebase/*`, `@microsoft/react-native-clarity`.
 
-| Layer           | Technology                                | Version              |
-| --------------- | ----------------------------------------- | -------------------- |
-| Framework       | React Native                              | 0.83.2               |
-| SDK             | Expo                                      | 55                   |
-| Navigation      | Expo Router                               | 55 (file-based)      |
-| Language        | TypeScript                                | ~5.9.2 (strict mode) |
-| Styling         | Inline Styles                             | -                    |
-| Date/Time       | Luxon                                     | 3.7.1                |
-| Persistence     | @react-native-async-storage/async-storage | 2.2.0                |
-| Notifications   | @notifee/react-native + expo-notifications | 9.1.8 / 55          |
-| Audio (alarm)   | expo-audio (+ expo-asset peer)             | ~55.0.14             |
-| Pickers         | @react-native-picker/picker               | 2.11.4               |
-| DateTime Picker | react-native-modal-datetime-picker        | 18.0.0               |
-| Analytics       | @microsoft/react-native-clarity           | 4.5.3                |
-
-### Website (`website/`)
-
-| Layer      | Technology         | Version        |
-| ---------- | ------------------ | -------------- |
-| Framework  | Next.js            | 16.2.3         |
-| React      | React              | 19.2.4         |
-| Animations | GSAP + @gsap/react | 3.14.2 / 2.1.2 |
-| Styling    | Tailwind CSS       | 4              |
-| Language   | TypeScript         | 6              |
+Styling: inline `style={...}` only (no StyleSheet libraries). Colors via `app/constants/colors.ts`. Safe area via `useSafeAreaInsets()` — never hardcode insets.
 
 ---
 
-## Architecture & Key Concepts
+## Architecture
 
-### Component Tree (Mobile)
+**State.** All app state lives on `HomeScreen` (`app/app/index.tsx`) and persists to AsyncStorage via `multiSet`/`multiGet`. Rehydrated on mount.
 
-```
-HomeScreen (app/app/index.tsx)
-├── ClockPicker                 : Dual live-clock with timezone pickers
-├── TargetBlock[]               : One per countdown; collapsible; includes AlertModal + ConfirmModal
-│   ├── AlertModal              : Set/delete countdown alert
-│   └── ConfirmModal            : Delete confirmation dialog
-├── HelpModal                   : In-app help overlay (triggered by ? button in header)
-│   └── (opens) AndroidBackgroundHelpModal: Background-permissions guide (Android only)
-├── AnalyticsConsentModal       : First-launch opt-in (non-dismissable)
-└── AnalyticsOptOutModal        : Opt-out confirmation (shown when user turns off analytics)
-```
+Key persisted keys: `zone1`, `zone2`, `targetBlocks`, `is24Hour`, `alertMode` (`"notification"` | `"alarm"`), `analyticsEnabled` (3-state: null = unasked), `androidBackgroundHelpSeen`.
 
-### State Management
+**Reset preserves `analyticsEnabled`** — `doReset` uses `multiRemove` on specific keys, not `clear`.
 
-All state is lifted to `HomeScreen` and persisted via AsyncStorage (`multiSet`/`multiGet`). State is rehydrated on mount.
+**Countdown.** `setInterval(1s)` in HomeScreen. Per-block: target time in zone, +1 day if past, minus deduction, formatted `HH:MM:SS`. Skip React reconciliation if formatted string didn't change.
 
-- `zone1` / `zone2`: Timezone strings.
-- `targetBlocks`: JSON-serialized `TargetBlockType[]`.
-- `fullScreen`: Boolean for on-air mode.
-- `is24Hour`: Boolean clock-format preference (default `true`). Persisted; missing key defaults to `true` (backwards-safe). Affects live clocks and target time displays only: countdown durations stay in 24h style.
-- `analyticsEnabled`: Three-state (`null` = not yet given, `true` = accepted, `false` = declined). **Preserved on reset**: `doReset` uses `multiRemove` on specific keys, not `AsyncStorage.clear`.
-- `consentModalVisible`: Boolean for first-launch analytics consent modal visibility.
-- `helpVisible` / `resetModalVisible`: Modal visibility booleans.
-- `notifBlocked`: Web notification permission state (web only).
-- `exitButtonOpacity`: Fullscreen exit button fade (auto-dims after 3s).
-
-### Countdown Algorithm
-
-1. Get current time in the block's selected timezone (Luxon `DateTime`).
-2. Construct a target `DateTime` for today at the block's `targetHour:targetMinute`.
-3. If the target is already past, add 1 day (next occurrence).
-4. Subtract the deduction (`deductHour:deductMinute`).
-5. Compute the difference → format as `HH:MM:SS`.
-6. Recalculate every 1 second via `setInterval` in `HomeScreen`.
-7. Optimization: Skip object spread/React reconciliation if the formatted countdown string hasn't changed.
-
-### Alert System
-
-Dual-mode alert system powered by Notifee with graceful fallbacks:
-
-**Alarm Mode** (Primary: Android full-screen intents)
-
-- Full-screen notification that wakes device and shows over lock screen via Notifee's `fullScreenAction`
-- Notifee's `fullScreenAction.launchActivity` and `pressAction.launchActivity` are set to the **fully qualified class name** `"com.yanukadeneth99.cueclock.MainActivity"`, not the bare string `"default"`. Some Android 14+ vendor builds (notably HyperOS) silently refuse to elevate FSI to a MainActivity launch when `"default"` is used; naming the activity explicitly resolves it
-- Audio + haptics are played **in-activity** by `AlarmDismissModal` using `expo-audio` (looping `assets/alarm.mp3` at full volume) and `AlarmVibrator.vibrateAsAlarm()` from the local `expo-alarm-vibrator` native module. The notification's channel sound is intentionally a fallback only — Android suppresses channel sound the moment a full-screen intent launches an Activity, so the alarm UX is owned by the React component
-- 60-second safety cap stops sound + vibration automatically if the operator never acts (prevents an unattended phone from sounding forever during a live show)
-- Cold-start path: when Android launches the app from a killed state via `fullScreenAction`, `notifee.getInitialNotification()` is read after AsyncStorage hydration and the modal opens with the correct block context
-- **Warm-resume modal mount**: When the alarm fires while the app is backgrounded, the JS countdown ticker records the fire in `pendingBackgroundFiresRef` (logged as `alert:bgFireRecorded`). On `AppState` transition to `active`, the ref is drained and the in-app modal mounts (logged as `appState:resume:drainBgFires`). A defensive `fireDate === null` check covers the locked-screen case where the JS ticker was suspended and never logged `shouldFire` (logged as `appState:resume:fallbackQueueModal`). Together these guarantee the alarm UX appears whenever the operator returns to the app — whether via FSI auto-launch, notification tap, or launcher
-- **Background heads-up vibration**: On Android 14+, when the screen is on and another app has focus, the OS downgrades FSI to a plain heads-up notification (documented policy that can't be overridden). `lib/alarmHandlers.ts` listens for `EventType.DELIVERED` on the alarm channel in `onBackgroundEvent` and starts a 1.2s `AlarmVibrator.vibrateAsAlarm(600)` loop with a 60-second safety cap. The loop self-cancels on `AppState=active`, `DISMISSED`, or `ACTION_PRESS` so it never overlaps with the in-app modal's own vibration
-- Requires `android.permission.POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, and the Android 14+ "Full-screen notifications" per-app toggle (gated at runtime via `canScheduleExactAlarms()` and `canUseFullScreenIntent()`; both deep-link to settings if missing)
-- Snooze is effectively **unlimited** (`MAX_SNOOZES = Number.POSITIVE_INFINITY`). Broadcast operators may need to defer the alarm repeatedly while preparing for a cue; the legacy 5-snooze cap was too restrictive for that workflow. The modal shows "Snoozed N times" once N > 0 instead of "X remaining". `snoozeCount` is reset to 0 in `handleAlertConfirm` whenever a new alert is configured, so prior session state doesn't leak forward
-- Uses `ALARM_CHANNEL_ID: "cue-clock-alarm-v3"` (channel versioning ensures fresh setup on Android — channels are immutable post-creation; stale v1/v2 channels are explicitly deleted on first run)
-- Works even when app is backgrounded or device in Doze mode (via AlarmManager `SET_EXACT_AND_ALLOW_WHILE_IDLE`)
-- Requires `showWhenLocked` and `turnScreenOn` manifest attributes (set by `withFullScreenAlarm` plugin)
-
-**Notification Mode** (Fallback: standard heads-up)
-
-- Visible heads-up notification if full-screen intent permission not granted (Android 14+)
-- Uses `NOTIF_CHANNEL_ID: "cue-clock-notif-v3"` with default sound and vibration
-- Survives Doze via exact timestamp triggers
-
-**Common behaviors**
-
-- **Queue system**: Fired alerts tracked in a ref; processed in useEffect to prevent duplicates
-- **Trigger condition**: `totalMinutes === alertMinutesBefore && seconds === 0`
-- **Auto-clears**: Alert config is removed from the block after firing
-- **Web/iOS fallback**: Uses Web Notifications API → `window.alert` as final fallback
-- **Expo Go guard**: Notification registration skipped in Expo Go environment (dev limitation)
-
-### Platform-Specific UI
-
-- **Web**: +Add button and ? help in header; more controls exposed; tooltips; select/input HTML elements styled via platform-injected inline styles.
-- **Mobile**: Footer-based controls; simpler layout.
-- **Detection**: `Platform.OS === "web" | "ios" | "android"`.
-
-### Color Scheme
-
-The app uses a specific dark blue-gray palette for high visibility in broadcast environments.
-
-- `background` : `#1a1d23` (Main app background)
-- `surface` : `#252830` (Card and modal backgrounds)
-- `surfaceBorder` : `#353840` (Card and modal borders)
-- `header` : `#e8eaed` (Primary light text)
-- `zone1` : `#4ade80` (Green-400, first clock)
-- `zone2` : `#f87171` (Red-400, second clock)
-- `countdown` : `#fbbf24` (Amber-400, timer text)
-- `muted` : `#8b8f96` (Secondary text)
-- `danger` : `#ef4444` (Destructive actions)
-- `accent` : `#60a5fa` (Blue-400, interactive elements)
-- `pickerText` : `#e8eaed` (Time picker foreground)
-- `pickerBg` : `#2f323a` (Time picker background)
-- `border` : `#3f434d` (General structural borders)
-
-Colors are defined in `app/constants/colors.ts` and used via the `colors` object.
-
-### Typography
-
-- **Website Headline**: Space Grotesk (bold)
-- **Website Body**: Inter (regular)
-- **Countdown**: System default font with `fontVariant: ['tabular-nums']` for stable width during ticks
-
-### Alarm Scheduling (`lib/alarms.ts`)
-
-Thin wrapper around `@notifee/react-native` for scheduling and managing countdown alerts. All Notifee API calls are inside function bodies (never at module load) so the file safely imports on web and iOS.
-
-**Key exports:**
-
-- `scheduleAlarm(block, fireDate)` – Schedule alarm-mode notification
-- `scheduleNotif(block, fireDate)` – Schedule fallback heads-up notification
-- `scheduleAlarmFromData(blockId, blockName, alertMinutesBefore, fireDate)` – Schedule from raw data (used in snooze)
-- `scheduleNotifFromData(...)` – Fallback notification from raw data
-- `displayNotif(title, body)` – Display immediate foreground notification
-- `cancelAlarm(id)` – Cancel by notification ID
-- `canUseFullScreenIntent()` – Check if app has permission to use full-screen (Android 14+)
-- `openFullScreenIntentSettings()` – Launch system settings to grant full-screen permission
-- `canScheduleExactAlarms()` – Check Android 12+ SCHEDULE_EXACT_ALARM permission via Notifee's `settings.android.alarm`
-- `openAlarmPermissionSettings()` – Deep-link to the dedicated "Alarms & reminders" page
-- `ensureAlarmChannel()` / `ensureNotifChannel()` – Create Android channels on first use; explicitly delete stale `v1`/`v2` channel IDs to recover from prior broken-channel state
-- `requestAlarmPermissions()` – Request notification & scheduling permissions
-
-**Channel versioning:** Channels are versioned (`v3`) so Android recreates them with locked-in sound/vibration settings. Notifee deletes stale `cue-clock-alarm`, `cue-clock-alarm-v2`, `cue-clock-notif`, and `cue-clock-notif-v2` IDs on first run for users upgrading from older builds.
-
-**Exact triggers:** Both alarm and notification modes use `AlarmManager.SET_EXACT_AND_ALLOW_WHILE_IDLE` to survive Doze and fire at exact scheduled time.
-
-**Notifee `vibrationPattern` quirk:** Unlike native Android's `Vibrator.vibrate(long[])` (which expects `[delay, on, off, ...]` and tolerates a leading `0`), Notifee's validator rejects any non-positive value and requires an even-length array. Patterns must start with the on-duration (e.g. `[500, 500, 500, 500]`, *not* `[0, 500, 500, 500]`). A failed pattern throws synchronously inside `createChannel`/`createTriggerNotification` and — if the call site swallows the error — downstream scheduling silently no-ops. Always log the catch.
-
-### ALARM-class vibration (`modules/expo-alarm-vibrator`)
-
-A small local Expo module that dispatches vibration through `Vibrator.vibrate(VibrationEffect, AudioAttributes)` with `AudioAttributes.USAGE_ALARM`. Routing through the ALARM usage class is critical on vendor builds — particularly Xiaomi/HyperOS — where the default RN `Vibration.vibrate(ms)` is classified as `mUsage=TOUCH` and silently rejected by `VibratorService` with `IGNORED_FOR_SETTINGS` whenever the per-user "Vibrate on Tap"/haptic-feedback toggle is off. The ALARM class is gated by `alarm_vibration_intensity` (default-on across virtually all devices), so the alarm reliably vibrates without requiring the operator to enable any system setting.
-
-**Module surface:**
-- `AlarmVibrator.vibrateAsAlarm(durationMs: number)` — one-shot ALARM-class vibration
-- `AlarmVibrator.cancel()` — cancel any in-progress vibration
-
-**Why a local module:** The RN `Vibration` API doesn't expose the usage class, and existing community libraries either don't support it or are unmaintained. The module is registered via Expo Modules autolinking (`expo-module.config.json` + `file:` dep in `app/package.json`), so it survives `expo prebuild --clean` without manual MainApplication editing.
-
-**Detection in logs:** Look for `mUsage=ALARM ... ended with status FINISHED` in logcat (`VibratorManagerService:V`). If you instead see `mUsage=TOUCH ... IGNORED_FOR_SETTINGS`, the AlarmVibrator module isn't being invoked — the JS code is still using `Vibration.vibrate()` somewhere.
-
-### Internal-Only Debug Log (`lib/debugLog.ts`, `components/DebugLogModal.tsx`)
-
-A build-time-gated diagnostic logger for live-device debugging on testers' phones. Only ships active code in internal-track builds; in production the buffer stays empty and the UI renders `null`.
-
-**Activation:** `EXPO_PUBLIC_DEBUG_LOGS=1`, set only by `.github/workflows/android-internal.yml` (in the "Create .env" step). The release workflow (`android-release.yml`) MUST NOT export this var.
-
-**API:**
-
-- `dlog(tag, payload?)` — append to the in-memory ring buffer (200 entries max). No-op when flag is unset.
-- `isDebugLogEnabled()` — boolean for conditional UI gating.
-- `getLogs()` / `subscribeLogs(fn)` / `formatLogs()` / `clearLogs()` — buffer accessors used by the modal.
-
-**Three-layer release safety:**
-
-1. Build time: env var only injected by the internal workflow.
-2. Module init: `dlog` short-circuits when the flag is unset (≈ zero runtime cost).
-3. UI gate: `onShowDebugLog` prop is `undefined` in release, hiding the help-modal button; `DebugLogModal` itself early-returns `null` if the flag is off.
-
-**Access path on internal builds:** Help modal → "?" → Android Background Help → "View Debug Log (internal build)" → Copy. The modal uses `expo-clipboard.setStringAsync()` for paste-ready text.
-
-**Instrumented call sites:** `ensureAlarmChannel`, `ensureNotifChannel`, `scheduleAlarm`, `scheduleNotif`, `scheduleAlarmFromData`, `scheduleNotifFromData`, `cancelAlarm` (all log success and caught errors), plus the cold-start `getInitialNotification` path and `runTestAlarm` in `app/index.tsx`. Add new `dlog` calls at any platform/permission boundary you want to introspect — never at hot loops (every 1s countdown tick would flood the buffer).
-
-### Fullscreen Layout Pattern
-
-Uses a **single `View` root** (to prevent native crashes from tree remounts) with conditional children.
-
-- `ClockPicker` is pinned above a `ScrollView`.
-- `TargetBlock` list is inside the `ScrollView` (scroll enabled only when blocks overflow available space).
-- Exit button is fixed at the bottom; auto-dims after 3 seconds of inactivity via opacity animation.
-- Safe area padding is dynamically calculated using `useSafeAreaInsets()`.
-- Countdown font size scales dynamically: `countdownFontSize = screenHeight / blockCount` (shrinks as blocks increase).
-
-### Expo Config Plugins
-
-**`withFullScreenAlarm`** (`app/plugins/withFullScreenAlarm.js`)
-
-- Adds `android:showWhenLocked="true"` and `android:turnScreenOn="true"` to MainActivity manifest
-- Allows Notifee's `fullScreenAction` to launch app over lock screen and wake device when alarm fires
-- Registered in `app.json` plugins array and automatically applied during prebuild
-- Android-only; safe to call on other platforms (returns config unmodified)
+**Fire-and-forget async.** `handleTargetConfirm`, `handleAlertConfirm`, `removeBlock` update state synchronously, then reschedule notifications in a background IIFE so UI stays <16ms.
 
 ---
 
-## CI/CD & Build Pipeline
+## Alert System
 
-### Pipeline Strategy
+Dual-mode, Android-first.
 
-**Two-track deployment approach:**
+### Alarm Mode (Android, primary)
 
-| Trigger               | Workflow               | Track                 | Audience         | Purpose             |
-| --------------------- | ---------------------- | --------------------- | ---------------- | ------------------- |
-| Push to `master`      | `android-internal.yml` | Internal Testing      | Dev team + QA    | Continuous testing  |
-| Create GitHub Release | `android-release.yml`  | Closed Testing (Beta) | Selected testers | Alpha/beta releases |
+Full-screen alarm UX that wakes the device and shows over lock screen. Audio (`expo-audio` looping `assets/alarm.mp3`) and vibration (local `expo-alarm-vibrator` module) are owned by `AlarmDismissModal` in-activity — Android suppresses channel sound the moment FSI launches an Activity, so the channel config is fallback only. **60s safety cap** prevents an unattended phone from sounding forever.
 
-**Workflow-scoped env vars** (NOT secrets, but only set in one workflow):
+**Notifee config quirks that matter:**
 
-- `EXPO_PUBLIC_DEBUG_LOGS=1` — enables the in-app debug log viewer. Set in `android-internal.yml` only. Never add to `android-release.yml` — production builds must ship with logging inert.
+- `fullScreenAction.launchActivity` and `pressAction.launchActivity` MUST be the fully-qualified class name (`com.yanukadeneth99.cueclock.MainActivity`). HyperOS/Android 14+ silently refuses to elevate FSI with `"default"`.
+- `vibrationPattern` must be an even-length array of strictly-positive values (e.g. `[500, 500, 500, 500]`, NOT `[0, 500, …]`). Bad pattern throws synchronously inside `createChannel`/`createTriggerNotification`.
+- Channel IDs versioned: `cue-clock-alarm-v3`, `cue-clock-notif-v3`. Android channels are immutable post-creation; v1/v2 IDs are explicitly deleted on first run.
+- Trigger uses `AlarmManager.SET_EXACT_AND_ALLOW_WHILE_IDLE` (survives Doze).
 
-### Android Internal Testing Workflow (`.github/workflows/android-internal.yml`)
+**Three modal-mount paths** (every alarm fire reaches the modal regardless of OS state):
 
-**Trigger**: Push to `master` branch
-**Runner**: Ubuntu 24.04 with Java 17, Node 22, Android SDK 35
+1. **Foreground tick** — countdown ticker at `alert:shouldFire` queues into `alertQueueRef`.
+2. **Cold start via FSI** — `notifee.getInitialNotification()` read after AsyncStorage hydration mounts modal with stored block context.
+3. **Warm resume** — alarm fires while backgrounded; ticker records into `pendingBackgroundFiresRef` (`alert:bgFireRecorded`). On `AppState=active`, ref is drained (`appState:resume:drainBgFires`) → modal mounts. Defensive `fireDate === null` path (`appState:resume:fallbackQueueModal`) covers locked-screen case where the JS ticker was suspended.
 
-**Steps**:
+**Background heads-up vibration** (`lib/alarmHandlers.ts`). When the OS downgrades FSI to a plain heads-up (Android 14+ refuses to launch Activity when screen is on + another app focused — documented, not overridable), `onBackgroundEvent` watches for `EventType.DELIVERED` on the alarm channel and starts a 1.2s `AlarmVibrator.vibrateAsAlarm(600)` loop with a 60s cap. Loop self-cancels on `AppState=active`, `DISMISSED`, or `ACTION_PRESS`.
 
-1. Checkout code
-2. Setup Java 17, Node.js 22 with npm cache
-3. Free up disk space (removes NDK, dotnet, Swift)
-4. `npm ci` in `app/`
-5. `npx expo-doctor` (continues on error)
-6. `npx expo prebuild --platform android --clean`
-7. Restrict build to `arm64-v8a` architecture
-8. Decode Base64 Firebase config → `google-services.json`
-9. Decode Base64 keystore secret → `release.keystore`
-10. Setup Gradle with persistent cache
-11. Build signed release AAB via `./gradlew bundleRelease`
-12. Upload signed AAB directly to Google Play internal testing track via service account
+**Snooze.** `MAX_SNOOZES = Number.POSITIVE_INFINITY`. Modal shows "Snoozed N times" once N > 0. `snoozeCount` resets to 0 in `handleAlertConfirm` when a new alert is configured.
 
-### Android Release Workflow (`.github/workflows/android-release.yml`)
+**Required permissions:** `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `USE_FULL_SCREEN_INTENT`, `VIBRATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED`. Runtime checks: `canScheduleExactAlarms()`, `canUseFullScreenIntent()`. Both deep-link to settings if missing.
 
-**Trigger**: GitHub Release creation/publication
-**Runner**: Ubuntu 24.04 with Java 17, Node 22, Android SDK 35
+### Notification Mode (fallback)
 
-**Steps**: Same as internal workflow, but uploads to **beta track** with release notes.
+Heads-up only, channel `cue-clock-notif-v3`. Same exact-alarm trigger.
 
-**Key difference**: Includes release notes from the GitHub Release body:
+### Web/iOS
 
-```yaml
-releaseNotes: ${{ github.event.release.body }}
-```
-
-**Manual trigger option**: Both workflows support `workflow_dispatch` for manual GitHub Actions dashboard trigger.
-
-### Required GitHub Secrets
-
-| Secret                             | Description                                             |
-| ---------------------------------- | ------------------------------------------------------- |
-| `EXPO_PUBLIC_CLARITY_KEY`          | Microsoft Clarity project ID                            |
-| `ANDROID_KEYSTORE_BASE64`          | Base64-encoded `.keystore` file                         |
-| `ANDROID_KEYSTORE_PASSWORD`        | Keystore password                                       |
-| `ANDROID_KEY_ALIAS`                | Key alias (`cue-clock-key`)                             |
-| `ANDROID_KEY_PASSWORD`             | Individual key password                                 |
-| `GOOGLE_SERVICES_JSON_BASE64`      | Base64-encoded `google-services.json` (Firebase config) |
-| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Google Cloud service account JSON for Play API          |
-| `EAS_PROJECT_ID`                   | Expo EAS project ID for official builds                 |
-| `EAS_OWNER`                        | Expo account username                                   |
-
-**Package name**: `com.yanukadeneth99.cueclock` (must match `app.json` and Google Play Console app)
-
-### Creating a Release
-
-1. Go to **GitHub** → **Releases** → **Create a new release**
-2. Enter tag name (e.g., `v1.0.0`)
-3. Set target to `master` branch
-4. Write release notes in the description (format with `## Features`, `## Bug Fixes`, etc.)
-5. ✅ Check **"This is a pre-release"** for alpha/beta testing
-6. Click **"Publish release"**
-
-→ Pipeline automatically triggers, builds signed AAB, and uploads to Google Play beta track with release notes.
+Web Notifications API → `window.alert` as final fallback. iOS uses `expo-notifications`.
 
 ---
 
-## Engineering Standards
+## ALARM-class Vibration (`modules/expo-alarm-vibrator`)
 
-### 1. Speed & Reliability (Primary Mandate)
+Local Expo native module. Dispatches `Vibrator.vibrate(VibrationEffect, AudioAttributes.USAGE_ALARM)`. Without this, RN's `Vibration.vibrate(ms)` is classified `mUsage=TOUCH` and rejected by Xiaomi/HyperOS `VibratorService` with `IGNORED_FOR_SETTINGS` when "Vibrate on Tap" is off. The ALARM usage class is gated by `alarm_vibration_intensity` (default-on across virtually all devices).
 
-- **Minimal overhead**: Avoid heavy libraries or unnecessary re-renders.
-- **Simple Designs**: Prefer flat logic over clever abstractions.
-- **Intuitive UX**: Controls must be obvious to a stressed operator.
+**API:** `AlarmVibrator.vibrateAsAlarm(durationMs)`, `AlarmVibrator.cancel()`.
 
-### 2. Styling Standards
+**Verification in logcat:** `mUsage=ALARM ... status FINISHED`. Failure mode: `mUsage=TOUCH ... IGNORED_FOR_SETTINGS` means JS still using `Vibration.vibrate()` somewhere.
 
-- **Inline Style Props**: Use for all layout and visual properties.
-- **Color Scheme**: Strictly source colors from `app/constants/colors.ts`.
-- **Picker Rendering**: Never use fixed `height` or `overflow: hidden` on `@react-native-picker/picker` containers (fixes Android clipping).
-- **Safe Area**: Always use `useSafeAreaInsets()`; never hardcode platform offsets.
-
-### 3. Coding Conventions
-
-- **TypeScript**: Strict mode enabled. Use `T[]` not `Array<T>`.
-- **Performance**: Use `useCallback` for handlers and `React.memo` on list items (`TargetBlock`).
-- **Error Handling**: Use empty or comment-only `catch` blocks for production-safe silence; no `console.log` in production.
-- **Documentation**: Exported components and functions must have JSDoc describing props/parameters.
-- **Interaction**: Use `Pressable` instead of `Button` for custom-styled elements.
-- **`any` Type Pattern**: `(window as any).Notification` and `onHoverIn/Out as any` spreads are intentional RN-Web escape hatches where no typed API exists. Do not remove these.
-
-### 4. Git Conventions
-
-- **Commit Messages**: Never add Anthropic or Claude author lines (no `Co-Authored-By` trailers) in commit messages.
-- **Branch Policy**: Always ask for confirmation before committing directly to `master`, `main`, or `production` branches.
-
-### 5. Build & Deployment Notes
-
-- **Docker removed**: Legacy `docker/` directory has been removed. Use Expo CLI (`npx expo prebuild`) for Android builds instead.
-- **Unused imports cleaned**: `app/hooks/useColorScheme.ts` was removed (RN built-in is not needed for this app's dark-only theme).
+Registered via Expo autolinking (`expo-module.config.json` + `file:` dep in `app/package.json`). Survives `expo prebuild --clean`.
 
 ---
 
-## Development Commands
+## Debug Log (`lib/debugLog.ts`, `components/DebugLogModal.tsx`)
 
-### Mobile App (`app/`)
+In-memory ring buffer (200 entries). **Gated three ways for release safety:**
+
+1. Build-time env var `EXPO_PUBLIC_DEBUG_LOGS=1` (only set by `android-internal.yml`, NEVER by `android-release.yml`).
+2. `dlog()` short-circuits to no-op when flag unset.
+3. UI: `onTestAlarm`/`onShowDebugLog` props are `undefined` in release, hiding the Help-modal row entirely.
+
+**Access on internal builds:** Help (?) → row below "About the Developer" → Test Alarm / Debug Log buttons.
+
+Log at platform/permission boundaries. Never at 1s-tick hot loops.
+
+---
+
+## Onboarding Flow (Android, first launch)
+
+Two-step wizard:
+
+1. `AndroidBackgroundHelpModal` — 6 numbered StepCards with sub-bullets and deep-links: Battery, Exact Alarms, Full-screen permission, **HyperOS Other Permissions** (Show on Lock screen + Display pop-up + Start in background), MIUI Autostart, lock-in-Recents. Color-emphasis: warning for Other Permissions, danger for Autostart.
+2. `AnalyticsConsentModal` — non-dismissable opt-in. Opens automatically when step 1 closes IF `analyticsEnabled === null`.
+
+iOS/web skip step 1.
+
+---
+
+## Expo Config Plugin
+
+`plugins/withFullScreenAlarm.js` — adds `android:showWhenLocked="true"` and `android:turnScreenOn="true"` to MainActivity. Android-only, no-op elsewhere.
+
+---
+
+## CI/CD
+
+| Trigger           | Workflow               | Track                 |
+| ----------------- | ---------------------- | --------------------- |
+| Push to `master`  | `android-internal.yml` | Internal Testing      |
+| Create GH Release | `android-release.yml`  | Closed Testing (Beta) |
+
+Both: Ubuntu 24.04, JDK 17, Node 22, Android SDK 35. Steps: `npm ci` → `expo prebuild --platform android --clean` → restrict to `arm64-v8a` → decode Firebase + keystore from Base64 secrets → `gradlew bundleRelease` → upload via Play service account.
+
+**Workflow env var:** `EXPO_PUBLIC_DEBUG_LOGS=1` set ONLY in `android-internal.yml`.
+
+Required secrets: `EXPO_PUBLIC_CLARITY_KEY`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `GOOGLE_SERVICES_JSON_BASE64`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `EAS_PROJECT_ID`, `EAS_OWNER`. Package: `com.yanukadeneth99.cueclock`.
+
+---
+
+## Local On-Device Testing (MacBook M1 → Redmi Note 12 / Android 15 / HyperOS V816)
+
+This device is the worst-case calibration target — almost every gotcha was found here. JDK 17 (Temurin) and Android SDK already installed; we pin `JAVA_HOME` per-command rather than changing the global.
+
+### One-time
 
 ```bash
-npx expo start         # Start dev server
-npx expo run:android   # Run on Android emulator/device
-npx expo run:ios       # Run on iOS simulator/device
-npm run lint           # Run ESLint
+brew install --cask android-platform-tools
+# Phone: Developer Options → USB debugging + Install via USB → plug in → Allow
+adb devices -l   # should list device as "device"
 ```
 
-### Website (`website/`)
+### Native rebuild (changed Kotlin/Java, app.json, plugins, native dep)
 
 ```bash
-npm run dev            # Start Next.js dev server
-npm run build          # Build for production
+cd app/android
+JAVA_HOME=$(/usr/libexec/java_home -v 17) \
+PATH=$(/usr/libexec/java_home -v 17)/bin:$PATH \
+./gradlew app:installDebug -x lint -x test --build-cache -PreactNativeArchitectures=arm64-v8a
 ```
 
---
+Arm64-only build cuts first-build to ~5min, incremental to ~90s.
 
-## Codebase Flavor & Conventions
+### Metro + JS hot reload
 
-### 1. Naming Conventions
+```bash
+cd app
+JAVA_HOME=$(/usr/libexec/java_home -v 17) \
+PATH=$(/usr/libexec/java_home -v 17)/bin:$PATH \
+EXPO_PUBLIC_DEBUG_LOGS=1 CI=1 \
+npx expo start --dev-client --clear
 
-- **Variables**: `camelCase` (e.g., `targetBlocks`, `fullScreen`). Booleans often use prefixes like `is` or suffixes indicating state (e.g., `isCollapsed`, `notifBlocked`, `analyticsEnabled`).
-- **Constants**: Global/magic constants are written in `UPPER_SNAKE_CASE` (e.g., `FULLSCREEN_CLOCK_HEIGHT`, `BLOCK_OVERHEAD`).
-- **Functions**: `camelCase` using action verbs (e.g., `toggleFullScreen`, `handleTargetConfirm`, `updateTargetTime`, `computeAlertFireDate`).
-- **Classes/Types**: `PascalCase` for TypeScript Interfaces and Types (e.g., `TargetBlockType`, `Props`).
+adb reverse tcp:8081 tcp:8081
+adb shell am force-stop com.yanukadeneth99.cueclock
+adb shell monkey -p com.yanukadeneth99.cueclock -c android.intent.category.LAUNCHER 1
+```
 
-### 2. Function & Class Structures
+`CI=1` avoids interactive prompts. `--clear` is required when a stale bundle is served. `EXPO_PUBLIC_DEBUG_LOGS=1` enables the in-app log button locally.
 
-- **Function Creation**: React components use standard function declarations (`export default function ComponentName()`). Internal component handlers and callbacks use Arrow Functions wrapped in `useCallback` (`const handler = useCallback(() => {}, [])`).
-- **Class Creation**: Functional components and hooks are used exclusively instead of ES6 classes.
-- **Export/Import Styles**: Default exports are preferred for main components and screens. Imports use absolute aliasing (e.g., `@/components/`, `@/constants/`).
+### Logcat (second terminal)
 
-### 3. Coding Paradigms & Quirks
+```bash
+adb logcat -c
+adb logcat \
+  ReactNativeJS:V NotifeeApiModule:V NotifeeCore:V Notifee:V \
+  NotificationService:V AlarmManager:V \
+  VibratorService:V VibratorManagerService:V Vibrator:V \
+  ActivityManager:I ActivityTaskManager:I \
+  '*:S' > /tmp/cueclock-logcat.txt
+```
 
-- **Error Handling**: Uses `try/catch` with empty or comment-only `catch` blocks for production-safe silence (`} catch { // silently fail }`). Promise `.catch(() => {})` chains are also common. No `console.log` in production.
-- **Control Flow**: Extensive use of early returns (guard clauses) to avoid deeply nested `if/else` statements.
-- **State & Rendering**: All state is lifted to parent components. Heavy reliance on `useRef` for mutable state that shouldn't trigger re-renders, and `useCallback`/`React.memo` for performance optimization.
-- **Fire-and-forget async handlers**: Time/alert mutations (e.g. `handleTargetConfirm`, `handleAlertConfirm`, `removeBlock`) apply state updates synchronously first, then reschedule notifications in a background IIFE (`(async () => { ... })()`). This keeps UI response <16ms instead of blocking on native notification APIs (~500ms).
-- **Comment Style**: JSDoc is used for exported functions and components. Inline comments explain "why" specific edge cases or platform quirks are handled.
-- **Styling**: Relies heavily on inline styles in the React Native app, combined with platform-specific checks (`Platform.OS === "web"`). The Next.js website uses Tailwind CSS.
+In-app `dlog` shows what JS sees; logcat shows what the OS does (channel vibration accept/reject, AlarmManager fires, FSI Activity launches).
+
+### Gotchas
+
+- **`INSTALL_FAILED_VERSION_DOWNGRADE`** — Play Store version installed. `adb uninstall com.yanukadeneth99.cueclock` (wipes state).
+- **HyperOS Second Space leftover** — Play refuses install citing "incompatible version" even after normal uninstall. Check `adb shell pm list users`; if `10:security space` exists, `adb shell pm uninstall --user 10 com.yanukadeneth99.cueclock`.
+- **Replug drops tunnel** — every USB unplug breaks `adb reverse`. Re-run after every reconnect.
+- **Stale bundle with `CI=1`** — Metro doesn't watch files. Kill Metro by port and restart with `--clear`.
+- **Notifee `app.notifee:core:+` not found** — `expo prebuild` regenerates `android/build.gradle` without Notifee's local Maven entry. Add to `allprojects.repositories`:
+
+  ```gradle
+  maven { url "$rootDir/../node_modules/@notifee/react-native/android/libs" }
+  ```
+
+  (TODO: convert to config plugin for durability.)
+
+- **HyperOS settings reset on reinstall** — every fresh APK install wipes per-app HyperOS toggles. Re-enable Other Permissions + Autostart + Battery unrestricted, or background/locked FSI silently fails.
+
+### Diagnostic one-liners
+
+```bash
+# Granted permissions
+adb shell dumpsys package com.yanukadeneth99.cueclock | \
+  grep -E "VIBRATE|FULL_SCREEN|POST_NOTIFICATIONS|WAKE_LOCK|SCHEDULE_EXACT|RECEIVE_BOOT"
+
+# System vibration gates (TOUCH vs ALARM vs NOTIFICATION)
+adb shell settings list system | grep -i 'vib\|haptic'
+
+# showWhenLocked / turnScreenOn on installed MainActivity
+AAPT=$(find ~/Library/Android/sdk/build-tools -name aapt2 | sort -V | tail -1)
+"$AAPT" dump xmltree app/android/app/build/outputs/apk/debug/app-debug.apk \
+  --file AndroidManifest.xml | grep -A6 "MainActivity"
+```
 
 ---
 
-## License & Security
+## Conventions
 
-- **License:** AGPL-3.0. Commercial licensing: hello@yashura.io.
-- **Security:** Not production-hardened. See `SECURITY.md` for reporting. Contact: hello@yashura.io.
+- **TypeScript strict.** `T[]` not `Array<T>`. `Pressable` not `Button`.
+- **Components.** Function declarations for default exports. Handlers in `useCallback`. `React.memo` on list items (`TargetBlock`).
+- **Error handling.** Empty/commented `catch` for production silence. No `console.log` — use `dlog` at boundaries.
+- **Naming.** `camelCase` vars/functions, `UPPER_SNAKE_CASE` constants, `PascalCase` types.
+- **Imports.** Absolute aliases (`@/components/`, `@/constants/`).
+- **`(window as any).Notification` and `onHoverIn as any`** are intentional RN-Web escape hatches — leave them.
+
+### Git
+
+- **No `Co-Authored-By: Claude`/`Anthropic` trailers in commits.** Ever.
+- **Confirm before committing to `master`/`main`/`production`.**
+
+---
+
+## License
+
+AGPL-3.0. Commercial: <hello@yashura.io>. Security reports: see `SECURITY.md`.

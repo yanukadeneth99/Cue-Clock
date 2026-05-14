@@ -423,36 +423,20 @@ export default function HomeScreen() {
     if (!Notifications) return;
     (async () => {
       try {
-        // Step 1: request the standard notification display permission
+        // Reflect the current permission state without prompting. The native
+        // notification-permission dialog and the "Allow Exact Alarms" Alert
+        // are deliberately removed — both are covered by the in-app onboarding
+        // wizard (AndroidBackgroundHelpModal), which deep-links the user to
+        // the exact settings page with clear sub-steps. Surfacing those native
+        // prompts on top of the wizard fragmented the first-launch UX.
         const { status } = await Notifications!.getPermissionsAsync();
         if (status !== "granted") {
-          const { status: newStatus } = await Notifications!.requestPermissionsAsync();
-          if (newStatus !== "granted") {
-            setNotifBlocked(true);
-            return;
-          }
+          setNotifBlocked(true);
         }
 
-        // Step 2: on Android 12+ (API 31+), also check the SCHEDULE_EXACT_ALARM
-        // permission. Without it, date-triggered notifications fire late or not at all.
-        // canScheduleExactNotificationsAsync() is available in expo-notifications SDK 51+.
-        if (Platform.OS === "android") {
-          const canExact = await canScheduleExactAlarms();
-          if (!canExact) {
-            Alert.alert(
-              "Allow Exact Alarms",
-              "To receive countdown alerts at the precise moment, Cue Clock needs permission to schedule exact alarms.\n\nTap OK to open the Alarms & Reminders settings.",
-              [
-                { text: "Later", style: "cancel" },
-                { text: "OK", onPress: () => { openAlarmPermissionSettings(); } },
-              ]
-            );
-          }
-        }
-
-        // Step 3: create the Notifee channels on Android so they're ready before
-        // the first scheduled alert fires. Both notification-mode and alarm-mode
-        // routes through Notifee on Android (see lib/alarms.ts).
+        // Create the Notifee channels on Android so they're ready before the
+        // first scheduled alert fires. Both notification-mode and alarm-mode
+        // route through Notifee on Android (see lib/alarms.ts).
         if (Platform.OS === "android") {
           await ensureNotifChannel();
           await ensureAlarmChannel();
@@ -559,8 +543,15 @@ export default function HomeScreen() {
         if (storedIs24Hour[1] === "false") setIs24Hour(false);
         if (storedAlertMode[1] === "alarm") setAlertMode("alarm");
         if (storedAnalytics[1] === null) {
-          // First launch — show consent modal
-          setConsentModalVisible(true);
+          // First launch — onboarding flow:
+          //   Step 1 (Android only): permissions/settings guide
+          //   Step 2: analytics consent
+          // On iOS/web there's no settings step, so consent runs immediately.
+          if (Platform.OS === "android") {
+            setAndroidBackgroundHelpVisible(true);
+          } else {
+            setConsentModalVisible(true);
+          }
         } else {
           setAnalyticsEnabled(storedAnalytics[1] === "true");
           if (Platform.OS === "android" && storedAndroidBackgroundHelp[1] !== "true") {
@@ -572,6 +563,20 @@ export default function HomeScreen() {
           setTargetBlocks(
             parsed.map((b) => ({
               ...b,
+              // Older persisted payloads may be missing numeric fields added in
+              // later versions. `undefined * 60` is NaN, which Luxon's
+              // `.minus({ milliseconds: NaN })` rejects synchronously and tears
+              // down the React tree (web shows a blank screen + hydration
+              // mismatch #418).
+              targetHour: Number.isFinite(b.targetHour) ? b.targetHour : new Date().getHours(),
+              targetMinute: Number.isFinite(b.targetMinute) ? b.targetMinute : new Date().getMinutes(),
+              deductMinute: Number.isFinite(b.deductMinute) ? b.deductMinute : 0,
+              deductSecond: Number.isFinite(b.deductSecond) ? b.deductSecond : 0,
+              alertMinutesBefore:
+                typeof b.alertMinutesBefore === "number" && Number.isFinite(b.alertMinutesBefore)
+                  ? b.alertMinutesBefore
+                  : null,
+              alertFired: b.alertFired ?? false,
               // `countdown` is stripped before persisting; restore a safe default
               // so the first render after rehydrate doesn't see `undefined` before
               // the 1s tick recomputes it (crashed TargetBlock.split on resume).
@@ -1112,10 +1117,6 @@ export default function HomeScreen() {
   const handleAnalyticsConsent = useCallback(async (accepted: boolean) => {
     setConsentModalVisible(false);
     await applyAnalyticsChoice(accepted);
-    if (Platform.OS === "android") {
-      await AsyncStorage.setItem("androidBackgroundHelpSeen", "true").catch(() => {});
-      setAndroidBackgroundHelpVisible(true);
-    }
   }, [applyAnalyticsChoice]);
 
   const openAppSettings = useCallback(() => {
@@ -1141,7 +1142,13 @@ export default function HomeScreen() {
   const dismissAndroidBackgroundHelp = useCallback(() => {
     setAndroidBackgroundHelpVisible(false);
     AsyncStorage.setItem("androidBackgroundHelpSeen", "true").catch(() => {});
-  }, []);
+    // Onboarding step 1 (settings) just finished. If analytics has never been
+    // asked, chain to step 2 (consent) so the operator completes setup in
+    // one continuous flow on first launch.
+    if (analyticsEnabled === null) {
+      setConsentModalVisible(true);
+    }
+  }, [analyticsEnabled]);
 
   /**
    * Diagnostic: schedule a real Notifee alarm-mode trigger 5s in the future and
@@ -1675,6 +1682,8 @@ export default function HomeScreen() {
         alertMode={alertMode}
         onToggleAlertMode={setAlertMode}
         alarmAvailable={alarmAvailable}
+        onTestAlarm={isDebugLogEnabled() ? runTestAlarm : undefined}
+        onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}
       />
 
       <AnalyticsConsentModal
@@ -1687,10 +1696,7 @@ export default function HomeScreen() {
         visible={androidBackgroundHelpVisible}
         onClose={dismissAndroidBackgroundHelp}
         onOpenAppSettings={openAppSettings}
-        onOpenBatterySettings={openBatterySettings}
         onOpenExactAlarmSettings={openExactAlarmSettings}
-        onTestAlarm={runTestAlarm}
-        onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}
       />
 
       <DebugLogModal visible={debugLogVisible} onClose={() => setDebugLogVisible(false)} />
