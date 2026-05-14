@@ -1,4 +1,4 @@
-# Cue Clock — Developer Reference
+# Cue Clock - Developer Reference
 
 > ⚠ **Public repo.** No secrets, internal URLs, unreleased names, or partner info in commits.
 
@@ -17,7 +17,7 @@
 app/                            React Native (Expo SDK 55) mobile app
   app/                          Expo Router screens
     _layout.tsx                 Root layout, analytics init, useFonts gate
-    index.tsx                   HomeScreen — all primary state lives here
+    index.tsx                   HomeScreen - all primary state lives here
   components/                   UI primitives + modals (see below)
     Header                      brand dot + wordmark + Help/Settings/Fullscreen
     ClockRail                   two-zone live clocks (tap → ZonePickerModal)
@@ -26,18 +26,18 @@ app/                            React Native (Expo SDK 55) mobile app
     QueuedRow                   compact secondary cue row (list is auto-sorted by remaining time)
     AddCueButton                pinned-bottom accent CTA, safe-area aware
     OnAirView                   fullscreen broadcast layout, auto-dimming exit
-    ModalShell                  shared bottom-sheet chrome (handle / title / body / footer); wraps content in `KeyboardAvoidingView` (padding iOS / height Android) so any TextInput stays above the keyboard — every modal in the app inherits this
+    ModalShell                  shared bottom-sheet chrome (handle / title / body / footer); wraps content in `KeyboardAvoidingView` (padding iOS / height Android) so any TextInput stays above the keyboard - every modal in the app inherits this
     CueEditModal                unified add/edit cue sheet
     ZonePickerModal             search + 23-IANA-tz picker
     SettingsModal               grouped settings (preferences / zones / display / alerts / system)
-    HelpModal                   "How to use" — glossary + Android warning + about
+    HelpModal                   "How to use" - glossary + Android warning + about
     AndroidBackgroundHelpModal  5-step setup wizard (Xiaomi/MIUI critical)
     AlarmDismissModal           full-screen alarm; snooze count is informational
     AnalyticsConsentModal       first-launch opt-in
     AnalyticsOptOutModal        Settings → Turn off confirmation
     DebugLogModal               internal-build ring-buffer viewer
     TimeStepper                 chevron stepper + tap-to-native-picker (hm / ms)
-    TargetBlock, AlertModal,    legacy editor surfaces — only the web /
+    TargetBlock, AlertModal,    legacy editor surfaces - only the web /
       ClockPicker, ConfirmModal   fullscreen-web branch still consumes them
   lib/
     alarms.ts                   Notifee wrapper (schedule/cancel/channels/permissions)
@@ -54,7 +54,7 @@ app/                            React Native (Expo SDK 55) mobile app
 website/                        Next.js 16 landing page (Tailwind 4, GSAP)
                                 Tokens mirror app/constants/colors.ts via @theme in globals.css
 .github/workflows/
-  android-internal.yml          push→master → signed AAB → Play internal track
+  android-internal.yml          push→master → signed AAB → Play internal track (For internal testing)
   android-release.yml           GH Release → signed AAB → Play beta track
 ```
 
@@ -64,7 +64,7 @@ website/                        Next.js 16 landing page (Tailwind 4, GSAP)
 
 React Native 0.83, Expo SDK 55, TypeScript 5.9 (strict), Expo Router, Luxon 3, AsyncStorage, `@notifee/react-native` 9.1.8, `expo-audio` 55, `@react-native-firebase/*`, `@microsoft/react-native-clarity`.
 
-Styling: inline `style={...}` only (no StyleSheet libraries). Colors via `app/constants/colors.ts`, typography via `app/constants/typography.ts`. Safe area via `useSafeAreaInsets()` — never hardcode insets.
+Styling: inline `style={...}` only (no StyleSheet libraries). Colors via `app/constants/colors.ts`, typography via `app/constants/typography.ts`. Safe area via `useSafeAreaInsets()` - never hardcode insets.
 
 ---
 
@@ -74,9 +74,9 @@ Three-tier surface stack: `page` (#0a0b0e) → `background` (#1a1d23, default sc
 
 **Typography.** Inter for all UI (weights 400/500/600/700 loaded via `@expo-google-fonts/inter`). Space Mono for all numerics (`SpaceMono-Regular.ttf` bundled). Always pair clock/countdown displays with `fontVariantNumeric: 'tabular-nums'` (already wired in the `text.*` presets in `constants/typography.ts`) so digit changes don't shift layout.
 
-**Continuous urgency scaling.** The home `PrimaryCard` and `OnAirView` hero card interpolate font size, padding, and the amber halo radius from a single `urgencyFactor(total)` — 0 when calm (>5 min), 1 in the last minute, linear across the 300s→60s window. Border and background swap discretely at the warn / crit thresholds; the size growth is continuous. Implemented in `app/lib/urgency.ts`.
+**Continuous urgency scaling.** The home `PrimaryCard` and `OnAirView` hero card interpolate font size, padding, and the amber halo radius from a single `urgencyFactor(total)` - 0 when calm (>5 min), 1 in the last minute, linear across the 300s→60s window. Border and background swap discretely at the warn / crit thresholds; the size growth is continuous. Implemented in `app/lib/urgency.ts`.
 
-**Web parity.** The Next.js landing (`website/`) mirrors the same tokens via Tailwind 4 `@theme` in `src/app/globals.css`. New token names: `bg-page`, `bg-bg-app`, `bg-card`, `border-card-border`, `text-fg`, `text-fg-muted`, `text-accent`, `bg-zone1`, `bg-zone2`, `bg-countdown`, `bg-danger`, plus `cta-primary` and `surface-card` component utilities. The legacy Material-3 token block is still present, labelled "slated for removal" — kept only to keep the `/privacy` page rendering until it's restyled.
+**Web parity.** The Next.js landing (`website/`) mirrors the same tokens via Tailwind 4 `@theme` in `src/app/globals.css`. New token names: `bg-page`, `bg-bg-app`, `bg-card`, `border-card-border`, `text-fg`, `text-fg-muted`, `text-accent`, `bg-zone1`, `bg-zone2`, `bg-countdown`, `bg-danger`, plus `cta-primary` and `surface-card` component utilities. The legacy Material-3 token block is still present, labelled "slated for removal" - kept only to keep the `/privacy` page rendering until it's restyled.
 
 **Render branches.** `app/app/index.tsx` ships three render paths:
 
@@ -92,15 +92,15 @@ Three-tier surface stack: `page` (#0a0b0e) → `background` (#1a1d23, default sc
 
 Key persisted keys: `zone1`, `zone2`, `targetBlocks`, `is24Hour`, `alertMode` (`"notification"` | `"alarm"`), `showSeconds`, `soundAlerts`, `keepOn`, `analyticsEnabled` (3-state: null = unasked), `androidBackgroundHelpSeen`.
 
-**Reset preserves `analyticsEnabled`** — `doReset` uses `multiRemove` on specific keys, not `clear`.
+**Reset preserves `analyticsEnabled`** - `doReset` uses `multiRemove` on specific keys, not `clear`.
 
 **Countdown.** `setInterval(1s)` in HomeScreen. Per-block: target time in zone, +1 day if past, minus deduction, formatted `HH:MM:SS`. Skip React reconciliation if formatted string didn't change.
 
 **Fire-and-forget async.** `handleTargetConfirm`, `handleAlertConfirm`, `removeBlock` update state synchronously, then reschedule notifications in a background IIFE so UI stays <16ms.
 
-**Passed-cue rotation.** `computeCountdown` rolls past zero to ~86400 (next-day rollover), so "expired" isn't a native state. `HomeScreen` watches the per-block prev≤5s → next≥86395s transition each tick via `lastTotalsRef` and stamps the id into a `passedAt: Record<id, ms>` map. The render path filters those ids out of the primary/queue split and renders them as `PassedStrip`s above the (new) primary card — promoting the next cue automatically. Entries auto-evict after `PASSED_TTL_MS` (5 min); × on the strip evicts immediately. Strips never reschedule alarms — they're a pure presentation layer.
+**Passed-cue rotation.** `computeCountdown` rolls past zero to ~86400 (next-day rollover), so "expired" isn't a native state. `HomeScreen` watches the per-block prev≤5s → next≥86395s transition each tick via `lastTotalsRef` and stamps the id into a `passedAt: Record<id, ms>` map. The render path filters those ids out of the primary/queue split and renders them as `PassedStrip`s above the (new) primary card - promoting the next cue automatically. Entries auto-evict after `PASSED_TTL_MS` (5 min); × on the strip evicts immediately. Strips never reschedule alarms - they're a pure presentation layer.
 
-**Auto-sort by remaining time.** The render path sorts active blocks by `computeCountdown(...).total` ascending each tick — soonest cue is always primary, the rest fall in line below it. Zones are not part of the sort key: `computeCountdown` already projects each target into its own zone, so `total` is in real wall-clock seconds-from-now regardless of where the cue lives. The persisted order in `targetBlocks` no longer drives display; cues are reordered purely visually as time advances.
+**Auto-sort by remaining time.** The render path sorts active blocks by `computeCountdown(...).total` ascending each tick - soonest cue is always primary, the rest fall in line below it. Zones are not part of the sort key: `computeCountdown` already projects each target into its own zone, so `total` is in real wall-clock seconds-from-now regardless of where the cue lives. The persisted order in `targetBlocks` no longer drives display; cues are reordered purely visually as time advances.
 
 ---
 
@@ -110,7 +110,7 @@ Dual-mode, Android-first.
 
 ### Alarm Mode (Android, primary)
 
-Full-screen alarm UX that wakes the device and shows over lock screen. Audio (`expo-audio` looping `assets/alarm.mp3`) and vibration (local `expo-alarm-vibrator` module) are owned by `AlarmDismissModal` in-activity — Android suppresses channel sound the moment FSI launches an Activity, so the channel config is fallback only. **60s safety cap** prevents an unattended phone from sounding forever.
+Full-screen alarm UX that wakes the device and shows over lock screen. Audio (`expo-audio` looping `assets/alarm.mp3`) and vibration (local `expo-alarm-vibrator` module) are owned by `AlarmDismissModal` in-activity - Android suppresses channel sound the moment FSI launches an Activity, so the channel config is fallback only. **60s safety cap** prevents an unattended phone from sounding forever.
 
 **Notifee config quirks that matter:**
 
@@ -121,20 +121,21 @@ Full-screen alarm UX that wakes the device and shows over lock screen. Audio (`e
 
 **Four modal-mount paths** (every alarm fire reaches the modal regardless of OS state):
 
-1. **Foreground tick** — countdown ticker at `alert:shouldFire` queues into `alertQueueRef`. **Match is exact-second** (`totalMinutes === alertMinutesBefore && seconds === 0`), NOT a `<= trigger` range check. Snooze reschedules at a non-aligned timestamp (e.g. snooze at 10:38:03 → fire at 10:39:03); a range check would refire instantly because `remaining ≤ alertMinutesBefore*60` already holds for the rest of the snooze window.
-2. **Foreground Notifee delivery** — covers snoozed alarms whose non-minute-aligned fire times slip past path 1. `lib/alarmHandlers.ts` exposes a module-level `fgDeliveredQueue: { notifId, blockId }[]`; `onForegroundEvent` pushes on `EventType.DELIVERED` for `cue-clock-alarm-v3`. The 1-Hz ticker drains the queue and calls `setAlarmDismissData` directly (bypasses `alertQueueRef` because that drain is keyed on `targetBlocks` changes and a snoozed fire doesn't necessarily mutate the block). Cancellation of the OS heads-up goes through `pendingCancelRef` *after* the modal mounts — NOT synchronously inside the handler (synchronous cancel breaks FSI activity launches; we tried). Bridge is a mutable array because `alarmHandlers.ts` registers at module load before React mounts, so it cannot capture a React setter.
-3. **Cold start via FSI** — `notifee.getInitialNotification()` read after AsyncStorage hydration mounts modal with stored block context.
-4. **Warm resume** — alarm fires while backgrounded; ticker records into `pendingBackgroundFiresRef` (`alert:bgFireRecorded`). On `AppState=active`, ref is drained (`appState:resume:drainBgFires`) → modal mounts. Defensive `fireDate === null` path (`appState:resume:fallbackQueueModal`) covers locked-screen case where the JS ticker was suspended.
+1. **Foreground tick** - countdown ticker at `alert:shouldFire` queues into `alertQueueRef`. **Match is exact-second** (`totalMinutes === alertMinutesBefore && seconds === 0`), NOT a `<= trigger` range check. Snooze reschedules at a non-aligned timestamp (e.g. snooze at 10:38:03 → fire at 10:39:03); a range check would refire instantly because `remaining ≤ alertMinutesBefore*60` already holds for the rest of the snooze window.
+2. **Foreground Notifee delivery** - covers snoozed alarms whose non-minute-aligned fire times slip past path 1. `lib/alarmHandlers.ts` exposes a module-level `fgDeliveredQueue: { notifId, blockId }[]`; `onForegroundEvent` pushes on `EventType.DELIVERED` for `cue-clock-alarm-v3`. The 1-Hz ticker drains the queue and calls `setAlarmDismissData` directly (bypasses `alertQueueRef` because that drain is keyed on `targetBlocks` changes and a snoozed fire doesn't necessarily mutate the block). Cancellation of the OS heads-up goes through `pendingCancelRef` _after_ the modal mounts - NOT synchronously inside the handler (synchronous cancel breaks FSI activity launches; we tried). Bridge is a mutable array because `alarmHandlers.ts` registers at module load before React mounts, so it cannot capture a React setter.
+3. **Cold start via FSI** - `notifee.getInitialNotification()` read after AsyncStorage hydration mounts modal with stored block context.
+4. **Warm resume** - alarm fires while backgrounded; ticker records into `pendingBackgroundFiresRef` (`alert:bgFireRecorded`). On `AppState=active`, ref is drained (`appState:resume:drainBgFires`) → modal mounts. Defensive `fireDate === null` path (`appState:resume:fallbackQueueModal`) covers locked-screen case where the JS ticker was suspended.
 
-**Fullscreen (On-Air) interaction.** RN `<Modal>` on Android is a separate Dialog window; when the host activity is in immersive mode (status-bar hidden by OnAirView's `<StatusBar hidden translucent>`), HyperOS/MIUI silently drops the Dialog on mount, so the AlarmDismissModal would never appear over OnAirView. The effect at `index.tsx:1198-1210` watches `alarmDismissData`: on transition to non-null while `fullScreen` is true, it captures the pre-alarm value into `fullScreenBeforeAlarmRef` and calls `setFullScreen(false)`. Both `handleAlarmDismiss` and `handleAlarmSnooze` consume the ref to restore fullscreen, so the operator drops back into On-Air automatically — including across repeated snooze cycles.
+**Fullscreen (On-Air) interaction.** RN `<Modal>` on Android is a separate Dialog window; when the host activity is in immersive mode (status-bar hidden by OnAirView's `<StatusBar hidden translucent>`), HyperOS/MIUI silently drops the Dialog on mount, so the AlarmDismissModal would never appear over OnAirView. The effect at `index.tsx:1198-1210` watches `alarmDismissData`: on transition to non-null while `fullScreen` is true, it captures the pre-alarm value into `fullScreenBeforeAlarmRef` and calls `setFullScreen(false)`. Both `handleAlarmDismiss` and `handleAlarmSnooze` consume the ref to restore fullscreen, so the operator drops back into On-Air automatically - including across repeated snooze cycles.
 
-**Scheduling source of truth — `rescheduleInBackground` (`app/index.tsx`).** All CueEditModal save paths (add-new, edit-existing-with-alert, edit-existing-to-add-alert) MUST flow through this helper. It builds `tempBlock = { ...(block ?? createDefaultBlock(id)), ...patch, id }` and gates on the **merged** `tempBlock.alertMinutesBefore`, NOT `block.alertMinutesBefore`. Two regressions this guards against:
+**Scheduling source of truth - `rescheduleInBackground` (`app/index.tsx`).** All CueEditModal save paths (add-new, edit-existing-with-alert, edit-existing-to-add-alert) MUST flow through this helper. It builds `tempBlock = { ...(block ?? createDefaultBlock(id)), ...patch, id }` and gates on the **merged** `tempBlock.alertMinutesBefore`, NOT `block.alertMinutesBefore`. Two regressions this guards against:
+
 1. **Add-new**: `targetBlocksRef.current` doesn't contain the brand-new block yet (React state flush is async). A `find()` returns undefined → silent bail if the bail condition consults the ref.
 2. **Edit-to-add-alert**: the pre-patch block has `alertMinutesBefore === null`. A bail keyed on the pre-patch value drops the schedule for cues gaining their first alert.
 
-Symptom of either regression: cues appear configured in the UI and the JS-side `fallbackQueueModal` fires on resume, but `alarms:scheduleAlarm:perms` / `:ok` never log because Notifee was never invoked — so locked-screen FSI has nothing to elevate.
+Symptom of either regression: cues appear configured in the UI and the JS-side `fallbackQueueModal` fires on resume, but `alarms:scheduleAlarm:perms` / `:ok` never log because Notifee was never invoked - so locked-screen FSI has nothing to elevate.
 
-**Background heads-up vibration** (`lib/alarmHandlers.ts`). When the OS downgrades FSI to a plain heads-up (Android 14+ refuses to launch Activity when screen is on + another app focused — documented, not overridable), `onBackgroundEvent` watches for `EventType.DELIVERED` on the alarm channel and starts a 1.2s `AlarmVibrator.vibrateAsAlarm(600)` loop with a 60s cap. Loop self-cancels on `AppState=active`, `DISMISSED`, or `ACTION_PRESS`.
+**Background heads-up vibration** (`lib/alarmHandlers.ts`). When the OS downgrades FSI to a plain heads-up (Android 14+ refuses to launch Activity when screen is on + another app focused - documented, not overridable), `onBackgroundEvent` watches for `EventType.DELIVERED` on the alarm channel and starts a 1.2s `AlarmVibrator.vibrateAsAlarm(600)` loop with a 60s cap. Loop self-cancels on `AppState=active`, `DISMISSED`, or `ACTION_PRESS`.
 
 **Snooze.** `MAX_SNOOZES = Number.POSITIVE_INFINITY`. Modal shows "Snoozed N times" once N > 0. `snoozeCount` resets to 0 in `handleAlertConfirm` when a new alert is configured.
 
@@ -180,8 +181,8 @@ Log at platform/permission boundaries. Never at 1s-tick hot loops.
 
 Two-step wizard:
 
-1. `AndroidBackgroundHelpModal` — bottom sheet (`ModalShell`) with 5 numbered step cards: (01) Disable activity pause, (02) Set battery to Unrestricted, (03) Allow exact alarms, (04) ⚠️ **Xiaomi/Redmi/POCO Autostart** (amber-bordered critical card), (05) Lock in Recents. Below the steps: an "Open directly" group of ghost rows that deep-link to App settings, Battery, Alarms & reminders, HyperOS Other Permissions, and MIUI Autostart. Internal builds additionally see a "Verify it works → Run test" card and a "View debug log" row. **Continue button is scroll-gated** — starts as a muted "Scroll down" label, flips to the accent "Got it" pill once the user reaches the bottom (16px slack). `onLayout` auto-unlocks when content fits without scrolling.
-2. `AnalyticsConsentModal` — non-dismissable opt-in. Opens automatically when step 1 closes IF `analyticsEnabled === null`.
+1. `AndroidBackgroundHelpModal` - bottom sheet (`ModalShell`) with 5 numbered step cards: (01) Disable activity pause, (02) Set battery to Unrestricted, (03) Allow exact alarms, (04) ⚠️ **Xiaomi/Redmi/POCO Autostart** (amber-bordered critical card), (05) Lock in Recents. Below the steps: an "Open directly" group of ghost rows that deep-link to App settings, Battery, Alarms & reminders, HyperOS Other Permissions, and MIUI Autostart. Internal builds additionally see a "Verify it works → Run test" card and a "View debug log" row. **Continue button is scroll-gated** - starts as a muted "Scroll down" label, flips to the accent "Got it" pill once the user reaches the bottom (16px slack). `onLayout` auto-unlocks when content fits without scrolling.
+2. `AnalyticsConsentModal` - non-dismissable opt-in. Opens automatically when step 1 closes IF `analyticsEnabled === null`.
 
 The native notification-permission dialog and the "Allow Exact Alarms" Alert are deliberately suppressed on first launch (in `app/index.tsx` we only call `getPermissionsAsync`, never `requestPermissionsAsync`). The wizard's deep-links cover the same ground without fragmenting the UX.
 
@@ -191,7 +192,7 @@ iOS/web skip step 1.
 
 ## Expo Config Plugin
 
-`plugins/withFullScreenAlarm.js` — adds `android:showWhenLocked="true"` and `android:turnScreenOn="true"` to MainActivity. Android-only, no-op elsewhere.
+`plugins/withFullScreenAlarm.js` - adds `android:showWhenLocked="true"` and `android:turnScreenOn="true"` to MainActivity. Android-only, no-op elsewhere.
 
 ---
 
@@ -212,7 +213,7 @@ Required secrets: `EXPO_PUBLIC_CLARITY_KEY`, `ANDROID_KEYSTORE_BASE64`, `ANDROID
 
 ## Local On-Device Testing (MacBook M1 → Redmi Note 12 / Android 15 / HyperOS V816)
 
-This device is the worst-case calibration target — almost every gotcha was found here. JDK 17 (Temurin) and Android SDK already installed; we pin `JAVA_HOME` per-command rather than changing the global.
+This device is the worst-case calibration target - almost every gotcha was found here. JDK 17 (Temurin) and Android SDK already installed; we pin `JAVA_HOME` per-command rather than changing the global.
 
 ### One-time
 
@@ -233,13 +234,13 @@ PATH=$(/usr/libexec/java_home -v 17)/bin:$PATH \
 
 Arm64-only build cuts first-build to ~5min, incremental to ~90s.
 
-### Cold reload (preferred — use this for every JS change)
+### Cold reload (preferred - use this for every JS change)
 
 **Never trust Metro's warm cache.** A stale delta-bundle has silently shipped old code more than once. The one-shot script kills Metro, restarts it with `--clear`, reverse-forwards the port, and relaunches the app:
 
 ```bash
 ./app/scripts/cold-reload.sh           # keep app data (cues, settings, consent flag)
-./app/scripts/cold-reload.sh --wipe    # also wipe app data via `pm clear` — re-fires onboarding
+./app/scripts/cold-reload.sh --wipe    # also wipe app data via `pm clear` - re-fires onboarding
 ```
 
 Metro logs stream to `/tmp/cueclock-metro.log` (`tail -f` it). Stop Metro later with `lsof -ti :8081 | xargs kill -9`.
@@ -264,11 +265,11 @@ In-app `dlog` shows what JS sees; logcat shows what the OS does (channel vibrati
 
 ### Gotchas
 
-- **`INSTALL_FAILED_VERSION_DOWNGRADE`** — Play Store version installed. `adb uninstall com.yanukadeneth99.cueclock` (wipes state).
-- **HyperOS Second Space leftover** — Play refuses install citing "incompatible version" even after normal uninstall. Check `adb shell pm list users`; if `10:security space` exists, `adb shell pm uninstall --user 10 com.yanukadeneth99.cueclock`.
-- **Replug drops tunnel** — every USB unplug breaks `adb reverse`. Re-run after every reconnect.
-- **Stale bundle with `CI=1`** — Metro doesn't watch files. Kill Metro by port and restart with `--clear`.
-- **Notifee `app.notifee:core:+` not found** — `expo prebuild` regenerates `android/build.gradle` without Notifee's local Maven entry. Add to `allprojects.repositories`:
+- **`INSTALL_FAILED_VERSION_DOWNGRADE`** - Play Store version installed. `adb uninstall com.yanukadeneth99.cueclock` (wipes state).
+- **HyperOS Second Space leftover** - Play refuses install citing "incompatible version" even after normal uninstall. Check `adb shell pm list users`; if `10:security space` exists, `adb shell pm uninstall --user 10 com.yanukadeneth99.cueclock`.
+- **Replug drops tunnel** - every USB unplug breaks `adb reverse`. Re-run after every reconnect.
+- **Stale bundle with `CI=1`** - Metro doesn't watch files. Kill Metro by port and restart with `--clear`.
+- **Notifee `app.notifee:core:+` not found** - `expo prebuild` regenerates `android/build.gradle` without Notifee's local Maven entry. Add to `allprojects.repositories`:
 
   ```gradle
   maven { url "$rootDir/../node_modules/@notifee/react-native/android/libs" }
@@ -276,7 +277,7 @@ In-app `dlog` shows what JS sees; logcat shows what the OS does (channel vibrati
 
   (TODO: convert to config plugin for durability.)
 
-- **HyperOS settings reset on reinstall** — every fresh APK install wipes per-app HyperOS toggles. Re-enable Other Permissions + Autostart + Battery unrestricted, or background/locked FSI silently fails.
+- **HyperOS settings reset on reinstall** - every fresh APK install wipes per-app HyperOS toggles. Re-enable Other Permissions + Autostart + Battery unrestricted, or background/locked FSI silently fails.
 
 ### Diagnostic one-liners
 
@@ -300,10 +301,10 @@ AAPT=$(find ~/Library/Android/sdk/build-tools -name aapt2 | sort -V | tail -1)
 
 - **TypeScript strict.** `T[]` not `Array<T>`. `Pressable` not `Button`.
 - **Components.** Function declarations for default exports. Handlers in `useCallback`. `React.memo` on list items (`TargetBlock`).
-- **Error handling.** Empty/commented `catch` for production silence. No `console.log` — use `dlog` at boundaries.
+- **Error handling.** Empty/commented `catch` for production silence. No `console.log` - use `dlog` at boundaries.
 - **Naming.** `camelCase` vars/functions, `UPPER_SNAKE_CASE` constants, `PascalCase` types.
 - **Imports.** Absolute aliases (`@/components/`, `@/constants/`).
-- **`(window as any).Notification` and `onHoverIn as any`** are intentional RN-Web escape hatches — leave them.
+- **`(window as any).Notification` and `onHoverIn as any`** are intentional RN-Web escape hatches - leave them.
 
 ### Git
 
