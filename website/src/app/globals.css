@@ -15,7 +15,7 @@
 
   /* Surface stack */
   --color-page:           #0a0b0e;
-  --color-bg-app:         #1a1d23; /* product surface */
+  --color-bg-app:         #1B1D24; /* product surface */
   --color-card:           #252830;
   --color-card-border:    #353840;
   --color-divider:        #3f434d;
@@ -36,18 +36,18 @@
   --color-danger:         #ef4444;
 
   /* Radii */
-  --radius-row:     0.625rem; /* 10px — queued mini */
-  --radius-setting: 0.75rem;  /* 12px — settings rows */
-  --radius-card:    0.875rem; /* 14px — queued / CTA */
-  --radius-rail:    1rem;     /* 16px — clock rail */
-  --radius-primary: 1.25rem;  /* 20px — primary card */
-  --radius-sheet:   1.375rem; /* 22px — sheet top */
+  --radius-row:     0.625rem; /* 10px - queued mini */
+  --radius-setting: 0.75rem;  /* 12px - settings rows */
+  --radius-card:    0.875rem; /* 14px - queued / CTA */
+  --radius-rail:    1rem;     /* 16px - clock rail */
+  --radius-primary: 1.25rem;  /* 20px - primary card */
+  --radius-sheet:   1.375rem; /* 22px - sheet top */
 
   /* Shadows */
   --shadow-cta:  0 8px 24px rgb(96 165 250 / 0.13);
   --shadow-halo: 0 0 0 4px rgb(251 191 36 / 0.13);
 
-  /* Fonts — paired with next/font CSS variables set in layout.tsx */
+  /* Fonts - paired with next/font CSS variables set in layout.tsx */
   --font-sans:    var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono:    var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   /* Legacy aliases kept so existing `font-body` / `font-headline` classes still resolve */
@@ -115,7 +115,7 @@
     scroll-behavior: smooth;
   }
   body {
-    background-color: #101319; /* keep until page.tsx adopts bg-page */
+    background-color: #1B1D24;
     color: #e1e2ea;
     font-family: var(--font-inter), sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -129,7 +129,7 @@
   }
 }
 
-/* ─── Motion tokens — match the in-app animation spec ─────────────── */
+/* ─── Motion tokens - match the in-app animation spec ─────────────── */
 @layer base {
   @keyframes cue-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
@@ -148,7 +148,7 @@
   .animate-sheet-up   { animation: sheet-up 240ms cubic-bezier(0.22, 1, 0.36, 1); }
 }
 
-/* ─── Components — canonical primitives for the upcoming page rebuild ─ */
+/* ─── Components - canonical primitives for the upcoming page rebuild ─ */
 @layer components {
   .chip {
     display: inline-flex;
@@ -161,7 +161,7 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
-  /* Primary CTA — mirrors the in-app "Add a cue" button. */
+  /* Primary CTA - mirrors the in-app "Add a cue" button. */
   .cta-primary {
     background: var(--color-accent);
     color: var(--color-page);
@@ -170,7 +170,7 @@
     font-weight: 600;
     letter-spacing: -0.005em;
   }
-  /* Surface card — matches QueuedRow / SettingRow chrome. */
+  /* Surface card - matches QueuedRow / SettingRow chrome. */
   .surface-card {
     background: var(--color-card);
     border: 1px solid var(--color-card-border);

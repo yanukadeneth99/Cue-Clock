@@ -11,13 +11,13 @@ if (typeof window !== "undefined") {
 }
 
 /**
- * Landing page for Cue Clock — restyled to the same design language as the
+ * Landing page for Cue Clock - restyled to the same design language as the
  * mobile app:
  *
  *  - Three-tier surface stack: page (deepest) → bg-app (sections) → card
  *  - Single blue accent for CTA/brand; amber `countdown` reserved for the
  *    time-urgency demo only; red `danger` only on destructive copy
- *  - Inter for all UI, Space Mono for all numerics (tabular-nums) — applied
+ *  - Inter for all UI, Space Mono for all numerics (tabular-nums) - applied
  *    via `font-sans` / `font-mono` Tailwind utilities, which resolve to the
  *    `--font-inter` / `--font-space-mono` CSS vars set in layout.tsx
  *
@@ -27,15 +27,12 @@ if (typeof window !== "undefined") {
  */
 export default function Home() {
   const container = useRef<HTMLDivElement>(null);
+  // SSR-safe: server and first client render both produce "web", matching the
+  // server-rendered HTML. UA detection runs after mount (see useEffect below)
+  // so hydration succeeds before we promote to the detected platform.
   const [selectedPlatform, setSelectedPlatform] = useState<
     "web" | "android" | "ios"
-  >(() => {
-    if (typeof window === "undefined") return "ios";
-    const ua = navigator.userAgent;
-    if (/android/i.test(ua)) return "android";
-    if (/iphone|ipad|ipod/i.test(ua)) return "ios";
-    return "web";
-  });
+  >("web");
   const [contributors, setContributors] = useState<
     { id: number; login: string; avatar_url: string; html_url: string; contributions: number }[]
   >([]);
@@ -47,88 +44,42 @@ export default function Home() {
     lastCommit: string | null;
     lastWorkflowStatus: string | null;
     lastWorkflowDuration: number | null;
+    latestReleaseTag: string | null;
+    latestReleaseUrl: string | null;
   } | null>(null);
 
   useEffect(() => {
-    const fetchContributors = async () => {
+    // Promote to the UA-detected platform *after* hydration. Doing this in
+    // useState's initializer caused a hydration mismatch because the server
+    // can't see navigator.userAgent. The setState-in-effect rule normally
+    // warns against this pattern, but here it's the correct shape: we're
+    // syncing one-shot from an external, non-reactive source (navigator) that
+    // isn't readable during SSR. `useSyncExternalStore` doesn't fit because
+    // the value must also be user-overridable via the platform tabs.
+    const ua = navigator.userAgent;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (/android/i.test(ua)) setSelectedPlatform("android");
+    else if (/iphone|ipad|ipod/i.test(ua)) setSelectedPlatform("ios");
+
+    let cancelled = false;
+    (async () => {
       try {
-        const response = await fetch(
-          "https://api.github.com/repos/yanukadeneth99/Cue-Clock/contributors",
-        );
-        if (response.ok) {
-          const data: unknown = await response.json();
-          if (Array.isArray(data)) {
-            setContributors(
-              data.filter(
-                (c): c is { id: number; login: string; avatar_url: string; html_url: string; contributions: number } =>
-                  c !== null &&
-                  typeof c === "object" &&
-                  typeof (c as Record<string, unknown>).html_url === "string" &&
-                  ((c as Record<string, unknown>).html_url as string).startsWith(
-                    "https://github.com/",
-                  ),
-              ),
-            );
-          }
-        }
+        const res = await fetch("/api/github");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          repoStats: typeof repoStats;
+          contributors: typeof contributors;
+        };
+        if (cancelled) return;
+        if (data.repoStats) setRepoStats(data.repoStats);
+        if (data.contributors) setContributors(data.contributors);
       } catch {
-        // Non-critical — contributors section degrades gracefully on fetch failure
+        // Non-critical - stats and contributors degrade gracefully
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-
-    const fetchRepoStats = async () => {
-      try {
-        const [repoRes, commitsRes, runsRes] = await Promise.all([
-          fetch("https://api.github.com/repos/yanukadeneth99/Cue-Clock"),
-          fetch("https://api.github.com/repos/yanukadeneth99/Cue-Clock/commits/master"),
-          fetch(
-            "https://api.github.com/repos/yanukadeneth99/Cue-Clock/actions/runs?per_page=1&status=completed",
-          ),
-        ]);
-
-        const repo = repoRes.ok ? ((await repoRes.json()) as Record<string, unknown>) : null;
-        const commit = commitsRes.ok ? ((await commitsRes.json()) as Record<string, unknown>) : null;
-        const runs = runsRes.ok ? ((await runsRes.json()) as Record<string, unknown>) : null;
-
-        let lastCommit: string | null = null;
-        if (commit?.commit && typeof commit.commit === "object") {
-          const c = commit.commit as Record<string, unknown>;
-          if (c.committer && typeof c.committer === "object") {
-            const committer = c.committer as Record<string, unknown>;
-            if (typeof committer.date === "string") lastCommit = committer.date;
-          }
-        }
-
-        let lastWorkflowStatus: string | null = null;
-        let lastWorkflowDuration: number | null = null;
-        if (runs?.workflow_runs && Array.isArray(runs.workflow_runs) && runs.workflow_runs.length > 0) {
-          const run = runs.workflow_runs[0] as Record<string, unknown>;
-          if (typeof run.conclusion === "string") lastWorkflowStatus = run.conclusion;
-          if (typeof run.created_at === "string" && typeof run.updated_at === "string") {
-            const duration = Math.round(
-              (new Date(run.updated_at as string).getTime() -
-                new Date(run.created_at as string).getTime()) /
-                1000,
-            );
-            lastWorkflowDuration = duration;
-          }
-        }
-
-        setRepoStats({
-          stars: typeof repo?.stargazers_count === "number" ? repo.stargazers_count : 0,
-          forks: typeof repo?.forks_count === "number" ? repo.forks_count : 0,
-          openIssues: typeof repo?.open_issues_count === "number" ? repo.open_issues_count : 0,
-          lastCommit,
-          lastWorkflowStatus,
-          lastWorkflowDuration,
-        });
-      } catch {
-        // Non-critical — stats degrade gracefully
-      }
-    };
-
-    fetchContributors();
-    fetchRepoStats();
   }, []);
 
   const platforms = {
@@ -181,6 +132,7 @@ export default function Home() {
         ease: "sine.inOut",
       });
 
+      const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
       gsap.fromTo(
         ".hero-mockup",
         { opacity: 1, scale: 1, xPercent: 0 },
@@ -192,7 +144,8 @@ export default function Home() {
             scrub: 1,
             onUpdate: (self) => float.timeScale(1 - self.progress),
           },
-          xPercent: 6,
+          xPercent: isDesktop ? 6 : 0,
+          transformOrigin: "center center",
           opacity: 0.7,
           scale: 0.94,
           ease: "none",
@@ -231,7 +184,7 @@ export default function Home() {
       ref={container}
       className="selection:bg-accent/30 min-h-screen overflow-x-hidden bg-page text-fg"
     >
-      {/* Top nav — brand dot + wordmark on the left, anchor links on the right.
+      {/* Top nav - brand dot + wordmark on the left, anchor links on the right.
           Mirrors the app's `Header` component vocabulary. */}
       <nav className="sticky top-0 z-50 bg-page/85 backdrop-blur border-b border-card-border/60">
         <div className="flex justify-between items-center w-full px-4 md:px-6 py-4 max-w-screen-2xl mx-auto">
@@ -260,7 +213,7 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Mobile menu — full-screen overlay outside nav to avoid stacking issues */}
+      {/* Mobile menu - full-screen overlay outside nav to avoid stacking issues */}
       <div
         className={`fixed inset-0 z-[10000] md:hidden transition-all duration-300 flex flex-col bg-page ${
           mobileMenuOpen
@@ -314,19 +267,18 @@ export default function Home() {
               <div className="inline-flex items-center gap-2 mb-6">
                 <span className="w-2 h-2 rounded-full bg-accent" />
                 <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
-                  Broadcast-grade · v1.5.0
+                  Broadcast-grade
                 </span>
               </div>
-              <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.05] tracking-[-0.02em] mb-6 text-fg">
-                A timer dependable
+              <h1 className="font-sans text-[32px] sm:text-5xl md:text-6xl font-semibold leading-[1.05] tracking-[-0.02em] mb-6 text-fg break-words">
+                Simple Timer
                 <br />
-                enough for{" "}
-                <span className="text-accent">live broadcast.</span>
+                <span className="text-accent">for Live Broadcasts</span>
               </h1>
               <p className="text-fg-muted text-base md:text-lg max-w-lg mb-10 leading-relaxed mx-auto lg:mx-0">
-                Minimal, distraction-free clock for broadcast professionals. Two timezones,
-                unlimited countdowns, full-screen alarms that wake the device — kept free
-                and open source.
+                A minimal, distraction-free clock app built specifically for broadcast
+                professionals who need to monitor multiple timezones and track countdown
+                timers simultaneously.
               </p>
               <div className="flex flex-wrap justify-center lg:justify-start gap-3">
                 <button
@@ -335,36 +287,36 @@ export default function Home() {
                       .getElementById("download")
                       ?.scrollIntoView({ behavior: "smooth" })
                   }
-                  className="cta-primary px-7 py-4 text-sm inline-flex items-center gap-2.5 cursor-pointer"
+                  className="cta-primary px-7 py-4 text-sm inline-flex items-center justify-center gap-2.5 cursor-pointer transition-all hover:brightness-110 active:scale-[0.98] w-full sm:w-auto"
                 >
                   Download free
                   <span className="material-symbols-outlined text-base">arrow_downward</span>
                 </button>
                 <button
                   onClick={() => window.open("https://live.cueclock.app", "_blank")}
-                  className="px-7 py-4 text-sm font-semibold tracking-[-0.005em] rounded-[14px] border border-card-border text-fg hover:bg-card transition-colors cursor-pointer"
+                  className="px-7 py-4 text-sm font-semibold tracking-[-0.005em] rounded-[14px] border border-card-border text-fg hover:bg-card transition-colors cursor-pointer w-full sm:w-auto text-center"
                 >
                   Open web app
                 </button>
               </div>
             </div>
 
-            {/* Hero device mock — rebuilds the in-app PrimaryCard so the
+            {/* Hero device mock - rebuilds the in-app PrimaryCard so the
                 marketing visual stays in sync with the product. */}
-            <div className="hero-mockup relative lg:scale-105 will-change-transform mt-12 lg:mt-0">
+            <div className="hero-mockup relative will-change-transform mt-12 lg:mt-0">
               <div className="absolute -inset-6 bg-accent/[0.06] blur-3xl rounded-full pointer-events-none" />
-              <div className="relative max-w-[460px] mx-auto bg-bg-app rounded-[28px] p-3 shadow-2xl border border-card-border/70">
-                {/* Inner viewport — mirrors the app's safe area */}
+              <div className="relative w-full max-w-[460px] mx-auto bg-bg-app rounded-[28px] p-3 shadow-2xl border border-card-border/70 overflow-hidden">
+                {/* Inner viewport - mirrors the app's safe area */}
                 <div className="bg-bg-app rounded-[20px] overflow-hidden">
                   {/* App header */}
-                  <div className="flex items-center justify-between px-6 pt-5 pb-3">
+                  <div className="flex items-center justify-between px-6 pt-4 pb-2">
                     <div className="flex items-center gap-2.5">
                       <span className="w-2 h-2 rounded-full bg-accent" />
                       <span className="text-[15px] font-semibold tracking-[-0.01em] text-fg">
                         Cue Clock
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 text-fg-muted">
+                    <div className="flex items-center gap-2.5 text-fg-muted">
                       <span className="material-symbols-outlined text-[18px]">help</span>
                       <span className="material-symbols-outlined text-[18px]">settings</span>
                       <span className="material-symbols-outlined text-[20px]">fullscreen</span>
@@ -372,7 +324,7 @@ export default function Home() {
                   </div>
 
                   {/* Clock rail */}
-                  <div className="mx-5 mt-1 mb-7 rounded-[16px] bg-card border border-card-border px-5 py-4 grid grid-cols-2">
+                  <div className="mx-5 mt-1 mb-4 rounded-[16px] bg-card border border-card-border px-5 py-3 grid grid-cols-2">
                     <ClockCol
                       city="London"
                       time="14:24"
@@ -396,7 +348,7 @@ export default function Home() {
                   </div>
 
                   {/* Primary cue card */}
-                  <div className="mx-5 mb-4 rounded-[20px] bg-card border border-card-border px-6 pt-6 pb-5 relative overflow-hidden">
+                  <div className="mx-5 mb-3 rounded-[20px] bg-card border border-card-border px-6 pt-4 pb-4 relative overflow-hidden">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-countdown" />
@@ -412,14 +364,14 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="font-sans text-[19px] font-semibold tracking-[-0.01em] text-fg leading-tight">
-                      Segment 01 — Show open
+                      Segment 01 - Show open
                     </div>
-                    <div className="text-center mt-5">
-                      <span className="font-mono font-bold text-[58px] leading-none tracking-[-0.03em] text-countdown tabular-nums">
+                    <div className="text-center mt-3">
+                      <span className="font-mono font-bold text-[44px] sm:text-[52px] leading-none tracking-[-0.03em] text-countdown tabular-nums">
                         04:52
                       </span>
                     </div>
-                    <div className="flex items-center gap-3.5 mt-6 pt-4 border-t border-card-border">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-4 pt-3 border-t border-card-border">
                       <Meta label="Target" value="14:30" />
                       <Divider />
                       <Meta label="City" value="London" dotClass="bg-zone1" />
@@ -441,15 +393,14 @@ export default function Home() {
                     <span className="font-sans text-[12px] font-semibold uppercase tracking-[0.04em] text-fg-muted">
                       Queued
                     </span>
-                    <span className="text-[12px] font-medium text-fg-muted">2 cues</span>
+                    <span className="text-[12px] font-medium text-fg-muted">1 cue</span>
                   </div>
-                  <div className="mx-5 space-y-2.5 pb-6">
+                  <div className="mx-5 space-y-2.5 pb-3">
                     <QueuedRow name="Sponsor break" zone="London" dot="zone1" time="14:45" left="21m left" alert="5m" />
-                    <QueuedRow name="Live cross — Studio 3" zone="New York" dot="zone2" time="15:10" left="46m left" />
                   </div>
 
                   {/* Add CTA */}
-                  <div className="px-5 pb-6 pt-1">
+                  <div className="px-5 pb-4 pt-1">
                     <div className="cta-primary py-3.5 text-center text-[15px] inline-flex items-center justify-center gap-2 w-full">
                       <span className="material-symbols-outlined text-[18px]">add</span>
                       Add a cue
@@ -474,7 +425,7 @@ export default function Home() {
 
         {/* ─── Banner ────────────────────────────────────────────── */}
         <div className="bg-bg-app border-y border-card-border">
-          <div className="max-w-screen-xl mx-auto flex flex-wrap justify-center gap-8 md:gap-24 px-4 md:px-6 py-5">
+          <div className="max-w-screen-xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-12 lg:gap-24 px-4 md:px-6 py-5 place-items-center">
             <BannerItem icon="volunteer_activism" label="Completely free · no ads" />
             <BannerItem icon="code" label="Fully open-source · AGPL-3.0" />
             <BannerItem icon="shield" label="No tracking without consent" />
@@ -497,7 +448,7 @@ export default function Home() {
                 </h2>
               </div>
               <p className="text-fg-muted max-w-sm text-base md:text-lg">
-                Every feature is designed to keep the operator&apos;s attention on the show — not
+                Every feature is designed to keep the operator&apos;s attention on the show - not
                 on the clock app.
               </p>
             </div>
@@ -533,7 +484,7 @@ export default function Home() {
                     overly complicated and cost a fortune.
                   </p>
                   <p>
-                    Great tools should be accessible to everyone — independent producers,
+                    Great tools should be accessible to everyone - independent producers,
                     high-scale teams alike. Cost-free and ad-free, kept open source.
                   </p>
                 </div>
@@ -574,7 +525,7 @@ export default function Home() {
                   <button
                     key={p}
                     onClick={() => setSelectedPlatform(p)}
-                    className={`flex flex-col items-center gap-2 transition-all ${
+                    className={`flex flex-col items-center gap-2 transition-all cursor-pointer ${
                       selectedPlatform === p
                         ? "scale-105"
                         : "opacity-55 hover:opacity-90"
@@ -636,7 +587,7 @@ export default function Home() {
               <p className="text-fg-muted text-base md:text-lg leading-relaxed mb-8">
                 Every line is public. No black boxes, no hidden telemetry beyond what you
                 explicitly consent to. Fork it, audit it, self-host it. Broadcast
-                infrastructure should be something the community owns — not rents.
+                infrastructure should be something the community owns - not rents.
               </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
@@ -698,19 +649,21 @@ export default function Home() {
                   ))
                 )}
               </div>
-              <a
-                href="https://github.com/yanukadeneth99/Cue-Clock"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-sans text-[13px] font-semibold uppercase tracking-[0.18em] text-accent hover:underline"
-              >
-                View source code{" "}
-                <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-              </a>
+              <div className="flex justify-center md:justify-start">
+                <a
+                  href="https://github.com/yanukadeneth99/Cue-Clock"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="cta-primary inline-flex items-center gap-2.5 px-7 py-4 text-sm transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
+                >
+                  View source code
+                  <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                </a>
+              </div>
             </div>
             <div>
-              <h3 className="font-sans text-xl font-semibold mb-6 text-fg">Contributors</h3>
-              <div className="flex flex-wrap gap-3">
+              <h3 className="font-sans text-xl font-semibold mb-6 text-fg text-center md:text-left">Contributors</h3>
+              <div className="flex flex-wrap justify-center md:justify-start gap-3">
                 {contributors.length > 0 ? (
                   contributors.map((c) => (
                     <a
@@ -741,6 +694,35 @@ export default function Home() {
                   </div>
                 )}
               </div>
+              {repoStats?.latestReleaseTag ? (
+                <div className="mt-8 flex justify-center md:justify-start">
+                <a
+                  href={
+                    repoStats.latestReleaseUrl ??
+                    "https://github.com/yanukadeneth99/Cue-Clock/releases"
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-accent/60 transition-colors group text-left"
+                  aria-label={`Latest release ${repoStats.latestReleaseTag} - view on GitHub`}
+                >
+                  <span className="material-symbols-outlined text-accent text-[20px]">
+                    new_releases
+                  </span>
+                  <div className="flex flex-col leading-tight">
+                    <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
+                      Latest release
+                    </span>
+                    <span className="font-mono tabular-nums text-[15px] font-semibold text-accent">
+                      {repoStats.latestReleaseTag}
+                    </span>
+                  </div>
+                  <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-accent transition-colors">
+                    open_in_new
+                  </span>
+                </a>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -752,7 +734,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <span className="w-2 h-2 rounded-full bg-accent" />
             <span className="font-sans text-[13px] font-medium text-fg-muted">
-              Cue Clock · v1.5.0 · AGPL-3.0
+              Cue Clock · AGPL-3.0
             </span>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -762,7 +744,7 @@ export default function Home() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Made by{" "}
+              Made with <span aria-hidden="true">❤️</span> by{" "}
               <span className="text-accent underline underline-offset-4">YASHURA</span>
             </a>
             <div className="flex items-center gap-3">
@@ -862,9 +844,9 @@ function ClockCol({
         <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
         <span className={`text-[12px] font-medium ${textClass}`}>{city}</span>
       </div>
-      <div className="font-mono tabular-nums text-[34px] font-bold tracking-[-0.04em] text-fg mt-2 leading-none">
+      <div className="font-mono tabular-nums text-[24px] sm:text-[34px] font-bold tracking-[-0.04em] text-fg mt-2 leading-none">
         {time}
-        <span className="text-fg-muted text-[20px]">:{seconds}</span>
+        <span className="text-fg-muted text-[15px] sm:text-[20px]">:{seconds}</span>
         {ampm ? (
           <span className="font-sans text-fg-muted text-[15px] font-medium ml-1.5">
             {ampm}
@@ -990,7 +972,7 @@ const FEATURES: { title: string; icon: string; description: string; tone: "accen
   {
     title: "Persistent state",
     icon: "save",
-    description: "Cues, zones, and preferences survive restarts — no re-entering setup before every show.",
+    description: "Cues, zones, and preferences survive restarts - no re-entering setup before every show.",
     tone: "accent",
   },
   {

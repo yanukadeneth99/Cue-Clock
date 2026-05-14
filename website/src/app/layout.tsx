@@ -21,7 +21,6 @@ const jsonLd = {
       "applicationSubCategory": "Broadcast Studio Clock",
       "operatingSystem": "Web, Android, iOS",
       "browserRequirements": "Requires JavaScript. Modern evergreen browser.",
-      "softwareVersion": "1.0",
       "description": "A minimal, distraction-free clock app built specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously. Completely free and open-source.",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "availability": "https://schema.org/InStock" },
       "author": { "@id": "https://yashura.io/#org" },
@@ -68,7 +67,7 @@ const jsonLd = {
       "@id": "https://cueclock.app/#website",
       "url": "https://cueclock.app",
       "name": "Cue Clock",
-      "description": "Official site for Cue Clock — a free, open-source broadcast studio clock and countdown timer.",
+      "description": "Official site for Cue Clock - a free, open-source broadcast studio clock and countdown timer.",
       "publisher": { "@id": "https://yashura.io/#org" },
       "inLanguage": "en-US",
     },
@@ -97,7 +96,7 @@ const jsonLd = {
           "name": "Who is Cue Clock for?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Cue Clock is built for broadcast professionals — TV and radio gallery operators, vision mixers, producers, live-stream directors, podcast hosts, and studio crews who need a reliable, no-frills timing tool during live production.",
+            "text": "Cue Clock is built for broadcast professionals - TV and radio gallery operators, vision mixers, producers, live-stream directors, podcast hosts, and studio crews who need a reliable, no-frills timing tool during live production.",
           },
         },
         {
@@ -248,10 +247,34 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        {/*
+          Dev-only CSP that permits `unsafe-eval`. React 19's dev bundle calls
+          eval() once on startup to reconstruct async stack traces for DevTools;
+          if the environment blocks it (browser extension CSP, strict sandbox)
+          React logs a one-time warning. Production builds never use eval, so
+          this meta is gated on NODE_ENV and never ships to users.
+        */}
+        {process.env.NODE_ENV === "development" ? (
+          <meta
+            httpEquiv="Content-Security-Policy"
+            content="script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+          />
+        ) : null}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
+        {/*
+          Material Symbols is a ligature icon font: glyphs are resolved from
+          text like "settings", "help", "fullscreen". With `display=swap`, the
+          fallback font renders the ligature *source text* until the icon font
+          loads — so users briefly see the literal words "settings help
+          fullscreen" before the glyphs appear. `display=block` hides those
+          spots (for up to ~3s) instead of showing wrong text, which is the
+          right trade-off for an icon font even though Next.js flags it.
+          The `no-page-custom-font` disable is for using <link> instead of
+          next/font (Material Symbols isn't supported by next/font/google).
+        */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
         <link rel="icon" href="/logo_cropped.png" type="image/png" />
         <link rel="apple-touch-icon" href="/logo_cropped.png" />
         <script
@@ -259,7 +282,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
         />
       </head>
-      <body className={`${spaceMono.variable} ${inter.variable} font-body bg-surface text-on-surface antialiased`}>
+      <body className={`${spaceMono.variable} ${inter.variable} font-body bg-bg-app text-fg antialiased`}>
         {children}
       </body>
     </html>
