@@ -2,6 +2,8 @@
 
 **Time. Under Control.**
 
+<img src="https://i.imgur.com/Sg65LvA.png" width="100">
+
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](./LICENSE)
 [![Android Internal](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml)
 [![Android Release](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-release.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-release.yml)
