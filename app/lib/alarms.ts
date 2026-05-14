@@ -6,7 +6,9 @@ import type { TargetBlockType } from "@/components/TargetBlock";
 import { dlog } from "@/lib/debugLog";
 
 export const SNOOZE_MS = 60_000; // 1 minute
-export const MAX_SNOOZES = 5;
+// Effectively unlimited: broadcast operators may need to snooze repeatedly while
+// preparing for a cue. The legacy cap (5) was too restrictive for that workflow.
+export const MAX_SNOOZES = Number.POSITIVE_INFINITY;
 // Bumped to v2 so Android creates a fresh channel with sound + vibration locked
 // in. Older installs may have a v1 channel created without these settings; once
 // a channel exists, Android freezes those properties — renaming forces a refresh.
@@ -193,11 +195,11 @@ function buildAlarmAndroid(
     sound: "default",
     vibrationPattern: [500, 500, 500, 500, 500, 500],
     bypassDnd: true,
-    fullScreenAction: { id: "default", launchActivity: "default" },
+    fullScreenAction: { id: "default", launchActivity: "com.yanukadeneth99.cueclock.MainActivity" },
     loopSound: true,
     ongoing: true,
     autoCancel: false,
-    pressAction: { id: "default", launchActivity: "default" },
+    pressAction: { id: "default", launchActivity: "com.yanukadeneth99.cueclock.MainActivity" },
     actions: [
       ...(snoozeCount < MAX_SNOOZES
         ? [{ title: "Snooze 1 min", pressAction: { id: "snooze" } }]
@@ -216,7 +218,7 @@ function buildNotifAndroid(enums: ReturnType<typeof getNotifeeEnums>): any {
     visibility: AndroidVisibility.PUBLIC ?? 1,
     sound: "default",
     vibrationPattern: [250, 250, 250, 250],
-    pressAction: { id: "default", launchActivity: "default" },
+    pressAction: { id: "default", launchActivity: "com.yanukadeneth99.cueclock.MainActivity" },
   };
 }
 

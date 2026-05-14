@@ -4,10 +4,10 @@
 
 This application is under active development.
 
-| Version       | Supported |
-| ------------- | --------- |
-| `main` branch | Yes       |
-| All others    | No        |
+| Version         | Supported |
+| --------------- | --------- |
+| `master` branch | Yes       |
+| All others      | No        |
 
 ## Reporting a Vulnerability
 

@@ -2,16 +2,18 @@ import { colors } from "@/constants/colors";
 import { MAX_SNOOZES } from "@/lib/alarms";
 import { dlog } from "@/lib/debugLog";
 import { useAudioPlayer } from "expo-audio";
+import AlarmVibrator from "expo-alarm-vibrator";
 import React, { useEffect } from "react";
-import { Modal, Platform, Pressable, Text, Vibration, View } from "react-native";
+import { Modal, Platform, Pressable, Text, View } from "react-native";
 
 // 60s safety cap so an unattended phone doesn't sound forever during a live show.
 const MAX_ALARM_DURATION_MS = 60_000;
-// Pulse Vibration every 1.2s. Each call vibrates for VIBRATION_DURATION_MS.
-// We deliberately use RN's Vibration.vibrate(ms) (which maps to bare
-// Vibrator.vibrate(long)) instead of expo-haptics, because Xiaomi/MIUI's
-// VibrationEffect HAL silently no-ops VibrationEffect.createPredefined()
-// while reliably honoring the simpler legacy API.
+// Pulse vibration every 1.2s. Each call vibrates for VIBRATION_DURATION_MS.
+// We use the local expo-alarm-vibrator native module which dispatches with
+// AudioAttributes.USAGE_ALARM. This routes through the system's "alarm
+// vibration" gate (default-on across most devices including Xiaomi/MIUI),
+// bypassing the per-user "Vibrate on Tap" / haptic-feedback toggle that
+// silently suppresses RN's Vibration.vibrate() (mUsage=TOUCH).
 const VIBRATION_INTERVAL_MS = 1_200;
 const VIBRATION_DURATION_MS = 600;
 const ALARM_SOURCE = require("../assets/alarm.mp3");
@@ -58,9 +60,9 @@ export default function AlarmDismissModal({
 
     let vibrateTickCount = 0;
     const triggerVibration = () => {
-      if (Platform.OS === "web") return;
+      if (Platform.OS !== "android") return;
       try {
-        Vibration.vibrate(VIBRATION_DURATION_MS);
+        AlarmVibrator.vibrateAsAlarm(VIBRATION_DURATION_MS);
         vibrateTickCount += 1;
         if (vibrateTickCount === 1 || vibrateTickCount % 5 === 0) {
           dlog("alarmModal:vibrate:tick", { tick: vibrateTickCount, dur: VIBRATION_DURATION_MS });
@@ -88,14 +90,14 @@ export default function AlarmDismissModal({
       dlog("alarmModal:safetyCap");
       try { player.pause(); } catch {}
       if (vibrateInterval) clearInterval(vibrateInterval);
-      Vibration.cancel();
+      try { AlarmVibrator.cancel(); } catch {}
     }, MAX_ALARM_DURATION_MS);
 
     return () => {
       cancelled = true;
       if (safetyTimer) clearTimeout(safetyTimer);
       if (vibrateInterval) clearInterval(vibrateInterval);
-      try { Vibration.cancel(); } catch {}
+      try { AlarmVibrator.cancel(); } catch {}
       try { player.pause(); } catch {}
       dlog("alarmModal:unmount");
     };
@@ -150,9 +152,9 @@ export default function AlarmDismissModal({
           {minutes} minute{minutes === 1 ? "" : "s"} before target
         </Text>
 
-        {canSnooze && (
+        {snoozeCount > 0 && (
           <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center" }}>
-            Snooze ({MAX_SNOOZES - snoozeCount} remaining)
+            Snoozed {snoozeCount} time{snoozeCount === 1 ? "" : "s"}
           </Text>
         )}
 

@@ -49,6 +49,7 @@ For a deeper setup guide (optional env vars, native builds, signing), see [`../D
 | Persistence   | AsyncStorage                             |
 | Notifications | @notifee/react-native (alarm + scheduling) + expo-notifications |
 | Audio (alarm) | expo-audio (looped in-activity playback) |
+| Vibration     | Local `expo-alarm-vibrator` native module (ALARM-class via AudioAttributes) |
 | Analytics     | Microsoft Clarity (opt-in, GDPR consent) |
 
 ---
@@ -63,8 +64,9 @@ app/
 ├── components/     # UI components (ClockPicker, TargetBlock, modals)
 ├── constants/      # colors.ts, timezones.ts
 ├── hooks/          # Shared React hooks
-├── lib/            # analytics.ts and other shared modules
-├── assets/         # Icons, splash, fonts (SpaceMono)
+├── lib/            # analytics.ts, alarms.ts, alarmHandlers.ts, debugLog.ts
+├── modules/        # Local Expo modules (expo-alarm-vibrator)
+├── assets/         # Icons, splash, fonts (SpaceMono), alarm.mp3
 └── scripts/        # Maintenance utilities
 ```
 

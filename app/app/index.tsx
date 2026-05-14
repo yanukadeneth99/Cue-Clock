@@ -324,6 +324,13 @@ export default function HomeScreen() {
   // We queue them here because the setTargetBlocks updater is a pure function and
   // cannot perform async work (cancelBlockNotification) directly.
   const pendingCancelRef = useRef<(string | null | undefined)[]>([]);
+  // Holds alerts that fired while the app was backgrounded. We drain them on
+  // AppState 'active' transition so the in-app alarm modal mounts even when FSI
+  // didn't elevate to MainActivity (vendor downgrade) or the operator returned
+  // to the app via the launcher rather than tapping the heads-up.
+  const pendingBackgroundFiresRef = useRef<
+    { id: number; name: string; minutes: number; snoozeCount: number }[]
+  >([]);
   const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirror of targetBlocks for use in async callbacks without stale closure issues
   const targetBlocksRef = useRef<TargetBlockType[]>([createDefaultBlock(1)]);
@@ -341,17 +348,52 @@ export default function HomeScreen() {
     const subscription = AppState.addEventListener("change", (nextState) => {
       dlog("appState:change", { next: nextState });
       if (nextState !== "active") return;
+
+      // Drain alarms that fired while we were backgrounded. In alarm mode this
+      // mounts the in-app AlarmDismissModal; in notification mode we just clear
+      // the block's alert state since the native heads-up already handled it.
+      const drainedBgFires = pendingBackgroundFiresRef.current.splice(0);
+      const firedBlockIds = new Set(drainedBgFires.map((f) => f.id));
+      if (drainedBgFires.length > 0) {
+        dlog("appState:resume:drainBgFires", { count: drainedBgFires.length });
+        if (Platform.OS === "android" && alertMode === "alarm") {
+          drainedBgFires.forEach((f) => alertQueueRef.current.push(f));
+        }
+      }
+
       setTargetBlocks((blocks) => {
         let anyChanged = false;
         const next = blocks.map((block) => {
           if (block.alertMinutesBefore === null || block.alertFired) return block;
+          // Block has a recorded background fire — finalize state.
+          if (firedBlockIds.has(block.id)) {
+            pendingCancelRef.current.push(block.notificationId);
+            anyChanged = true;
+            return { ...block, alertFired: true, alertMinutesBefore: null, notificationId: null };
+          }
+          // Defensive: catch the case where JS shouldFire didn't run (locked
+          // screen suspending the JS ticker, or Doze killing it before fire
+          // time). The block still has alertMinutesBefore set, alertFired
+          // false, but the alert moment is now in the past — so fireDate
+          // returns null. Mount the modal in alarm mode so FSI-launched apps
+          // still see the alarm UX.
           const zone = block.targetZone === "zone1" ? zone1 : zone2;
           const fireDate = computeAlertFireDate(block, zone);
-          // fireDate === null means the fire time is in the past — native already fired.
-          // Push the old notification ID to pendingCancelRef so the dangling scheduled
-          // notification is cancelled before it fires spuriously on the next interval tick.
           if (fireDate === null) {
             pendingCancelRef.current.push(block.notificationId);
+            if (
+              Platform.OS === "android" &&
+              alertMode === "alarm" &&
+              block.alertMinutesBefore !== null
+            ) {
+              dlog("appState:resume:fallbackQueueModal", { blockId: block.id });
+              alertQueueRef.current.push({
+                id: block.id,
+                name: block.name,
+                minutes: block.alertMinutesBefore,
+                snoozeCount: block.snoozeCount ?? 0,
+              });
+            }
             anyChanged = true;
             return { ...block, alertFired: true, alertMinutesBefore: null, notificationId: null };
           }
@@ -361,7 +403,7 @@ export default function HomeScreen() {
       });
     });
     return () => subscription.remove();
-  }, [zone1, zone2]);
+  }, [zone1, zone2, alertMode]);
 
   // Request notification permissions on mount
   useEffect(() => {
@@ -685,10 +727,19 @@ export default function HomeScreen() {
                 updates.alertMinutesBefore = null;
                 updates.notificationId = null;
                 changed = true;
+              } else {
+                // Backgrounded: record that this fire happened so we can mount the
+                // in-app modal when the app returns to active. FSI can't be relied on
+                // (vendor downgrade) and the user might open the app from the launcher
+                // rather than tapping the heads-up.
+                pendingBackgroundFiresRef.current.push({
+                  id: block.id,
+                  name: block.name,
+                  minutes: block.alertMinutesBefore,
+                  snoozeCount: block.snoozeCount ?? 0,
+                });
+                dlog("alert:bgFireRecorded", { blockId: block.id });
               }
-              // Backgrounded: do NOT mutate state. Let the OS-scheduled notification
-              // fire. When the user taps the heads-up / full-screen, app reopens and
-              // getInitialNotification surfaces the alarm payload.
             }
 
             // Reset alertFired when countdown rolls over (next day)
@@ -818,7 +869,7 @@ export default function HomeScreen() {
     setTargetBlocks((blocks) =>
       blocks.map((b) =>
         b.id === id
-          ? { ...b, alertMinutesBefore: minutes, isAlertModalVisible: false, alertFired: false }
+          ? { ...b, alertMinutesBefore: minutes, isAlertModalVisible: false, alertFired: false, snoozeCount: 0 }
           : b
       )
     );
@@ -1101,10 +1152,26 @@ export default function HomeScreen() {
    */
   const runTestAlarm = useCallback(async () => {
     if (Platform.OS !== "android") return;
-    dlog("test:runTestAlarm:start");
+    const isAlarm = alertMode === "alarm";
+    dlog("test:runTestAlarm:start", { mode: alertMode });
+    // Alarm mode: directly mount the in-app AlarmDismissModal with test data.
+    // This exercises the full alarm UX (sound + vibration + dismiss/snooze)
+    // without depending on the OS to deliver a full-screen intent — which
+    // Android always downgrades to heads-up when the app is foregrounded.
+    // The countdown pipeline still tests OS-side scheduling via real blocks.
+    if (isAlarm) {
+      setAlarmDismissData({
+        blockId: 99999,
+        name: "Test Alarm",
+        minutes: 0,
+        snoozeCount: 0,
+      });
+      return;
+    }
     // Call Notifee directly (bypassing scheduleAlarm's swallowing try/catch) so
-    // the real native error surfaces in the Alert dialog. Mirrors the production
-    // alarm config from lib/alarms.ts.
+    // the real native error surfaces in the Alert dialog. Branches by alertMode:
+    // alarm → full-screen + loop sound (cue-clock-alarm-v3), notification →
+    // standard heads-up (cue-clock-notif-v3). Mirrors lib/alarms.ts config.
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const notifeeMod = require("@notifee/react-native");
@@ -1122,39 +1189,56 @@ export default function HomeScreen() {
       const perm = await notifee.getNotificationSettings();
       const authStatus = perm?.authorizationStatus;
 
+      const channelId = isAlarm ? "cue-clock-alarm-v3" : "cue-clock-notif-v3";
+      const channelName = isAlarm ? "Countdown Alarms" : "Countdown Alerts";
+      const channelVibrationPattern = isAlarm
+        ? [500, 500, 500, 500]
+        : [250, 250, 250, 250];
+
       // Force fresh channel.
-      try { await notifee.deleteChannel("cue-clock-alarm-v3"); } catch {}
+      try { await notifee.deleteChannel(channelId); } catch {}
       await notifee.createChannel({
-        id: "cue-clock-alarm-v3",
-        name: "Countdown Alarms",
+        id: channelId,
+        name: channelName,
         importance: AndroidImportance?.HIGH ?? 4,
         sound: "default",
         vibration: true,
-        vibrationPattern: [500, 500, 500, 500],
-        bypassDnd: true,
+        vibrationPattern: channelVibrationPattern,
+        bypassDnd: isAlarm,
         visibility: AndroidVisibility?.PUBLIC ?? 1,
       });
+
+      const androidAlarmConfig = {
+        channelId,
+        category: AndroidCategory?.ALARM ?? "alarm",
+        importance: AndroidImportance?.HIGH ?? 4,
+        visibility: AndroidVisibility?.PUBLIC ?? 1,
+        sound: "default",
+        vibrationPattern: [500, 500, 500, 500, 500, 500],
+        bypassDnd: true,
+        fullScreenAction: { id: "default", launchActivity: "com.yanukadeneth99.cueclock.MainActivity" },
+        loopSound: true,
+        ongoing: true,
+        autoCancel: false,
+        pressAction: { id: "default", launchActivity: "com.yanukadeneth99.cueclock.MainActivity" },
+      };
+      const androidNotifConfig = {
+        channelId,
+        category: AndroidCategory?.REMINDER ?? "reminder",
+        importance: AndroidImportance?.HIGH ?? 4,
+        visibility: AndroidVisibility?.PUBLIC ?? 1,
+        sound: "default",
+        vibrationPattern: [250, 250, 250, 250],
+        pressAction: { id: "default", launchActivity: "com.yanukadeneth99.cueclock.MainActivity" },
+      };
 
       const fireDate = new Date(Date.now() + 5_000);
       const id = await notifee.createTriggerNotification(
         {
-          title: "Test Alarm",
+          title: isAlarm ? "Test Alarm" : "Test Notification",
           body: "If you can see this, Notifee scheduling works.",
           data: { blockId: "99999", alertMinutesBefore: "0", snoozeCount: "0" },
-          android: {
-            channelId: "cue-clock-alarm-v3",
-            category: AndroidCategory?.ALARM ?? "alarm",
-            importance: AndroidImportance?.HIGH ?? 4,
-            visibility: AndroidVisibility?.PUBLIC ?? 1,
-            sound: "default",
-            vibrationPattern: [500, 500, 500, 500, 500, 500],
-            bypassDnd: true,
-            fullScreenAction: { id: "default", launchActivity: "default" },
-            loopSound: true,
-            ongoing: true,
-            autoCancel: false,
-            pressAction: { id: "default", launchActivity: "default" },
-          },
+          android: isAlarm ? androidAlarmConfig : androidNotifConfig,
         },
         {
           type: TriggerType?.TIMESTAMP ?? 0,
@@ -1166,10 +1250,10 @@ export default function HomeScreen() {
         },
       );
 
-      dlog("test:runTestAlarm:scheduled", { id, exact, fs, authStatus });
+      dlog("test:runTestAlarm:scheduled", { id, mode: alertMode, exact, fs, authStatus });
       Alert.alert(
-        "Test alarm scheduled",
-        `ID: ${id}\nExact alarms: ${exact}\nFull-screen: ${fs}\nAuth status: ${authStatus}\n\nLock your screen now. Alarm should fire in 5 seconds.\n\nIf nothing fires:\n• MIUI Autostart ON\n• Lock from Recents`,
+        isAlarm ? "Test alarm scheduled" : "Test notification scheduled",
+        `Mode: ${alertMode}\nID: ${id}\nExact alarms: ${exact}\nFull-screen: ${fs}\nAuth status: ${authStatus}\n\nFires in 5 seconds.${isAlarm ? "\n\nLock the screen now to test full-screen alarm." : ""}`,
       );
     } catch (err: any) {
       dlog("test:runTestAlarm:error", { msg: err?.message ?? String(err) });
@@ -1178,7 +1262,7 @@ export default function HomeScreen() {
         `Native error: ${err?.message ?? String(err)}\n\nStack:\n${err?.stack?.slice?.(0, 400) ?? "(none)"}`,
       );
     }
-  }, []);
+  }, [alertMode]);
 
   const resetAll = useCallback(() => {
     if (Platform.OS === "web") {

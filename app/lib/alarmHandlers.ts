@@ -3,14 +3,68 @@
 // inside React components, so Android can invoke onBackgroundEvent while the
 // app process is killed.
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
+import AlarmVibrator from "expo-alarm-vibrator";
 import {
+  ALARM_CHANNEL_ID,
   cancelAlarm,
   scheduleAlarmFromData,
   SNOOZE_MS,
   MAX_SNOOZES,
 } from "./alarms";
 import { dlog } from "./debugLog";
+
+// Background heads-up vibration loop. When an alarm-channel notification is
+// DELIVERED while the app is backgrounded and the OS downgrades FSI to a plain
+// heads-up (Android 14+ policy when screen is on and another app has focus),
+// we drive ALARM-class vibration ourselves so the operator still feels the
+// alarm. Cancelled when the app returns to foreground (the in-app modal takes
+// over) or when the user dismisses/acts on the notification.
+const BG_VIBRATION_INTERVAL_MS = 1_200;
+const BG_VIBRATION_DURATION_MS = 600;
+// 60s safety cap so an unattended phone doesn't buzz forever.
+const BG_VIBRATION_MAX_MS = 60_000;
+let bgVibrationInterval: ReturnType<typeof setInterval> | null = null;
+let bgVibrationTimeout: ReturnType<typeof setTimeout> | null = null;
+let bgVibrationStartTickCount = 0;
+
+function startBgAlarmVibration(notifId: string | undefined): void {
+  if (Platform.OS !== "android") return;
+  if (bgVibrationInterval) return; // already running
+  dlog("handler:bgVibrate:start", { notifId });
+  bgVibrationStartTickCount = 0;
+  const tick = () => {
+    try {
+      AlarmVibrator.vibrateAsAlarm(BG_VIBRATION_DURATION_MS);
+      bgVibrationStartTickCount += 1;
+      if (bgVibrationStartTickCount === 1 || bgVibrationStartTickCount % 5 === 0) {
+        dlog("handler:bgVibrate:tick", { tick: bgVibrationStartTickCount });
+      }
+    } catch (e: any) {
+      dlog("handler:bgVibrate:error", { msg: e?.message ?? String(e) });
+    }
+  };
+  tick();
+  bgVibrationInterval = setInterval(tick, BG_VIBRATION_INTERVAL_MS);
+  bgVibrationTimeout = setTimeout(() => {
+    dlog("handler:bgVibrate:safetyCap");
+    stopBgAlarmVibration("safetyCap");
+  }, BG_VIBRATION_MAX_MS);
+}
+
+function stopBgAlarmVibration(reason: string): void {
+  if (!bgVibrationInterval && !bgVibrationTimeout) return;
+  dlog("handler:bgVibrate:stop", { reason });
+  if (bgVibrationInterval) {
+    clearInterval(bgVibrationInterval);
+    bgVibrationInterval = null;
+  }
+  if (bgVibrationTimeout) {
+    clearTimeout(bgVibrationTimeout);
+    bgVibrationTimeout = null;
+  }
+  try { AlarmVibrator.cancel(); } catch {}
+}
 
 function getNotifee(): any {
   if (Platform.OS !== "android") return null;
@@ -128,7 +182,17 @@ export function registerAlarmHandlers(): void {
     const notifId: string | undefined = detail?.notification?.id;
     const data: Record<string, string> = detail?.notification?.data ?? {};
     const pressId: string | undefined = detail?.pressAction?.id;
+    const channelId: string | undefined = detail?.notification?.android?.channelId;
     dlog("handler:bgEvent", { type, pressId, notifId, blockId: data.blockId });
+    // DELIVERED on the alarm channel: OS downgraded FSI to heads-up. Drive
+    // ALARM-class vibration ourselves so the operator still feels the alarm.
+    if (type === EventType.DELIVERED && channelId === ALARM_CHANNEL_ID) {
+      startBgAlarmVibration(notifId);
+    }
+    // Notification dismissed (swipe) or actioned (snooze/dismiss tap) → stop.
+    if (type === EventType.DISMISSED || type === EventType.ACTION_PRESS) {
+      stopBgAlarmVibration("notifEvent");
+    }
     if (type === EventType.ACTION_PRESS) {
       if (pressId === "snooze") await handleSnooze(notifId, data);
       else if (pressId === "dismiss") await handleDismiss(notifId, data);
@@ -152,5 +216,13 @@ export function registerAlarmHandlers(): void {
       }
     }
   });
+  // Stop the background heads-up vibration when the app comes to foreground;
+  // the in-app AlarmDismissModal owns vibration from that point.
+  AppState.addEventListener("change", (nextState) => {
+    if (nextState === "active") {
+      stopBgAlarmVibration("appActive");
+    }
+  });
+
   dlog("handler:register:ok");
 }

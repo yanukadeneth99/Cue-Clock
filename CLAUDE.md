@@ -47,12 +47,18 @@ app/              # React Native (Expo) Mobile Application
     HelpModal.tsx                    # In-app help overlay with 24h toggle, controls guide, about section
     DebugLogModal.tsx                # Internal-build-only diagnostic log viewer (renders null when flag is off)
   lib/            # Shared modules
-    analytics.ts  # Firebase/Clarity analytics initialisation (extracted from _layout.tsx)
-    alarms.ts     # Notifee alarm and notification scheduling wrapper
-    debugLog.ts   # Ring-buffer logger gated by EXPO_PUBLIC_DEBUG_LOGS (internal builds only)
+    analytics.ts      # Firebase/Clarity analytics initialisation (extracted from _layout.tsx)
+    alarms.ts         # Notifee alarm and notification scheduling wrapper
+    alarmHandlers.ts  # Notifee background/foreground event dispatcher + bg vibration loop
+    debugLog.ts       # Ring-buffer logger gated by EXPO_PUBLIC_DEBUG_LOGS (internal builds only)
   constants/      # App-wide constants
     colors.ts     # 14-color dark broadcast palette
     timezones.ts  # 18 broadcast timezone definitions
+  modules/        # Local Expo modules (autolinked via file: dep)
+    expo-alarm-vibrator/  # Native Kotlin module: routes vibration through
+                          # AudioAttributes.USAGE_ALARM so it bypasses the
+                          # per-user "Vibrate on Tap"/haptic-feedback toggle
+                          # that silently suppresses RN's Vibration.vibrate().
   plugins/        # Expo Config Plugins
     withFullScreenAlarm.js # Adds showWhenLocked and turnScreenOn to MainActivity
   assets/         # Icons, splash screens, fonts (SpaceMono-Regular.ttf), alarm.mp3 (alarm tone)
@@ -170,11 +176,14 @@ Dual-mode alert system powered by Notifee with graceful fallbacks:
 **Alarm Mode** (Primary: Android full-screen intents)
 
 - Full-screen notification that wakes device and shows over lock screen via Notifee's `fullScreenAction`
-- Audio + haptics are played **in-activity** by `AlarmDismissModal` using `expo-audio` (looping `assets/alarm.mp3` at full volume) and `Vibration.vibrate(pattern, true)`. The notification's channel sound is intentionally a fallback only — Android suppresses channel sound the moment a full-screen intent launches an Activity, so the alarm UX is owned by the React component
+- Notifee's `fullScreenAction.launchActivity` and `pressAction.launchActivity` are set to the **fully qualified class name** `"com.yanukadeneth99.cueclock.MainActivity"`, not the bare string `"default"`. Some Android 14+ vendor builds (notably HyperOS) silently refuse to elevate FSI to a MainActivity launch when `"default"` is used; naming the activity explicitly resolves it
+- Audio + haptics are played **in-activity** by `AlarmDismissModal` using `expo-audio` (looping `assets/alarm.mp3` at full volume) and `AlarmVibrator.vibrateAsAlarm()` from the local `expo-alarm-vibrator` native module. The notification's channel sound is intentionally a fallback only — Android suppresses channel sound the moment a full-screen intent launches an Activity, so the alarm UX is owned by the React component
 - 60-second safety cap stops sound + vibration automatically if the operator never acts (prevents an unattended phone from sounding forever during a live show)
 - Cold-start path: when Android launches the app from a killed state via `fullScreenAction`, `notifee.getInitialNotification()` is read after AsyncStorage hydration and the modal opens with the correct block context
+- **Warm-resume modal mount**: When the alarm fires while the app is backgrounded, the JS countdown ticker records the fire in `pendingBackgroundFiresRef` (logged as `alert:bgFireRecorded`). On `AppState` transition to `active`, the ref is drained and the in-app modal mounts (logged as `appState:resume:drainBgFires`). A defensive `fireDate === null` check covers the locked-screen case where the JS ticker was suspended and never logged `shouldFire` (logged as `appState:resume:fallbackQueueModal`). Together these guarantee the alarm UX appears whenever the operator returns to the app — whether via FSI auto-launch, notification tap, or launcher
+- **Background heads-up vibration**: On Android 14+, when the screen is on and another app has focus, the OS downgrades FSI to a plain heads-up notification (documented policy that can't be overridden). `lib/alarmHandlers.ts` listens for `EventType.DELIVERED` on the alarm channel in `onBackgroundEvent` and starts a 1.2s `AlarmVibrator.vibrateAsAlarm(600)` loop with a 60-second safety cap. The loop self-cancels on `AppState=active`, `DISMISSED`, or `ACTION_PRESS` so it never overlaps with the in-app modal's own vibration
 - Requires `android.permission.POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, and the Android 14+ "Full-screen notifications" per-app toggle (gated at runtime via `canScheduleExactAlarms()` and `canUseFullScreenIntent()`; both deep-link to settings if missing)
-- Automatically snoozes (5 max) when snoozed; creates fresh trigger notification
+- Snooze is effectively **unlimited** (`MAX_SNOOZES = Number.POSITIVE_INFINITY`). Broadcast operators may need to defer the alarm repeatedly while preparing for a cue; the legacy 5-snooze cap was too restrictive for that workflow. The modal shows "Snoozed N times" once N > 0 instead of "X remaining". `snoozeCount` is reset to 0 in `handleAlertConfirm` whenever a new alert is configured, so prior session state doesn't leak forward
 - Uses `ALARM_CHANNEL_ID: "cue-clock-alarm-v3"` (channel versioning ensures fresh setup on Android — channels are immutable post-creation; stale v1/v2 channels are explicitly deleted on first run)
 - Works even when app is backgrounded or device in Doze mode (via AlarmManager `SET_EXACT_AND_ALLOW_WHILE_IDLE`)
 - Requires `showWhenLocked` and `turnScreenOn` manifest attributes (set by `withFullScreenAlarm` plugin)
@@ -249,6 +258,18 @@ Thin wrapper around `@notifee/react-native` for scheduling and managing countdow
 **Exact triggers:** Both alarm and notification modes use `AlarmManager.SET_EXACT_AND_ALLOW_WHILE_IDLE` to survive Doze and fire at exact scheduled time.
 
 **Notifee `vibrationPattern` quirk:** Unlike native Android's `Vibrator.vibrate(long[])` (which expects `[delay, on, off, ...]` and tolerates a leading `0`), Notifee's validator rejects any non-positive value and requires an even-length array. Patterns must start with the on-duration (e.g. `[500, 500, 500, 500]`, *not* `[0, 500, 500, 500]`). A failed pattern throws synchronously inside `createChannel`/`createTriggerNotification` and — if the call site swallows the error — downstream scheduling silently no-ops. Always log the catch.
+
+### ALARM-class vibration (`modules/expo-alarm-vibrator`)
+
+A small local Expo module that dispatches vibration through `Vibrator.vibrate(VibrationEffect, AudioAttributes)` with `AudioAttributes.USAGE_ALARM`. Routing through the ALARM usage class is critical on vendor builds — particularly Xiaomi/HyperOS — where the default RN `Vibration.vibrate(ms)` is classified as `mUsage=TOUCH` and silently rejected by `VibratorService` with `IGNORED_FOR_SETTINGS` whenever the per-user "Vibrate on Tap"/haptic-feedback toggle is off. The ALARM class is gated by `alarm_vibration_intensity` (default-on across virtually all devices), so the alarm reliably vibrates without requiring the operator to enable any system setting.
+
+**Module surface:**
+- `AlarmVibrator.vibrateAsAlarm(durationMs: number)` — one-shot ALARM-class vibration
+- `AlarmVibrator.cancel()` — cancel any in-progress vibration
+
+**Why a local module:** The RN `Vibration` API doesn't expose the usage class, and existing community libraries either don't support it or are unmaintained. The module is registered via Expo Modules autolinking (`expo-module.config.json` + `file:` dep in `app/package.json`), so it survives `expo prebuild --clean` without manual MainApplication editing.
+
+**Detection in logs:** Look for `mUsage=ALARM ... ended with status FINISHED` in logcat (`VibratorManagerService:V`). If you instead see `mUsage=TOUCH ... IGNORED_FOR_SETTINGS`, the AlarmVibrator module isn't being invoked — the JS code is still using `Vibration.vibrate()` somewhere.
 
 ### Internal-Only Debug Log (`lib/debugLog.ts`, `components/DebugLogModal.tsx`)
 
