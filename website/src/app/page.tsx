@@ -94,8 +94,12 @@ export default function Home() {
     android: {
       label: "Android",
       icon: "phone_android",
-      buttonText: "Coming Soon",
-      action: () => {},
+      buttonText: "Get on Play Store",
+      action: () =>
+        window.open(
+          "https://play.google.com/store/apps/details?id=com.yanukadeneth99.cueclock",
+          "_blank"
+        ),
     },
     ios: {
       label: "iOS",
