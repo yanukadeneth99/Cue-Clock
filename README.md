@@ -6,7 +6,8 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](./LICENSE)
 [![Android Internal](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml)
-[![Android Release](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-release.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-release.yml)
+[![Android Beta](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-beta.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-beta.yml)
+[![Android Promote](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-promote.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-promote.yml)
 [![Last commit](https://img.shields.io/github/last-commit/yanukadeneth99/Cue-Clock)](https://github.com/yanukadeneth99/Cue-Clock/commits/master)
 [![Made with Expo](https://img.shields.io/badge/Expo-SDK_55-000020?logo=expo)](https://expo.dev)
 [![Sponsor](https://img.shields.io/github/sponsors/yanukadeneth99?logo=githubsponsors&label=Sponsor)](https://github.com/sponsors/yanukadeneth99)

@@ -46,6 +46,8 @@ export default function Home() {
     lastWorkflowDuration: number | null;
     latestReleaseTag: string | null;
     latestReleaseUrl: string | null;
+    latestBetaTag: string | null;
+    latestBetaUrl: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -694,33 +696,62 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              {repoStats?.latestReleaseTag ? (
-                <div className="mt-8 flex justify-center md:justify-start">
-                <a
-                  href={
-                    repoStats.latestReleaseUrl ??
-                    "https://github.com/yanukadeneth99/Cue-Clock/releases"
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-accent/60 transition-colors group text-left"
-                  aria-label={`Latest release ${repoStats.latestReleaseTag} - view on GitHub`}
-                >
-                  <span className="material-symbols-outlined text-accent text-[20px]">
-                    new_releases
-                  </span>
-                  <div className="flex flex-col leading-tight">
-                    <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
-                      Latest release
-                    </span>
-                    <span className="font-mono tabular-nums text-[15px] font-semibold text-accent">
-                      {repoStats.latestReleaseTag}
-                    </span>
-                  </div>
-                  <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-accent transition-colors">
-                    open_in_new
-                  </span>
-                </a>
+              {(repoStats?.latestReleaseTag || repoStats?.latestBetaTag) ? (
+                <div className="mt-8 flex flex-wrap justify-center md:justify-start gap-3">
+                  {repoStats?.latestReleaseTag ? (
+                    <a
+                      href={
+                        repoStats.latestReleaseUrl ??
+                        "https://github.com/yanukadeneth99/Cue-Clock/releases"
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-accent/60 transition-colors group text-left"
+                      aria-label={`Latest stable release ${repoStats.latestReleaseTag} - view on GitHub`}
+                    >
+                      <span className="material-symbols-outlined text-accent text-[20px]">
+                        new_releases
+                      </span>
+                      <div className="flex flex-col leading-tight">
+                        <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
+                          Latest stable
+                        </span>
+                        <span className="font-mono tabular-nums text-[15px] font-semibold text-accent">
+                          {repoStats.latestReleaseTag}
+                        </span>
+                      </div>
+                      <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-accent transition-colors">
+                        open_in_new
+                      </span>
+                    </a>
+                  ) : null}
+                  {repoStats?.latestBetaTag ? (
+                    <a
+                      href={
+                        repoStats.latestBetaUrl ??
+                        "https://github.com/yanukadeneth99/Cue-Clock/releases"
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-countdown/60 transition-colors group text-left"
+                      aria-label={`Latest beta pre-release ${repoStats.latestBetaTag} - view on GitHub`}
+                    >
+                      <span className="material-symbols-outlined text-countdown text-[20px]">
+                        science
+                      </span>
+                      <div className="flex flex-col leading-tight">
+                        <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
+                          Latest beta
+                        </span>
+                        <span className="font-mono tabular-nums text-[15px] font-semibold text-countdown">
+                          {repoStats.latestBetaTag}
+                        </span>
+                      </div>
+                      <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-countdown transition-colors">
+                        open_in_new
+                      </span>
+                    </a>
+                  ) : null}
                 </div>
               ) : null}
             </div>

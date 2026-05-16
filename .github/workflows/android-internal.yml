@@ -1,3 +1,29 @@
+# =============================================================================
+# Android Internal Testing
+# -----------------------------------------------------------------------------
+# Purpose:    Build a signed AAB on every master push that touches `app/**`
+#             and ship it to Google Play's Internal Testing track. The
+#             smallest, fastest feedback loop for developers + close testers.
+#
+# Trigger:    Push to `master` with changes under `app/**`. Skipped for
+#             website/docs-only changes.
+#
+# Inputs:     `versionName` is auto-derived from git tags by
+#             `app/scripts/derive-internal-version.js`:
+#               - latest tag = vX.Y.Z       → internal versionName = X.Y.(Z+1)
+#               - latest tag = vX.Y.Z-beta.N → internal versionName = X.Y.Z
+#             `versionCode` = unix timestamp so each push gets a fresh code
+#             monotonically. No human ever bumps `app.json` by hand.
+#
+# Output:     Signed AAB on the `internal` track with release name
+#             `cue-clock-<run_number>`. Internal track is invite-only.
+#
+# Notes:      `EXPO_PUBLIC_DEBUG_LOGS=1` is set ONLY here — gates the in-app
+#             debug log viewer. Production builds must never see this flag.
+#
+# Related:    `android-beta.yml` (Open Testing on pre-release tags).
+#             `android-promote.yml` (production promotion on full release).
+# =============================================================================
 name: Android Internal Testing
 
 on:
@@ -22,6 +48,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # fetch all tags — the in-flight versionName is derived from them.
+          # actions/checkout's default shallow clone has none.
+          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -44,21 +74,14 @@ jobs:
         working-directory: app
         run: npx expo-doctor
 
-      # Only versionCode (integer) is updated here — app.expo.version (semver string) is intentionally
-      # left as-is. Play Store only enforces versionCode uniqueness; versionName is cosmetic and only
-      # needs to be accurate on the release track (handled by prepare-android-release.js in android-release.yml).
-      - name: Update version code for internal testing
+      # Derive versionName from git tags (no manual app.json bump ever) and
+      # set a fresh timestamped versionCode. Rule:
+      #   latest tag = vX.Y.Z       → in-flight versionName = X.Y.(Z+1)
+      #   latest tag = vX.Y.Z-beta.N → in-flight versionName = X.Y.Z
+      #   no matching tags          → fall back to app.json's expo.version
+      - name: Derive internal versionName and versionCode
         working-directory: app
-        run: |
-          node -e "
-          const fs = require('fs');
-          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-          const versionCode = Math.floor(Date.now() / 1000);
-          app.expo.android.versionCode = versionCode;
-          app.expo.ios.buildNumber = versionCode.toString();
-          fs.writeFileSync('app.json', JSON.stringify(app, null, 2));
-          console.log('Updated version code to', versionCode);
-          "
+        run: node scripts/derive-internal-version.js
 
       - name: Create .env with build-time secrets
         working-directory: app
@@ -67,7 +90,8 @@ jobs:
           echo "EAS_PROJECT_ID=${{ secrets.EAS_PROJECT_ID }}" >> .env
           echo "EAS_OWNER=${{ secrets.EAS_OWNER }}" >> .env
           # Internal-only: enables the in-app debug log viewer. NEVER added to
-          # android-release.yml so production builds ship with logging inert.
+          # android-beta.yml or android-promote.yml so beta + production builds
+          # ship with logging inert.
           echo "EXPO_PUBLIC_DEBUG_LOGS=1" >> .env
 
       - name: Decode Firebase config

@@ -53,9 +53,14 @@ app/                            React Native (Expo SDK 55) mobile app
   assets/                       icons, splash, SpaceMono, alarm.mp3 (Inter via @expo-google-fonts/inter)
 website/                        Next.js 16 landing page (Tailwind 4, GSAP)
                                 Tokens mirror app/constants/colors.ts via @theme in globals.css
-.github/workflows/
-  android-internal.yml          push→master → signed AAB → Play internal track (For internal testing)
-  android-release.yml           GH Release → signed AAB → Play beta track
+.github/
+  workflows/
+    android-internal.yml        push→master → signed AAB → Play Internal Testing
+    android-beta.yml            GH pre-release (vX.Y.Z-beta.N) → signed AAB → Play Open Testing
+    android-promote.yml         GH full release (vX.Y.Z) → promote beta AAB → Play Production (no rebuild)
+    android-release-verify.yml  PR dry-run of the release build pipeline (throwaway keystore)
+  scripts/
+    promote-to-production.js    googleapis-based promotion logic invoked by android-promote.yml
 ```
 
 ---
@@ -167,7 +172,7 @@ Registered via Expo autolinking (`expo-module.config.json` + `file:` dep in `app
 
 In-memory ring buffer (200 entries). **Gated three ways for release safety:**
 
-1. Build-time env var `EXPO_PUBLIC_DEBUG_LOGS=1` (only set by `android-internal.yml`, NEVER by `android-release.yml`).
+1. Build-time env var `EXPO_PUBLIC_DEBUG_LOGS=1` (only set by `android-internal.yml`, NEVER by `android-beta.yml` or `android-promote.yml`).
 2. `dlog()` short-circuits to no-op when flag unset.
 3. UI: `onTestAlarm`/`onShowDebugLog` props are `undefined` in release, hiding the Help-modal row entirely.
 
@@ -198,12 +203,54 @@ iOS/web skip step 1.
 
 ## CI/CD
 
-| Trigger           | Workflow               | Track                 |
-| ----------------- | ---------------------- | --------------------- |
-| Push to `master`  | `android-internal.yml` | Internal Testing      |
-| Create GH Release | `android-release.yml`  | Closed Testing (Beta) |
+Three-track release flow. **Closed Testing (Alpha) is retired** — close it in Play Console manually.
 
-Both: Ubuntu 24.04, JDK 17, Node 22, Android SDK 35. Steps: `npm ci` → `expo prebuild --platform android --clean` → restrict to `arm64-v8a` → decode Firebase + keystore from Base64 secrets → `gradlew bundleRelease` → upload via Play service account.
+| Trigger                                      | Workflow                | Play Track            |
+| -------------------------------------------- | ----------------------- | --------------------- |
+| Push to `master`                             | `android-internal.yml`  | Internal Testing      |
+| Publish a GH **pre-release** (`vX.Y.Z-beta.N`) | `android-beta.yml`      | Open Testing (Beta)   |
+| Flip pre-release → full release (`vX.Y.Z`)   | `android-promote.yml`   | Production (promoted) |
+
+Build workflows (internal, beta): Ubuntu 24.04, JDK 17, Node 22, Android SDK 35. Steps: `npm ci` → `expo prebuild --platform android --clean` → restrict architectures → decode Firebase + keystore from Base64 secrets → `gradlew bundleRelease` → upload via Play service account.
+
+Promote workflow: no build. Calls Google Play Developer API directly (`.github/scripts/promote-to-production.js`, uses `googleapis`) to copy the most recent matching beta AAB to the production track — **byte-identical** to what beta testers validated.
+
+**No manual `app.json` version bumps.** `versionName` is derived from git tags by `app/scripts/derive-internal-version.js` (internal track) and from the release tag itself by `app/scripts/prepare-android-release.js` (beta + production). The `expo.version` field in `app.json` is rewritten by CI before every build; the value committed to git only matters as a bootstrap fallback if zero `v*` tags exist.
+
+### Release lifecycle
+
+Tags are the source of truth. Two shapes only:
+
+- `vX.Y.Z-beta.N` (`v0.1.0-beta.1`, `v0.1.0-beta.2`, …) — GitHub **pre-release**. Triggers `android-beta.yml`, builds a signed AAB, uploads to Open Testing with `versionName = X.Y.Z-beta.N`. Beta testers see the suffix and know which beta they're on.
+- `vX.Y.Z` (`v0.1.0`) — GitHub **full release**. Triggers `android-promote.yml`. Picks the highest-versionCode completed beta release whose name matches `X.Y.Z-beta.*` and promotes that exact AAB to Production with release name `X.Y.Z`. No rebuild. The AAB's internal `versionName` stays `X.Y.Z-beta.N` (cosmetic only — the Play store release name is what users see).
+
+Typical cycle:
+
+```
+master push       → internal     (versionName auto-derived from latest tag, versionCode = unix timestamp)
+master push       → internal
+tag v0.1.0-beta.1 → open testing (versionName=0.1.0-beta.1, fresh build)
+master push       → internal
+tag v0.1.0-beta.2 → open testing (versionName=0.1.0-beta.2, fresh build)
+flip v0.1.0       → production   (promotes the beta.2 AAB, release name = "0.1.0")
+```
+
+Production users only ever see clean `0.1.0`, `0.1.1`, etc. — the intermediate beta cadence is invisible. **Author the release body for `vX.Y.Z` to summarise the whole cycle since the previous production release**, not just the delta from the last beta — production users skip every intermediate step.
+
+### Guards baked into the workflows
+
+- `android-beta.yml` rejects any tag not matching `vX.Y.Z-beta.N`.
+- `android-beta.yml` checks out the tag SHA (not master HEAD) so the build is reproducible from the release.
+- Concurrency: `group: android-beta` (no tag suffix) — serializes all beta builds so a fast second pre-release can't overtake a slower first one.
+- `android-promote.yml` rejects any tag not matching `vX.Y.Z` (bare semver). Refuses to promote beta-shaped tags accidentally flipped to full release.
+- Promotion script filters beta releases to `status === "completed"` (skips halted/rejected builds) and matches `versionName` family (`<target>-beta.*`) so an in-flight `v0.2.0-beta` cycle can't be misrouted as `v0.1.0`.
+- Promotion is idempotent: if the picked versionCode is already on production, the script exits cleanly. Safe to re-trigger via prerelease-flag toggling.
+
+### Manual prerequisites (one-time, can't be done in CI)
+
+1. **Play Console — service account permissions.** The identity in `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` needs Release manager (or equivalent) with access to **internal, beta, and production** tracks. The current alpha-era account may not have production yet.
+2. **Play Console — first production push gates.** Before the first promotion succeeds, fill: target audience declaration, data safety form, content rating, store listing graphics. The promote workflow will fail loudly with a Play API error until these are done.
+3. **Close the alpha track.** Once nothing's shipping there, archive in Play Console.
 
 **Workflow env var:** `EXPO_PUBLIC_DEBUG_LOGS=1` set ONLY in `android-internal.yml`.
 

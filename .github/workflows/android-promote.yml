@@ -1,0 +1,130 @@
+# =============================================================================
+# Android Promote (Beta → Production)
+# -----------------------------------------------------------------------------
+# Purpose:    Move an existing beta AAB to the Production track on Google Play
+#             WITHOUT rebuilding. Production users get the byte-identical AAB
+#             that beta testers validated.
+#
+# Trigger:    A GitHub Release is flipped from pre-release to full release
+#             (or published directly as a full release). Fires `released`.
+#
+# Inputs:     Tag MUST be bare semver `vX.Y.Z` (no `-beta.N` suffix).
+#             Reads release body for "What's new" notes.
+#
+# Output:     Promotes the highest-versionCode completed beta release whose
+#             name matches `<X.Y.Z>-beta.*` to the production track with
+#             release name `X.Y.Z`. Idempotent: if that versionCode is
+#             already on production, exits cleanly.
+#
+# Related:    `android-beta.yml` produces the AAB that this workflow promotes.
+#             `.github/scripts/promote-to-production.js` holds the API logic.
+# =============================================================================
+name: Android Promote (Beta → Production)
+
+# Fires when a GitHub Release is flipped from pre-release to full release
+# (or published directly as a full release). The `released` event triggers
+# on that transition; the `prerelease == false` guard makes the intent explicit.
+on:
+  release:
+    types: [released]
+
+# Serialize promotions for the same tag — if a user toggles the prerelease
+# flag off → on → off, the second fire arrives while the first is still
+# running. We don't cancel: we let the first finish and skip the second
+# via the idempotency check inside the script.
+concurrency:
+  group: android-promote-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    name: Promote Beta AAB to Production
+    runs-on: ubuntu-latest
+    # Belt-and-braces: only run on full releases. GitHub's `released` event
+    # already implies this, but explicit > implicit for production-track work.
+    if: github.event.release.prerelease == false
+
+    steps:
+      - name: Validate production tag shape
+        env:
+          VERSION_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          # Production tags MUST be bare semver: vX.Y.Z. Anything with a
+          # suffix (e.g. v0.1.0-beta.3 accidentally flipped to full release)
+          # is rejected — we don't want beta-flavoured strings on production.
+          if [[ ! "$VERSION_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag '$VERSION_TAG' is not a production tag (expected vX.Y.Z)."
+            echo "Refusing to promote. If this was a beta release flipped by mistake,"
+            echo "revert the prerelease flag in the GitHub Release UI."
+            exit 1
+          fi
+
+      - name: Extract version from tag
+        id: version
+        env:
+          VERSION_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${VERSION_TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Production version: $VERSION"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Pin to the tag for reproducibility, though we only need the
+          # promotion script — the AAB itself comes from Play, not git.
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install googleapis
+        # Pinned exact version + --ignore-scripts: this runs against a
+        # production-track API with our service account. We don't want
+        # transitive install-time scripts touching the runner, and we
+        # don't want surprise behaviour from a floating major.
+        run: npm install --no-save --ignore-scripts googleapis@144.0.0
+
+      - name: Write release notes to file
+        env:
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          let notes = process.env.RELEASE_BODY;
+          if (!notes || notes.trim() === '') {
+            notes = 'Bug fixes and performance improvements for Cue Clock.';
+          }
+          notes = notes.replace(/\r\n/g, '\n');
+          notes = notes.replace(/\[([^\]]+)\]\([^)]+\)/g, '\$1');
+          notes = notes.replace(/^\s{0,3}#{1,6}\s*/gm, '');
+          notes = notes.replace(/^\s*[*+-]\s+/gm, '• ');
+          notes = notes.replace(/^\s*\d+\.\s+/gm, '• ');
+          notes = notes.replace(/\*\*([^*]+)\*\*/g, '\$1');
+          notes = notes.replace(/__([^_]+)__/g, '\$1');
+          notes = notes.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '\$1');
+          notes = notes.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '\$1');
+          notes = notes.replace(/[~\`>]/g, '');
+          notes = notes.replace(/^\s*--\s*$/gm, '');
+          notes = notes.replace(/[ \t]+\n/g, '\n');
+          notes = notes.replace(/\n{3,}/g, '\n\n');
+          notes = notes.trim();
+          if (notes.length > 500) {
+            notes = notes.substring(0, 500).split(' ').slice(0, -1).join(' ') + '…';
+          }
+          fs.writeFileSync('release-notes.txt', notes);
+          console.log('Release notes (' + notes.length + ' chars):');
+          console.log(notes);
+          "
+
+      - name: Promote beta AAB to production
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          PACKAGE_NAME: com.yanukadeneth99.cueclock
+          PROD_VERSION: ${{ steps.version.outputs.version }}
+        run: node .github/scripts/promote-to-production.js

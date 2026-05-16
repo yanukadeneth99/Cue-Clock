@@ -1,22 +1,58 @@
-name: Android Release
+# =============================================================================
+# Android Beta (Open Testing)
+# -----------------------------------------------------------------------------
+# Purpose:    Build a signed Android App Bundle from a pre-release tag and
+#             ship it to Google Play's Open Testing track. Beta testers get
+#             it via the public opt-in link.
+#
+# Trigger:    Publishing a GitHub Release marked as pre-release. The tag
+#             MUST match `vX.Y.Z-beta.N` (e.g. v0.1.0-beta.1).
+#
+# Inputs:     The tag drives `versionName` (suffix included so testers can
+#             see which beta they're on). `versionCode` = unix timestamp at
+#             build time. Release body becomes the Play "What's new" text.
+#
+# Output:     Signed AAB on the `beta` track with release name
+#             `cue-clock-<version>`. The same AAB is later promoted to
+#             production unchanged by `android-promote.yml`.
+#
+# Related:    `android-internal.yml` ships every master push to the Internal
+#             track. `android-promote.yml` promotes beta builds to Production
+#             when their tag is flipped from pre-release to full release.
+# =============================================================================
+name: Android Beta (Open Testing)
 
 on:
   release:
-    types: [published]
+    types: [prereleased]
 
+# Serialize all beta builds so a fast second pre-release can't land before
+# a slower first one (which would put an older versionName in front of testers).
 concurrency:
-  group: android-release-${{ github.ref_name }}
-  cancel-in-progress: true
+  group: android-beta
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   build-and-deploy:
-    name: Build & Deploy to Google Play
+    name: Build & Deploy to Open Testing
     runs-on: ubuntu-latest
+    # Defense in depth: GitHub already only fires `prereleased` for pre-releases,
+    # but a future trigger change shouldn't accidentally ship a full release here.
+    if: github.event.release.prerelease == true
 
     steps:
+      - name: Validate beta tag shape
+        env:
+          VERSION_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$VERSION_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]; then
+            echo "Tag '$VERSION_TAG' does not match vX.Y.Z-beta.N. Refusing to build."
+            exit 1
+          fi
+
       - name: Extract version from tag
         id: version
         env:
@@ -35,6 +71,10 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Pin to the tag SHA so the build is reproducible from the release,
+          # regardless of any pushes to master between tag-push and workflow-run.
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -153,13 +193,13 @@ jobs:
           console.log('Generated whatsnew/whatsnew-en-US (Length: ' + notes.length + ')');
           "
 
-      - name: Upload to Google Play (Closed Testing - Alpha track)
+      - name: Upload to Google Play (Open Testing - Beta track)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.yanukadeneth99.cueclock
           releaseFiles: app/android/app/build/outputs/bundle/release/*.aab
           releaseName: cue-clock-${{ steps.version.outputs.version }}
-          track: alpha
+          track: beta
           status: completed
           whatsNewDirectory: app/whatsnew

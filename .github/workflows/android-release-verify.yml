@@ -1,9 +1,33 @@
+# =============================================================================
+# Android Release Verify (PR dry-run)
+# -----------------------------------------------------------------------------
+# Purpose:    Catch release-build regressions BEFORE they hit master or a
+#             release tag. Mirrors the release build pipeline end-to-end
+#             using throwaway credentials, so a Gradle break, missing
+#             dependency, or broken plugin surfaces on the PR — not at 2am
+#             when someone tags v0.1.0.
+#
+# Trigger:    Pull requests that touch `app/**` or any release workflow.
+#
+# Inputs:     None from secrets. Uses a hardcoded dummy version (0.0.24),
+#             a stub `google-services.json`, and a freshly-generated
+#             throwaway keystore. The output AAB is NEVER uploaded to Play.
+#
+# Output:     A signed-but-disposable AAB. Job pass/fail is the value;
+#             the artifact itself is discarded.
+#
+# Why both `android-beta.yml` and `android-promote.yml` are in the path
+# filter: edits to either workflow should be sanity-checked before merge,
+# even though this dry-run only exercises the build path (promotion doesn't
+# build, so its changes get caught by review + a real promotion run).
+# =============================================================================
 name: Android Release Verify
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/android-release.yml'
+      - '.github/workflows/android-beta.yml'
+      - '.github/workflows/android-promote.yml'
       - '.github/workflows/android-release-verify.yml'
       - 'app/**'
 

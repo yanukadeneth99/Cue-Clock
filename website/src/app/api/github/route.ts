@@ -18,8 +18,16 @@ type RepoStats = {
   lastCommit: string | null;
   lastWorkflowStatus: string | null;
   lastWorkflowDuration: number | null;
+  // `latestReleaseTag` is the most recent full release (production track on
+  // Google Play). GitHub's /releases/latest endpoint already filters out
+  // pre-releases, so this maps cleanly to "stable" for users.
   latestReleaseTag: string | null;
   latestReleaseUrl: string | null;
+  // `latestBetaTag` is the most recent pre-release (open testing on Play).
+  // GitHub's REST API has no dedicated "latest pre-release" endpoint, so we
+  // list /releases and pick the first one with prerelease === true.
+  latestBetaTag: string | null;
+  latestBetaUrl: string | null;
 };
 
 async function ghFetch(path: string): Promise<unknown> {
@@ -32,13 +40,18 @@ async function ghFetch(path: string): Promise<unknown> {
 }
 
 export async function GET() {
-  const [repoData, commitData, runsData, releaseData, contributorsData] = await Promise.all([
-    ghFetch(`/repos/${REPO}`),
-    ghFetch(`/repos/${REPO}/commits/master`),
-    ghFetch(`/repos/${REPO}/actions/runs?per_page=1&status=completed`),
-    ghFetch(`/repos/${REPO}/releases/latest`),
-    ghFetch(`/repos/${REPO}/contributors`),
-  ]);
+  const [repoData, commitData, runsData, releaseData, releasesListData, contributorsData] =
+    await Promise.all([
+      ghFetch(`/repos/${REPO}`),
+      ghFetch(`/repos/${REPO}/commits/master`),
+      ghFetch(`/repos/${REPO}/actions/runs?per_page=1&status=completed`),
+      ghFetch(`/repos/${REPO}/releases/latest`),
+      // List recent releases (incl. pre-releases) so we can find the latest beta.
+      // 10 is a comfortable window — even at a busy beta cadence the most
+      // recent pre-release will be in here.
+      ghFetch(`/repos/${REPO}/releases?per_page=10`),
+      ghFetch(`/repos/${REPO}/contributors`),
+    ]);
 
   const repo = (repoData as Record<string, unknown> | null) ?? null;
   const commit = (commitData as Record<string, unknown> | null) ?? null;
@@ -74,6 +87,24 @@ export async function GET() {
     if (typeof release.html_url === "string") latestReleaseUrl = release.html_url;
   }
 
+  // The /releases list is ordered newest-first by created_at. Find the first
+  // entry flagged as a pre-release — that's the latest beta. We do NOT trust
+  // the latest entry to be beta (it could be a full release published after
+  // a beta cycle), nor do we re-sort: GitHub's order is correct for our use.
+  let latestBetaTag: string | null = null;
+  let latestBetaUrl: string | null = null;
+  if (Array.isArray(releasesListData)) {
+    for (const r of releasesListData) {
+      if (!r || typeof r !== "object") continue;
+      const rel = r as Record<string, unknown>;
+      if (rel.prerelease !== true) continue;
+      if (typeof rel.tag_name === "string") latestBetaTag = rel.tag_name;
+      else if (typeof rel.name === "string") latestBetaTag = rel.name;
+      if (typeof rel.html_url === "string") latestBetaUrl = rel.html_url;
+      if (latestBetaTag) break;
+    }
+  }
+
   const repoStats: RepoStats = {
     stars: typeof repo?.stargazers_count === "number" ? repo.stargazers_count : 0,
     forks: typeof repo?.forks_count === "number" ? repo.forks_count : 0,
@@ -83,6 +114,8 @@ export async function GET() {
     lastWorkflowDuration,
     latestReleaseTag,
     latestReleaseUrl,
+    latestBetaTag,
+    latestBetaUrl,
   };
 
   const contributors: Contributor[] = Array.isArray(contributorsData)
