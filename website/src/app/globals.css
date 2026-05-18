@@ -176,20 +176,4 @@
     border: 1px solid var(--color-card-border);
     border-radius: var(--radius-card);
   }
-
-  /* ─ Legacy (kept until page.tsx migrates) ─ */
-  .font-mono-data {
-    font-family: var(--font-space-mono), ui-monospace, monospace;
-    font-variant-numeric: tabular-nums;
-  }
-  .glass-panel {
-    background: rgba(50, 53, 59, 0.8);
-    backdrop-filter: blur(20px);
-  }
-  .clipped-corner {
-    clip-path: polygon(0 0, 92% 0, 100% 15%, 100% 100%, 0 100%);
-  }
-  .text-glow {
-    text-shadow: 0 0 15px rgba(164, 201, 255, 0.3);
-  }
 }
