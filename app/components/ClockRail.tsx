@@ -124,11 +124,16 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress }: CardProps) {
         </Text>
       </View>
 
-      {/* HH:MM[:SS] [AM/PM] */}
+      {/* HH:MM[:SS] [AM/PM] - vertically centered so the AM/PM + :SS stack
+          sits in the middle of the 34pt HH:MM row instead of floating at
+          its top (which is what `alignItems: "baseline"` was doing with
+          the shorter column). Center alignment also reads cleaner for the
+          seconds-only branch - :SS lands at the middle of the digits
+          rather than hugging their baseline. */}
       <View
         style={{
           flexDirection: "row",
-          alignItems: "baseline",
+          alignItems: "center",
           marginTop: 6,
         }}
       >
