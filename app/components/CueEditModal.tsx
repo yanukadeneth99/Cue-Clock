@@ -469,6 +469,7 @@ export function CueEditModal({
         onChangeText={(name) => setForm((f) => ({ ...f, name }))}
         placeholder="e.g. Show open"
         placeholderTextColor={colors.textMuted}
+        maxLength={50}
         style={[
           textStyles.body,
           {
