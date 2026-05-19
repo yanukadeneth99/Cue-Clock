@@ -141,7 +141,42 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress }: CardProps) {
         >
           {t.h}:{t.m}
         </Text>
-        {showSeconds ? (
+        {/* Seconds + AM/PM tail. When both are present we stack them
+            vertically (AM/PM small-caps on top, :SS underneath) - keeps the
+            time block narrow on long hours like "12:47" instead of pushing
+            the AM/PM glyph off the right edge of the card. Falls back to
+            inline rendering when only one of the two is shown. */}
+        {showSeconds && hour12 && t.ampm ? (
+          <View style={{ flexDirection: "column", marginLeft: 4, alignItems: "flex-start" }}>
+            <Text
+              style={[
+                text.hint,
+                {
+                  color: colors.textMuted,
+                  fontSize: isWeb ? 12 : 9,
+                  lineHeight: isWeb ? 13 : 10,
+                  letterSpacing: 0.5,
+                  fontWeight: "600",
+                },
+              ]}
+            >
+              {t.ampm}
+            </Text>
+            <Text
+              style={[
+                text.clockSeconds,
+                {
+                  color: colors.textMuted,
+                  fontSize: isWeb ? 24 : 13,
+                  lineHeight: isWeb ? 24 : 13,
+                  marginTop: 1,
+                },
+              ]}
+            >
+              :{t.s}
+            </Text>
+          </View>
+        ) : showSeconds ? (
           <Text
             style={[
               text.clockSeconds,
@@ -155,12 +190,10 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress }: CardProps) {
           >
             :{t.s}
           </Text>
-        ) : null}
-        {hour12 && t.ampm ? (
-          // Match seconds fontSize/lineHeight so the AM/PM glyph shares the
-          // same baseline metric as :SS - otherwise RN's `alignItems:
-          // "baseline"` resolves AM against text.hint's larger lineHeight and
-          // visually drifts below the seconds digits.
+        ) : hour12 && t.ampm ? (
+          // No seconds - AM/PM sits inline next to the minutes. Matches the
+          // seconds fontSize/lineHeight so `alignItems: "baseline"` resolves
+          // consistently against the larger HH:MM digits.
           <Text
             style={[
               text.hint,
