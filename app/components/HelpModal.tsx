@@ -10,7 +10,15 @@ import { Linking, Platform, Pressable, Text, View } from "react-native";
 // embedded in the JS bundle - no network call, works offline, no GitHub
 // rate-limit risk. Falls back to a sentinel so a missing field is obvious
 // in QA rather than crashing.
-const APP_VERSION = Constants.expoConfig?.version ?? "0.0.0";
+// Promotion ships the byte-identical beta AAB to production, so the bundled
+// `expo.version` keeps its `-beta.N` suffix on production. Strip the suffix
+// at display time so the Help footer reads cleanly as `0.1.0` for the
+// production cohort. Beta testers see the same clean string - their channel
+// membership is communicated by Play Store, not this footer.
+const APP_VERSION = (Constants.expoConfig?.version ?? "0.0.0").replace(
+  /-beta\.\d+$/,
+  "",
+);
 
 type Props = {
   visible: boolean;
