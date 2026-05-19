@@ -2,13 +2,21 @@ import { ModalShell } from "@/components/ModalShell";
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { Linking, Platform, Pressable, Text, View } from "react-native";
+
+// Build-time version from app.json's `expo.version`. CI rewrites that field
+// in `scripts/prepare-android-release.js` before bundling, so this value is
+// embedded in the JS bundle - no network call, works offline, no GitHub
+// rate-limit risk. Falls back to a sentinel so a missing field is obvious
+// in QA rather than crashing.
+const APP_VERSION = Constants.expoConfig?.version ?? "0.0.0";
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   onOpenAndroidBackgroundHelp?: () => void;
-  /** App version string for the footer. */
+  /** Optional override; defaults to the build-time `expo.version`. */
   version?: string;
 };
 
@@ -93,7 +101,7 @@ export default function HelpModal({
   visible,
   onClose,
   onOpenAndroidBackgroundHelp,
-  version = "1.5.0",
+  version = APP_VERSION,
 }: Props) {
   return (
     <ModalShell
@@ -348,6 +356,31 @@ export default function HelpModal({
             }
           />
         </View>
+        {/* Donation CTA - full-width row beneath the two icon cards (spans
+            the combined length of yashura.io + Source). Ko-fi link, heart
+            glyph as requested. Kept visually distinct from the icon cards
+            above by using a horizontal layout with label + emoji centered. */}
+        <Pressable
+          onPress={() => Linking.openURL("https://ko-fi.com/yanukadeneth99").catch(() => {})}
+          style={({ pressed }) => ({
+            marginTop: 8,
+            paddingVertical: 12,
+            paddingHorizontal: 12,
+            borderRadius: 10,
+            backgroundColor: colors.background,
+            borderWidth: 1,
+            borderColor: colors.surfaceBorder,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text style={[textStyles.body, { color: colors.text, fontWeight: "600" }]}>
+            ❤  Support the Developer
+          </Text>
+        </Pressable>
       </View>
 
       <Text

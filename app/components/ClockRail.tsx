@@ -102,20 +102,27 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress }: CardProps) {
       })}
       hitSlop={6}
     >
-      {/* City + zone abbr label */}
-      <Text
-        style={[
-          text.hint,
-          {
-            color,
-            fontWeight: "600",
-            letterSpacing: 1,
-            textTransform: "uppercase",
-          },
-        ]}
-      >
-        {shortCity(tz)} ({zoneAbbr(now, tz)})
-      </Text>
+      {/* City + zone abbr label. Fixed minHeight reserves vertical space for
+          two lines even when the label only needs one - keeps the clock row
+          below at the same Y across both cards regardless of city-name length
+          (e.g. "BERLIN (GMT+2)" fits one line, "COLOMBO (GMT+5:30)" wraps to
+          two). Without this, the two times sat at different baselines. */}
+      <View style={{ minHeight: isWeb ? 36 : 32, justifyContent: "flex-start" }}>
+        <Text
+          numberOfLines={2}
+          style={[
+            text.hint,
+            {
+              color,
+              fontWeight: "600",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            },
+          ]}
+        >
+          {shortCity(tz)} ({zoneAbbr(now, tz)})
+        </Text>
+      </View>
 
       {/* HH:MM[:SS] [AM/PM] */}
       <View
@@ -150,7 +157,23 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress }: CardProps) {
           </Text>
         ) : null}
         {hour12 && t.ampm ? (
-          <Text style={[text.hint, { color: colors.textMuted, marginLeft: 6 }]}>{t.ampm}</Text>
+          // Match seconds fontSize/lineHeight so the AM/PM glyph shares the
+          // same baseline metric as :SS - otherwise RN's `alignItems:
+          // "baseline"` resolves AM against text.hint's larger lineHeight and
+          // visually drifts below the seconds digits.
+          <Text
+            style={[
+              text.hint,
+              {
+                color: colors.textMuted,
+                marginLeft: 6,
+                fontSize: isWeb ? 24 : 13,
+                lineHeight: isWeb ? 24 : 13,
+              },
+            ]}
+          >
+            {t.ampm}
+          </Text>
         ) : null}
       </View>
     </Pressable>
