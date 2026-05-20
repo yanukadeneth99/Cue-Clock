@@ -8,6 +8,7 @@
 
 - This document must only contain useful information as briefly and concise as possible.
 - This application NEEDS to be minimal and fast while being intuitive.
+- The timers need to be working perfectly, including the zone time.
 
 ---
 
@@ -206,12 +207,12 @@ iOS/web skip step 1.
 
 Three-track release flow. **Closed Testing (Alpha) is retired** — close it in Play Console manually.
 
-| Trigger                                      | Workflow                | Play Track            |
-| -------------------------------------------- | ----------------------- | --------------------- |
-| Push to `master`                             | `android-internal.yml`  | Internal Testing      |
-| Publish a GH **pre-release** (`vX.Y.Z-beta.N`) | `android-beta.yml`      | Open Testing (Beta)   |
-| Flip pre-release → full release (`vX.Y.Z`)   | `android-promote.yml`   | Production (promoted) |
-| Flip pre-release → full release (`vX.Y.Z`)   | `web-deploy.yml`        | Web app (Coolify)     |
+| Trigger                                        | Workflow               | Play Track            |
+| ---------------------------------------------- | ---------------------- | --------------------- |
+| Push to `master`                               | `android-internal.yml` | Internal Testing      |
+| Publish a GH **pre-release** (`vX.Y.Z-beta.N`) | `android-beta.yml`     | Open Testing (Beta)   |
+| Flip pre-release → full release (`vX.Y.Z`)     | `android-promote.yml`  | Production (promoted) |
+| Flip pre-release → full release (`vX.Y.Z`)     | `web-deploy.yml`       | Web app (Coolify)     |
 
 Build workflows (internal, beta): Ubuntu 24.04, JDK 17, Node 22, Android SDK 35. Steps: `npm ci` → `expo prebuild --platform android --clean` → `gradlew bundleRelease` → upload via Play service account.
 

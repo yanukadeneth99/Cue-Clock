@@ -6,9 +6,27 @@ import { text as textStyles } from "@/constants/typography";
 import { computeCountdown, shortCity } from "@/lib/time";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  FlatList,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+  type ListRenderItem,
+} from "react-native";
 
 const isWeb = Platform.OS === "web";
+
+// Fixed pixel height of one alert-option row. WHY a constant rather than
+// padding-driven sizing: it lets the FlatList's `getItemLayout` report every
+// row's offset up front, so the list skips async measurement and can mount /
+// scroll a long (uncapped) option list without layout jank.
+const ALERT_ROW_H = 48;
+
+// Hoisted so the FlatList gets a stable key-extractor reference - recreating
+// it every render would make the list redo work it could otherwise skip.
+const alertKeyExtractor = (item: number) => String(item);
 
 type Props = {
   visible: boolean;
@@ -104,6 +122,16 @@ export function CueEditModal({
   // (not a second native Modal - Android struggles with two stacked Modals).
   // Local boolean controls whether it's visible.
   const [alertPickerOpen, setAlertPickerOpen] = useState(false);
+  // `alertListMounted` lags `alertPickerOpen`: true the instant the picker
+  // opens, false ~220ms after it closes. WHY: the per-minute options list is
+  // uncapped (one row per minute of lead time - a 2-hour cue = 120 rows) and
+  // ModalShell keeps the overlay subtree mounted at all times, just translated
+  // off-screen. Building it unconditionally meant every zone toggle / form
+  // edit reconciled hundreds of off-screen Pressables on the JS thread - the
+  // seconds-long lag the user reported. Gating the list on this flag keeps it
+  // out of the tree until the picker is actually opened; the 220ms tail lets
+  // ModalShell's slide-down exit animation still have content to animate.
+  const [alertListMounted, setAlertListMounted] = useState(false);
 
   // Re-seed the form whenever the modal opens for a different cue (or for the
   // Add flow). Without this, opening "Edit" on cue B after editing cue A shows
@@ -113,6 +141,28 @@ export function CueEditModal({
     setForm(seed);
     setAlertPickerOpen(false);
   }, [visible, seed]);
+
+  // Keep `alertListMounted` in sync with the picker (see the state decl above).
+  // Mount immediately on open; delay the unmount so the exit slide isn't empty.
+  useEffect(() => {
+    if (alertPickerOpen) {
+      setAlertListMounted(true);
+      return;
+    }
+    const t = setTimeout(() => setAlertListMounted(false), 220);
+    return () => clearTimeout(t);
+  }, [alertPickerOpen]);
+
+  // Bail out before any of the layout math below once the sheet is closed.
+  // WHY: CueEditModal sits permanently in the HomeScreen tree, which re-renders
+  // every second to drive the 1 Hz countdown ticker. Without this guard the
+  // `computeCountdown` call and the entire `pickerContent` subtree would be
+  // rebuilt 60x/min while the user isn't even looking at the editor - pure
+  // waste that also slowed the modal's first paint. Returning null here is
+  // safe: ModalShell's open animation keys off its own mount, so it still
+  // animates in cleanly when `visible` flips true. All hooks above run
+  // unconditionally, so the Rules of Hooks are preserved.
+  if (!visible) return null;
 
   // Recompute "alert max" each render - depends on chosen target + zone +
   // buffer. The buffer (`deductMinute/Second`) shifts the *effective* fire
@@ -142,19 +192,52 @@ export function CueEditModal({
   // Name is optional - fall back to a placeholder name on save.
   const canSave = true;
 
+  // Option list as a plain number array: index 0 is the "None" row, indices
+  // 1..maxAlertMins are the per-minute choices. Building it is cheap (a few
+  // hundred integers at most) and only happens while the sheet is open, so it
+  // needs no memo. FlatList virtualises it, so array length never drives the
+  // number of mounted rows.
+  const alertData = Array.from({ length: maxAlertMins + 1 }, (_, i) => i);
+
+  // Renders one row. `item === 0` is the sentinel for "None" (no real alert
+  // is 0 minutes before). Selecting any row commits the value and closes the
+  // picker in a single tap.
+  const renderAlertRow: ListRenderItem<number> = ({ item, index }) => {
+    const isNone = item === 0;
+    return (
+      <AlertOptionRow
+        label={isNone ? "None" : `${item} minute${item === 1 ? "" : "s"} before`}
+        active={
+          isNone
+            ? form.alertMinutesBefore === null
+            : form.alertMinutesBefore === item
+        }
+        isFirst={index === 0}
+        onPress={() => {
+          setForm((f) => ({
+            ...f,
+            alertMinutesBefore: isNone ? null : item,
+          }));
+          setAlertPickerOpen(false);
+        }}
+      />
+    );
+  };
+
   // Picker content lives inline so it can be passed to ModalShell's `overlay`
-  // slot. The parent sheet stays mounted while this slides up over it -
-  // single coordinated transition instead of two chained Modal swaps.
+  // slot. The parent sheet stays mounted while this slides up over it.
   //
-  // Layout: fixed handle + title row, then a flex-1 ScrollView holding the
-  // description + option list. The ScrollView is required because the list
-  // grows with the remaining countdown (1..60 rows) and would otherwise
-  // overflow the overlay's bounded height with no way to reach the bottom.
+  // Layout: fixed handle + title + description, then a flex-1 `FlatList`.
+  // WHY a FlatList (not a ScrollView of mapped rows): the option count is
+  // uncapped - a cue several hours out yields hundreds of rows, and a
+  // ScrollView mounts every child up front. FlatList virtualises: only the
+  // rows near the viewport stay in the tree. `getItemLayout` +
+  // `initialNumToRender` make the first paint show the low-minute rows (the
+  // ones operators reach for most - they sit at the top) instantly; scrolling
+  // reveals the rest on demand.
   const pickerContent = (
     <View style={{ flex: 1, paddingTop: 8 }}>
-      <View
-        style={{ alignItems: "center", paddingTop: 6, paddingBottom: 4 }}
-      >
+      <View style={{ alignItems: "center", paddingTop: 6, paddingBottom: 4 }}>
         <View
           style={{
             width: 40,
@@ -192,54 +275,56 @@ export function CueEditModal({
           <MaterialIcons name="close" size={16} color={colors.textMuted} />
         </Pressable>
       </View>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
-        showsVerticalScrollIndicator
-      >
-        <Text
-          style={[
-            textStyles.bodySmall,
-            { color: colors.textMuted, marginBottom: 12 },
-          ]}
-        >
+      {/* Description is pinned above the list (not scrolled with it) so the
+          "up to N minutes" context stays visible while the user scrolls. */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+        <Text style={[textStyles.bodySmall, { color: colors.textMuted }]}>
           {maxAlertMins >= 1
             ? `Pick how long before the cue you want a heads-up. Up to ${maxAlertMins} minute${maxAlertMins === 1 ? "" : "s"}.`
             : "Countdown is too short to set an alert."}
         </Text>
-        {maxAlertMins >= 1 ? (
-          <View
-            style={{
-              borderRadius: 12,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.surfaceBorder,
-              overflow: "hidden",
-            }}
-          >
-            <AlertOptionRow
-              label="None"
-              active={form.alertMinutesBefore === null}
-              onPress={() => {
-                setForm((f) => ({ ...f, alertMinutesBefore: null }));
-                setAlertPickerOpen(false);
-              }}
-              isFirst
-            />
-            {Array.from({ length: maxAlertMins }, (_, i) => i + 1).map((minutes) => (
-              <AlertOptionRow
-                key={minutes}
-                label={`${minutes} minute${minutes === 1 ? "" : "s"} before`}
-                active={form.alertMinutesBefore === minutes}
-                onPress={() => {
-                  setForm((f) => ({ ...f, alertMinutesBefore: minutes }));
-                  setAlertPickerOpen(false);
-                }}
-              />
-            ))}
-          </View>
-        ) : null}
-      </ScrollView>
+      </View>
+      {/* The list is mounted ONLY while the picker is open (`alertListMounted`
+          lags the close by ~220ms so the slide-down isn't empty). When closed
+          it collapses to an inert spacer, so a zone toggle / form edit never
+          reconciles the option rows. */}
+      {alertListMounted && maxAlertMins >= 1 ? (
+        <FlatList
+          data={alertData}
+          keyExtractor={alertKeyExtractor}
+          renderItem={renderAlertRow}
+          // Selection lives outside `data`, so tell the list to re-render
+          // visible rows when the chosen value changes (active-row tint).
+          extraData={form.alertMinutesBefore}
+          // Fixed row height -> the list knows every offset without measuring.
+          getItemLayout={(_, index) => ({
+            length: ALERT_ROW_H,
+            offset: ALERT_ROW_H * index,
+            index,
+          })}
+          // First paint covers the visible window plus a little buffer; the
+          // common low-minute options all land in this batch. The rest mount
+          // lazily as the user scrolls.
+          initialNumToRender={24}
+          maxToRenderPerBatch={12}
+          windowSize={11}
+          removeClippedSubviews
+          showsVerticalScrollIndicator
+          style={{
+            flex: 1,
+            marginHorizontal: 20,
+            marginBottom: 8,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.surfaceBorder,
+            backgroundColor: colors.surface,
+            // Clip the first/last row's active-tint to the rounded corners.
+            overflow: "hidden",
+          }}
+        />
+      ) : (
+        <View style={{ flex: 1 }} />
+      )}
     </View>
   );
 
@@ -563,7 +648,11 @@ function AlertOptionRow({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        paddingVertical: 13,
+        // Fixed height (not paddingVertical) so it matches `ALERT_ROW_H` -
+        // the FlatList's `getItemLayout` assumes every row is exactly this
+        // tall. RN draws the 1px divider inside the box, so it doesn't add
+        // to the height and offsets stay `ALERT_ROW_H * index`.
+        height: ALERT_ROW_H,
         paddingHorizontal: 16,
         borderTopWidth: isFirst ? 0 : 1,
         borderTopColor: colors.surfaceBorder,

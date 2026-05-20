@@ -7,7 +7,6 @@ import {
   Easing,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -170,11 +169,18 @@ export function ModalShell({
       statusBarTranslucent
     >
       <KeyboardAvoidingView
-        // `padding` on iOS lifts the entire sheet above the keyboard; `height`
-        // on Android resizes the modal window so the focused input remains
-        // visible. Without this, tapping the cue-name input pushed it under
-        // the keyboard with no way to see typed text.
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        // `padding` on BOTH platforms. It adds a bottom padding equal to the
+        // keyboard height, lifting the bottom-anchored sheet clear of the
+        // keyboard while keeping `flex: 1` intact.
+        //
+        // WHY not `height` on Android (the previous choice): `height` swaps the
+        // view to `flex: 0` plus a fixed pixel height for as long as the
+        // keyboard is up. If the keyboard-hide event lands a stale frame, the
+        // view freezes at that fixed height and can't reflow - the sheet stays
+        // raised with a visible gap below it. `padding` only ever toggles a
+        // `paddingBottom` value (and back to none on dismiss), so it always
+        // collapses cleanly. iOS already used `padding` without issue.
+        behavior="padding"
         style={{
           flex: 1,
           // Sheet variant pins to bottom; centered floats in the middle (used
