@@ -2,7 +2,7 @@
 
 **Time. Under Control.**
 
-<img src="https://i.imgur.com/Sg65LvA.png" width="100">
+<img src="https://i.imgur.com/2C7aUM8.png" width="800">
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](./LICENSE)
 [![Android Internal](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml)
