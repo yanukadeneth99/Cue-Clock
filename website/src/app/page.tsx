@@ -655,7 +655,10 @@ export default function Home() {
                   ))
                 )}
               </div>
-              <div className="flex justify-center md:justify-start">
+              {/* Two-tier hierarchy: filled primary for the main "see the code"
+                  action, bordered secondary for the lighter "reach a human"
+                  path. Side-by-side on desktop, stacked on narrow screens. */}
+              <div className="flex flex-wrap justify-center md:justify-start gap-3">
                 <a
                   href="https://github.com/yanukadeneth99/Cue-Clock"
                   target="_blank"
@@ -664,6 +667,16 @@ export default function Home() {
                 >
                   View source code
                   <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                </a>
+                {/* mailto with a prefilled subject so reports land pre-labelled —
+                    a startup-crash user who can't open the app still has a path
+                    to report from any browser. */}
+                <a
+                  href="mailto:hello@yashura.io?subject=Cue%20Clock%20%E2%80%94%20Feedback%2FBug%20Report"
+                  className="inline-flex items-center gap-2.5 px-7 py-4 text-sm font-semibold rounded-[14px] bg-card border border-card-border text-fg hover:border-accent transition-colors cursor-pointer"
+                >
+                  Email the developer
+                  <span className="material-symbols-outlined text-[18px]">mail</span>
                 </a>
               </div>
             </div>
