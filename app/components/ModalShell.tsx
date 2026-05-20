@@ -1,16 +1,18 @@
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Easing,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   View,
+  type KeyboardEvent,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -95,6 +97,15 @@ export function ModalShell({
   const insets = useSafeAreaInsets();
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslate = useRef(new Animated.Value(60)).current;
+  // Extra upward translate applied while a soft keyboard is open (driven by
+  // the keyboard effect below). Composed with `sheetTranslate` via
+  // `Animated.add` so the sheet keeps a single translateY transform - both
+  // inputs run on the native driver, so the lift stays at 60fps.
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
+  const combinedTranslate = useMemo(
+    () => Animated.add(sheetTranslate, keyboardOffset),
+    [sheetTranslate, keyboardOffset],
+  );
   // Overlay animation values - start off-screen / transparent so the first
   // open animates in. `overlayMounted` keeps the overlay in the tree during
   // its exit transition so its slide-down completes before unmount.
@@ -125,6 +136,43 @@ export function ModalShell({
       overlayTranslate.setValue(80);
     }
   }, [visible, backdropOpacity, sheetTranslate, overlayBackdrop, overlayTranslate]);
+
+  // Keyboard handling - replaces KeyboardAvoidingView. WHY: inside an Android
+  // <Modal> (a separate window), KeyboardAvoidingView's "measure my frame,
+  // subtract the keyboard's screenY" math doesn't resolve back to zero on
+  // dismiss - on HyperOS especially, the IME reports imperfect frame metrics -
+  // leaving a residual inset (a gap below the sheet + a needlessly-scrolling
+  // body). Here we instead lift the sheet by the raw reported keyboard height
+  // on show, and on hide force the offset to EXACTLY 0. No coordinates are
+  // trusted on dismiss, so no residual is possible. iOS uses the `Will`
+  // events (they fire before the OS animation, so the lift stays in sync);
+  // Android only fires the `Did` events reliably.
+  useEffect(() => {
+    if (!visible) {
+      keyboardOffset.setValue(0);
+      return;
+    }
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, (e: KeyboardEvent) => {
+      Animated.timing(keyboardOffset, {
+        toValue: -(e.endCoordinates?.height ?? 0),
+        duration: e.duration || 220,
+        useNativeDriver: true,
+      }).start();
+    });
+    const hideSub = Keyboard.addListener(hideEvt, (e: KeyboardEvent) => {
+      Animated.timing(keyboardOffset, {
+        toValue: 0,
+        duration: e?.duration || 220,
+        useNativeDriver: true,
+      }).start();
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [visible, keyboardOffset]);
 
   useEffect(() => {
     if (overlayVisible) {
@@ -168,19 +216,10 @@ export function ModalShell({
       onRequestClose={handleRequestClose}
       statusBarTranslucent
     >
-      <KeyboardAvoidingView
-        // `padding` on BOTH platforms. It adds a bottom padding equal to the
-        // keyboard height, lifting the bottom-anchored sheet clear of the
-        // keyboard while keeping `flex: 1` intact.
-        //
-        // WHY not `height` on Android (the previous choice): `height` swaps the
-        // view to `flex: 0` plus a fixed pixel height for as long as the
-        // keyboard is up. If the keyboard-hide event lands a stale frame, the
-        // view freezes at that fixed height and can't reflow - the sheet stays
-        // raised with a visible gap below it. `padding` only ever toggles a
-        // `paddingBottom` value (and back to none on dismiss), so it always
-        // collapses cleanly. iOS already used `padding` without issue.
-        behavior="padding"
+      {/* Plain container - keyboard avoidance is handled by the animated
+          `keyboardOffset` translate on the sheet itself (see the keyboard
+          effect above), not by a KeyboardAvoidingView. */}
+      <View
         style={{
           flex: 1,
           // Sheet variant pins to bottom; centered floats in the middle (used
@@ -229,7 +268,7 @@ export function ModalShell({
                   paddingBottom: Math.max(insets.bottom, 8),
                 }),
             borderColor: colors.surfaceBorder,
-            transform: [{ translateY: sheetTranslate }],
+            transform: [{ translateY: combinedTranslate }],
           }}
         >
           {/* Grab handle - only meaningful on the bottom-sheet variant; on a
@@ -337,7 +376,7 @@ export function ModalShell({
             </Animated.View>
           ) : null}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
