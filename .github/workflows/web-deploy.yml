@@ -1,0 +1,57 @@
+# =============================================================================
+# Web App Deploy
+# -----------------------------------------------------------------------------
+# Purpose:    Make the Coolify-hosted web app (the Expo web export of `app/`)
+#             track production releases instead of every master push — and
+#             deploy the EXACT tagged commit, not whatever master happens to be.
+#
+# Trigger:    `release: released` — fires when a release is published as a
+#             non-pre-release, or when an existing pre-release is flipped to a
+#             full release (the same moment `android-promote.yml` runs). Betas
+#             (`vX.Y.Z-beta.N`) do NOT fire this.
+#
+# How:        Coolify can only auto-deploy a *branch*, not an arbitrary commit.
+#             So this workflow checks out the released tag and force-updates a
+#             dedicated `release` branch to point at that exact commit. Coolify
+#             is configured to track `release` (not `master`), so its existing
+#             GitHub webhook auto-deploys the tagged tree. `release` is a
+#             CI-owned mirror — it never carries hand-authored commits, so the
+#             force-push is safe and intentional.
+#
+# Setup (one-time, in the Coolify dashboard — cannot be done in CI):
+#   1. On the web app resource, change the tracked branch `master` -> `release`.
+#   2. Keep "Auto Deploy" ENABLED (it now only moves when a release is cut).
+#   3. Set the resource's build command to `npm run build:web:deploy` — that
+#      runs `app/scripts/derive-web-version.js` first, which stamps the latest
+#      full GitHub release version into the footer.
+#   No Coolify API token or secrets are required.
+# =============================================================================
+name: Web App Deploy
+
+on:
+  release:
+    types: [released]
+
+concurrency:
+  group: web-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  mirror-release-branch:
+    name: Mirror released tag to the deploy branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the released tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Force `release` branch to this exact tag
+        # HEAD is the detached checkout at the released tag. Force-push makes
+        # `release` byte-identical to it; Coolify (tracking `release`) then
+        # auto-deploys this exact commit.
+        run: git push origin "HEAD:refs/heads/release" --force
