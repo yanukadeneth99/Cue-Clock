@@ -28,6 +28,7 @@
     "expo-alarm-vibrator": "file:./modules/expo-alarm-vibrator",
     "expo-asset": "~55.0.16",
     "expo-audio": "~55.0.14",
+    "expo-build-properties": "~55.0.14",
     "expo-clipboard": "~55.0.13",
     "expo-constants": "~55.0.15",
     "expo-font": "~55.0.6",

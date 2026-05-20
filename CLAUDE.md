@@ -59,6 +59,7 @@ website/                        Next.js 16 landing page (Tailwind 4, GSAP)
     android-beta.yml            GH pre-release (vX.Y.Z-beta.N) → signed AAB → Play Open Testing
     android-promote.yml         GH full release (vX.Y.Z) → promote beta AAB → Play Production (no rebuild)
     android-release-verify.yml  PR dry-run of the release build pipeline (throwaway keystore)
+    web-deploy.yml              GH full release (vX.Y.Z) → triggers Coolify deploy of the web app
   scripts/
     promote-to-production.js    googleapis-based promotion logic invoked by android-promote.yml
 ```
@@ -210,19 +211,26 @@ Three-track release flow. **Closed Testing (Alpha) is retired** — close it in 
 | Push to `master`                             | `android-internal.yml`  | Internal Testing      |
 | Publish a GH **pre-release** (`vX.Y.Z-beta.N`) | `android-beta.yml`      | Open Testing (Beta)   |
 | Flip pre-release → full release (`vX.Y.Z`)   | `android-promote.yml`   | Production (promoted) |
+| Flip pre-release → full release (`vX.Y.Z`)   | `web-deploy.yml`        | Web app (Coolify)     |
 
-Build workflows (internal, beta): Ubuntu 24.04, JDK 17, Node 22, Android SDK 35. Steps: `npm ci` → `expo prebuild --platform android --clean` → restrict architectures → decode Firebase + keystore from Base64 secrets → `gradlew bundleRelease` → upload via Play service account.
+Build workflows (internal, beta): Ubuntu 24.04, JDK 17, Node 22, Android SDK 35. Steps: `npm ci` → `expo prebuild --platform android --clean` → `gradlew bundleRelease` → upload via Play service account.
+
+**ABIs are ARM-only.** All three build workflows pass `-PreactNativeArchitectures=arm64-v8a,armeabi-v7a` — x86/x86_64 are deliberately excluded. Every real Android phone is ARM; x86 environments (emulators/ChromeOS) run the ARM split via their translation layer. Dropping x86/x86_64 just shrinks the AAB. Do NOT re-add them.
+
+**`useLegacyPackaging` MUST stay `true`** (set via `expo-build-properties` in `app.json` → writes `expo.useLegacyPackaging=true` to `gradle.properties`). This forces `android:extractNativeLibs="true"`, so the OS extracts native `.so` libs to the app's private `lib/` dir at install. With `false` (the modern Expo default), libs stay uncompressed inside the APK and load directly via SoLoader's `DirectApkSoSource` — **Android 11 and below have a buggy direct-from-APK path for transitive deps like `libc++_shared.so`**, which fatally crashed RN's New Architecture at `MainApplication.onCreate` (`SoLoaderDSONotFoundError`, Crashlytics — 100% Android 11, real ARM devices). Android 12+ is unaffected, but do NOT flip this back.
 
 Promote workflow: no build. Calls Google Play Developer API directly (`.github/scripts/promote-to-production.js`, uses `googleapis`) to copy the most recent matching beta AAB to the production track — **byte-identical** to what beta testers validated.
 
 **No manual `app.json` version bumps.** `versionName` is derived from git tags by `app/scripts/derive-internal-version.js` (internal track) and from the release tag itself by `app/scripts/prepare-android-release.js` (beta + production). The `expo.version` field in `app.json` is rewritten by CI before every build; the value committed to git only matters as a bootstrap fallback if zero `v*` tags exist.
+
+**Web app deploy.** The Coolify-hosted web app is the Expo web export of `app/` (HelpModal's footer reads `Constants.expoConfig.version`). On `release: released` (full releases only), `web-deploy.yml` checks out the released tag and force-updates a CI-owned `release` branch to that exact commit. Coolify tracks the `release` branch (not `master`), so its existing git webhook auto-deploys the tagged tree — the web app deploys the exact release commit, never master HEAD. Coolify's build command must be `npm run build:web:deploy`, which runs `app/scripts/derive-web-version.js` first — that fetches the latest full GitHub release and stamps it into `app.json` `expo.version`, so the web footer matches mobile production. No Coolify API token/secrets needed. Setup steps are in the `web-deploy.yml` header.
 
 ### Release lifecycle
 
 Tags are the source of truth. Two shapes only:
 
 - `vX.Y.Z-beta.N` (`v0.1.0-beta.1`, `v0.1.0-beta.2`, …) — GitHub **pre-release**. Triggers `android-beta.yml`, builds a signed AAB, uploads to Open Testing with `versionName = X.Y.Z-beta.N`. Beta testers see the suffix and know which beta they're on.
-- `vX.Y.Z` (`v0.1.0`) — GitHub **full release**. Triggers `android-promote.yml`. Picks the highest-versionCode completed beta release whose name matches `X.Y.Z-beta.*` and promotes that exact AAB to Production with release name `X.Y.Z`. No rebuild. The AAB's internal `versionName` stays `X.Y.Z-beta.N` (cosmetic only — the Play store release name is what users see).
+- `vX.Y.Z` (`v0.1.0`) — GitHub **full release**. Triggers `android-promote.yml`. Picks the highest-versionCode completed beta release whose name matches `X.Y.Z-beta.*` and promotes that exact AAB to Production with release name `X.Y.Z`. No rebuild. The AAB's internal `versionName` stays `X.Y.Z-beta.N` for audit/crash-report traceability — `HelpModal` strips the `-beta.N` suffix at display time so the in-app footer reads `X.Y.Z` for production users (Play Store release name + Help footer both show clean semver).
 
 Typical cycle:
 

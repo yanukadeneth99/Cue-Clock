@@ -143,8 +143,13 @@ jobs:
       - name: Build release AAB
         working-directory: app/android
         run: |
+          # ARM-only: every real Android phone is ARM. Shipping x86/x86_64
+          # native splits only served emulators/ChromeOS a broken bundle —
+          # the x86_64 split was missing libc++_shared.so, fatally crashing
+          # RN's New Architecture at MainApplication.onCreate (Crashlytics:
+          # SoLoaderDSONotFoundError). Dropping them also shrinks the AAB.
           ./gradlew bundleRelease \
-            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86,x86_64 \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
             -Pandroid.injected.signing.store.file=$(pwd)/release.keystore \
             -Pandroid.injected.signing.store.password=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
