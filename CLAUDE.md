@@ -109,6 +109,8 @@ Key persisted keys: `zone1`, `zone2`, `targetBlocks`, `is24Hour`, `alertMode` (`
 
 **Auto-sort by remaining time.** The render path sorts active blocks by `computeCountdown(...).total` ascending each tick - soonest cue is always primary, the rest fall in line below it. Zones are not part of the sort key: `computeCountdown` already projects each target into its own zone, so `total` is in real wall-clock seconds-from-now regardless of where the cue lives. The persisted order in `targetBlocks` no longer drives display; cues are reordered purely visually as time advances.
 
+**`OnAirView` is a pure presenter.** It does not sort or filter its `blocks` prop. The caller (`index.tsx` fullscreen branch) must pre-filter passed cues (`passedAt[b.id] == null`) and sort ascending by `computeCountdown` total before passing — identical to the normal-view `activeBlocks` logic. Passing raw `targetBlocks` causes inverse/wrong ordering in fullscreen.
+
 ---
 
 ## Alert System

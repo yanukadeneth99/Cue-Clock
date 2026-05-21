@@ -1894,10 +1894,23 @@ export default function HomeScreen() {
   // are graceful no-ops on web), so the legacy fullscreen rendering below
   // is now unreachable.
   if (fullScreen) {
+    // Mirror the same sort used by the normal view: exclude passed cues and
+    // order active cues by seconds-remaining ascending so the soonest is first.
+    const onAirActiveBlocks = targetBlocks
+      .filter((b) => passedAt[b.id] == null)
+      .slice()
+      .sort((a, b) => {
+        const totalFor = (block: TargetBlockType) => {
+          const tz = block.targetZone === "zone1" ? zone1 : zone2;
+          const ds = block.deductMinute * 60 + block.deductSecond;
+          return computeCountdown(now, tz, { h: block.targetHour, m: block.targetMinute }, ds).total;
+        };
+        return totalFor(a) - totalFor(b);
+      });
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <OnAirView
-          blocks={targetBlocks}
+          blocks={onAirActiveBlocks}
           zone1={zone1}
           zone2={zone2}
           is24Hour={is24Hour}
