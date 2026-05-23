@@ -5,6 +5,7 @@ import DebugLogModal from "@/components/DebugLogModal";
 import { dlog, isDebugLogEnabled } from "@/lib/debugLog";
 import AnalyticsConsentModal from "@/components/AnalyticsConsentModal";
 import AnalyticsOptOutModal from "@/components/AnalyticsOptOutModal";
+import AnalyticsReEnableModal from "@/components/AnalyticsReEnableModal";
 import { ClockRail } from "@/components/ClockRail";
 import ClockPicker from "@/components/ClockPicker";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -42,7 +43,17 @@ import {
 import { fgDeliveredQueue } from "@/lib/alarmHandlers";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import { useAudioPlayer } from "expo-audio";
 import * as KeepAwake from "expo-keep-awake";
+
+// WHY a module-level require: keeps the asset registered once at import time
+// so the native player can pre-decode it. Inline requires inside the component
+// would re-resolve on every render.
+const BEEP_SOURCE = require("../assets/beep.mp3");
+// Longer, higher-pitched (1320Hz vs 880Hz - a perfect fifth above) tone for
+// the T-0 "go" moment. Same musical interval as race-start countdowns; reads
+// as "fire" without any extra design language.
+const BEEP_GO_SOURCE = require("../assets/beep_go.mp3");
 import { DateTime } from "luxon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -145,6 +156,10 @@ const FULLSCREEN_MAX_FONT = 40;
 const FULLSCREEN_MIN_FONT = 24;
 // per-block height overhead beyond font size (marginVertical + name + target time line)
 const BLOCK_OVERHEAD = 52;
+// Stable empty-map sentinel for the "Minimize ended cues" off state. Reusing
+// one frozen reference avoids re-creating an object every render, which would
+// invalidate downstream `useMemo` / `React.memo` keyed on `passedIds`.
+const EMPTY_PASSED: Readonly<Record<number, number>> = Object.freeze({});
 
 /**
  * Compute the Date at which a block's alert should fire.
@@ -355,12 +370,30 @@ export default function HomeScreen() {
   const [androidBackgroundHelpVisible, setAndroidBackgroundHelpVisible] = useState(false);
   const [debugLogVisible, setDebugLogVisible] = useState(false);
   const [optOutModalVisible, setOptOutModalVisible] = useState(false);
+  // WHY: distinguishes the "Turn off analytics" path from Settings vs the
+  // "No thanks" path from the first-launch consent. On reconsider ("Keep
+  // Supporting") we re-open the consent modal only if that was the origin -
+  // otherwise we just dismiss and leave analytics on.
+  const [optOutOrigin, setOptOutOrigin] = useState<"settings" | "consent" | null>(null);
+  const [reEnableModalVisible, setReEnableModalVisible] = useState(false);
   const [is24Hour, setIs24Hour] = useState(true);
   const [alertMode, setAlertMode] = useState<"notification" | "alarm">("notification");
   // New design settings - persisted alongside the existing keys.
   const [showSeconds, setShowSeconds] = useState(true);
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [keepOn, setKeepOn] = useState(true);
+  // WHY: same-day broadcasts want passed cues to fade out so the operator's
+  // attention stays on what's next. Past-midnight shows (a 23:55 cue followed
+  // by a 01:30 cue) need the opposite - the 23:55 cue should keep counting
+  // and roll over to ~24h remaining, never disappearing. Defaults to true
+  // (the existing behaviour); flipping off gates the detection effect so
+  // `passedAt` stays empty and all cues remain visible indefinitely.
+  const [autoMinimizePassed, setAutoMinimizePassed] = useState(true);
+  // WHY: short 880Hz beep at T-3 / T-2 / T-1 for the soonest cue only.
+  // Gives the operator a tactile "go in 3, 2, 1" cue without needing to
+  // look at the screen. Default ON; disabled via Settings for environments
+  // where any beep is unacceptable (live mic open, etc.).
+  const [finalBeep, setFinalBeep] = useState(true);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [alarmDismissData, setAlarmDismissData] = useState<{
     blockId: number;
@@ -418,6 +451,14 @@ export default function HomeScreen() {
   useEffect(() => { passedAtRef.current = passedAt; }, [passedAt]);
   const lastTotalsRef = useRef<Record<number, number>>({});
   useEffect(() => {
+    // Detection runs ALWAYS, independent of `autoMinimizePassed`. WHY: if we
+    // short-circuited when OFF, a cue that rolled past zero during the OFF
+    // window would silently miss its prev<=5 -> next>=86395 transition, and
+    // toggling back ON would not re-detect it (lastTotalsRef would already
+    // hold the post-rollover ~86400 value). Keeping detection always-on
+    // makes `passedAt` the single source of truth; the user-facing toggle
+    // only gates whether the render path presents passed cues as minimized
+    // strips or as normal active rows (see render-path filters below).
     const updates: Record<number, number> = {};
     let mutated = false;
     const nowMs = now.getTime();
@@ -451,6 +492,173 @@ export default function HomeScreen() {
       });
     }
   }, [now, targetBlocks, zone1, zone2]);
+
+  // ─── Final-3s beep ────────────────────────────────────────────────
+  // Two-instance pool for the short tick. WHY pool: expo-audio's seekTo is
+  // dispatched to the playback thread; a back-to-back seekTo+play 1s later on
+  // the SAME instance can race - the second play() lands before the head
+  // reset, dropping that beep (caused the missed T-2 on device). Alternating
+  // between two pre-warmed players guarantees each beep gets an idle
+  // instance, so the audio is rock-solid regardless of decode jitter.
+  const beepPlayerA = useAudioPlayer(BEEP_SOURCE);
+  const beepPlayerB = useAudioPlayer(BEEP_SOURCE);
+  // Separate longer/higher tone for T-0. Dedicated player so it can't be
+  // pre-empted by an in-flight tick beep.
+  const goPlayer = useAudioPlayer(BEEP_GO_SOURCE);
+  const beepPoolToggleRef = useRef(0);
+  // Pre-warm all three players on mount: forces the codec to JIT-decode the
+  // assets so the first real beep doesn't pay the ~50-100ms cold-start cost
+  // (the "lag before" the user heard). We play at volume 0 then restore - a
+  // silent play+pause cycle is enough to prime the native decoder.
+  useEffect(() => {
+    const prime = (p: typeof beepPlayerA) => {
+      try {
+        // Some installs surface .volume directly; others through .setVolume.
+        // We set via assignment when available (expo-audio's documented API).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (p as any).volume = 0;
+        p.play();
+        setTimeout(() => {
+          try {
+            p.pause();
+            p.seekTo(0);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (p as any).volume = 1;
+          } catch { /* player not ready - real beep will retry */ }
+        }, 60);
+      } catch { /* no-op */ }
+    };
+    prime(beepPlayerA);
+    prime(beepPlayerB);
+    prime(goPlayer);
+    // intentionally one-shot at mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Per-cue trackers. The "tick" tracker drives the 3-2-1 short beeps; the
+  // "go" tracker fires once when the cue crosses zero (detected via the
+  // computeCountdown rollover back to ~86400, the same signal used for
+  // passedAt). They're kept separate so swapping primaries doesn't reset
+  // a pending go-beep mid-flight.
+  const lastBeepIdRef = useRef<number | null>(null);
+  const lastBeepTotalRef = useRef<number | null>(null);
+  const goFiredForRef = useRef<Record<number, number>>({});
+  // Pending pre-scheduled beep timeouts. We schedule each beep on the PRIOR
+  // tick with a delay that lands it ~300ms BEFORE the next wall-clock second
+  // boundary - that compensates for native play() dispatch + audio output
+  // buffer latency, so the operator hears the beep in sync with the digit
+  // transition rather than ~250ms after it. Stored so we can cancel if the
+  // cue is removed, the primary swaps, or the toggle flips off mid-flight.
+  const pendingBeepTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Lead time in ms. Measured empirically on Redmi Note 12 (the worst-case
+  // calibration target per CLAUDE.md). Tunable: bigger value = beep earlier.
+  const BEEP_LEAD_MS = 300;
+  const clearPendingBeeps = useCallback(() => {
+    for (const t of pendingBeepTimersRef.current) clearTimeout(t);
+    pendingBeepTimersRef.current = [];
+  }, []);
+  // Cancel pending beeps on unmount.
+  useEffect(() => clearPendingBeeps, [clearPendingBeeps]);
+  useEffect(() => {
+    if (!finalBeep) {
+      // Toggling off mid-countdown should silence any already-scheduled beep.
+      clearPendingBeeps();
+      return;
+    }
+    // Re-derive the primary (soonest) active cue using the same logic as the
+    // render path: skip passed cues, pick min total. Done inline so the beep
+    // stays independent of render-path memoization.
+    let primaryId: number | null = null;
+    let primaryTotal = Number.POSITIVE_INFINITY;
+    for (const b of targetBlocks) {
+      if (passedAtRef.current[b.id] != null) continue;
+      const tz = b.targetZone === "zone1" ? zone1 : zone2;
+      const deductSec = b.deductMinute * 60 + b.deductSecond;
+      const total = computeCountdown(now, tz, { h: b.targetHour, m: b.targetMinute }, deductSec).total;
+      if (total < primaryTotal) {
+        primaryTotal = total;
+        primaryId = b.id;
+      }
+    }
+    if (primaryId == null) {
+      clearPendingBeeps();
+      return;
+    }
+    // Reset the per-cue tracker when the primary cue swaps. Also flush any
+    // pending beeps for the old primary - they were aimed at a digit that no
+    // longer exists on screen.
+    if (lastBeepIdRef.current !== primaryId) {
+      clearPendingBeeps();
+      lastBeepIdRef.current = primaryId;
+      lastBeepTotalRef.current = primaryTotal;
+      return;
+    }
+    const prev = lastBeepTotalRef.current;
+    lastBeepTotalRef.current = primaryTotal;
+    // Inner helper: schedule a play() to land BEEP_LEAD_MS before the next
+    // second boundary. delay = 1000 - lead, so a 300ms lead → 700ms timeout.
+    // useNow ticks within ~tens of ms of the boundary, so this is accurate
+    // enough for human perception (digit + beep feel simultaneous).
+    const scheduleBeep = (kind: "tick" | "go") => {
+      const delay = Math.max(0, 1000 - BEEP_LEAD_MS);
+      const timer = setTimeout(() => {
+        try {
+          if (kind === "tick") {
+            // Alternate between the two short-beep players. The "off" player
+            // is guaranteed idle (last played >=2s ago vs. 130ms clip
+            // length), so seekTo+play has no race window.
+            const player = beepPoolToggleRef.current === 0 ? beepPlayerA : beepPlayerB;
+            beepPoolToggleRef.current = beepPoolToggleRef.current === 0 ? 1 : 0;
+            player.seekTo(0);
+            player.play();
+          } else {
+            goPlayer.seekTo(0);
+            goPlayer.play();
+          }
+        } catch {
+          // Player may not be ready; not worth retrying for a missed SFX.
+        }
+        // Drop self from the pending list so memory doesn't accumulate.
+        pendingBeepTimersRef.current = pendingBeepTimersRef.current.filter(
+          (t) => t !== timer,
+        );
+      }, delay);
+      pendingBeepTimersRef.current.push(timer);
+    };
+    // Short tick: detect ONE SECOND EARLY. The setTimeout delay (1000 -
+    // BEEP_LEAD_MS = 700ms) means the beep lands ~300ms before the NEXT
+    // second boundary. So to make the user hear a beep AS digit N appears,
+    // we must schedule on the tick where current=N+1. Mapping:
+    //   current=4 (digit "4" visible)  → schedule T-3 beep (lands as "3" paints)
+    //   current=3 (digit "3" visible)  → schedule T-2 beep
+    //   current=2 (digit "2" visible)  → schedule T-1 beep
+    //   current=1 (digit "1" visible)  → schedule "go" tone (lands at rollover)
+    // Strict prev === curr+1 guard avoids spurious fires when the app
+    // resumes from background and skips several seconds at once.
+    if (
+      (primaryTotal === 4 || primaryTotal === 3 || primaryTotal === 2) &&
+      prev === primaryTotal + 1
+    ) {
+      scheduleBeep("tick");
+    }
+    // Go beep: schedule when current=1 so the longer "go" tone lands ~300ms
+    // before the digit rolls over (i.e., as the cue passes zero). One-shot
+    // per block id so the next-day rollover 24h later can't refire it.
+    if (
+      prev === 2 &&
+      primaryTotal === 1 &&
+      goFiredForRef.current[primaryId] == null
+    ) {
+      goFiredForRef.current[primaryId] = Date.now();
+      scheduleBeep("go");
+    }
+    // Sweep go-fired entries older than 1h so the map can't grow unbounded.
+    const nowMs = Date.now();
+    for (const id of Object.keys(goFiredForRef.current)) {
+      if (nowMs - goFiredForRef.current[+id] > 60 * 60 * 1000) {
+        delete goFiredForRef.current[+id];
+      }
+    }
+  }, [now, targetBlocks, zone1, zone2, finalBeep, beepPlayerA, beepPlayerB, goPlayer, clearPendingBeeps]);
 
   const dismissPassed = useCallback((id: number) => {
     setPassedAt((prev) => {
@@ -707,6 +915,8 @@ export default function HomeScreen() {
           storedShowSeconds,
           storedSoundAlerts,
           storedKeepOn,
+          storedAutoMinimizePassed,
+          storedFinalBeep,
         ] = await AsyncStorage.multiGet([
           "zone1",
           "zone2",
@@ -718,6 +928,8 @@ export default function HomeScreen() {
           "showSeconds",
           "soundAlerts",
           "keepOn",
+          "autoMinimizePassed",
+          "finalBeep",
         ]);
 
         if (storedZone1[1]) setZone1(storedZone1[1]);
@@ -730,6 +942,9 @@ export default function HomeScreen() {
         if (storedShowSeconds[1] === "false") setShowSeconds(false);
         if (storedSoundAlerts[1] === "false") setSoundAlerts(false);
         if (storedKeepOn[1] === "false") setKeepOn(false);
+        if (storedAutoMinimizePassed[1] === "false") setAutoMinimizePassed(false);
+        // Only explicit "false" opts out; default (and any missing key) leaves it on.
+        if (storedFinalBeep[1] === "false") setFinalBeep(false);
         if (storedAnalytics[1] === null) {
           // First launch - onboarding flow:
           //   Step 1 (Android only): permissions/settings guide
@@ -841,8 +1056,10 @@ export default function HomeScreen() {
       ["showSeconds", String(showSeconds)],
       ["soundAlerts", String(soundAlerts)],
       ["keepOn", String(keepOn)],
+      ["autoMinimizePassed", String(autoMinimizePassed)],
+      ["finalBeep", String(finalBeep)],
     ]).catch(() => {});
-  }, [zone1, zone2, targetBlocks, is24Hour, alertMode, showSeconds, soundAlerts, keepOn]);
+  }, [zone1, zone2, targetBlocks, is24Hour, alertMode, showSeconds, soundAlerts, keepOn, autoMinimizePassed, finalBeep]);
 
   // Countdown updater - returns same array reference if nothing changed
   useEffect(() => {
@@ -1579,7 +1796,24 @@ export default function HomeScreen() {
 
   const handleAnalyticsConsent = useCallback(async (accepted: boolean) => {
     setConsentModalVisible(false);
-    await applyAnalyticsChoice(accepted);
+    if (accepted) {
+      await applyAnalyticsChoice(true);
+      return;
+    }
+    // Decline path: surface the friction modal so the user can reconsider
+    // before the choice persists. Tracks origin so "Keep Supporting" re-opens
+    // the consent sheet (not just dismisses, which would leave the consent
+    // unresolved on first launch).
+    //
+    // WHY the setTimeout: RN <Modal> on Android is a separate Dialog window.
+    // Closing consent (`visible=false`) and opening opt-out (`visible=true`)
+    // in the same render tick races - the opt-out Dialog tries to attach
+    // before the consent Dialog's window has been torn down, and Android
+    // silently drops the second window-attach. Deferring by ~280ms (longer
+    // than consent's slide-out animation) lets the first window dismiss
+    // cleanly before the second mounts.
+    setOptOutOrigin("consent");
+    setTimeout(() => setOptOutModalVisible(true), 280);
   }, [applyAnalyticsChoice]);
 
   const openAppSettings = useCallback(() => {
@@ -1834,10 +2068,22 @@ export default function HomeScreen() {
         onToggleShowSeconds={setShowSeconds}
         keepOn={keepOn}
         onToggleKeepOn={setKeepOn}
+        autoMinimizePassed={autoMinimizePassed}
+        onToggleAutoMinimizePassed={setAutoMinimizePassed}
+        finalBeep={finalBeep}
+        onToggleFinalBeep={setFinalBeep}
         analyticsEnabled={analyticsEnabled}
         onRequestOptOut={() => {
           setSettingsVisible(false);
+          setOptOutOrigin("settings");
           setOptOutModalVisible(true);
+        }}
+        onRequestOptIn={() => {
+          // Close Settings first so the re-enable sheet animates in cleanly
+          // (two stacked native Modals race on Android - see consent->opt-out
+          // tick-delay note above). 280ms covers the sheet's slide-out.
+          setSettingsVisible(false);
+          setTimeout(() => setReEnableModalVisible(true), 280);
         }}
         onTestAlarm={isDebugLogEnabled() ? runTestAlarm : undefined}
         onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}
@@ -1865,11 +2111,29 @@ export default function HomeScreen() {
       <DebugLogModal visible={debugLogVisible} onClose={() => setDebugLogVisible(false)} />
       <AnalyticsOptOutModal
         visible={optOutModalVisible}
+        dismissable={optOutOrigin !== "consent"}
         onConfirmOptOut={() => {
           setOptOutModalVisible(false);
+          setOptOutOrigin(null);
           applyAnalyticsChoice(false);
         }}
-        onCancel={() => setOptOutModalVisible(false)}
+        onCancel={() => {
+          // If the friction sheet was opened from the first-launch consent
+          // "No thanks" path, reopen the consent so the user re-makes the
+          // choice. From Settings, just dismiss - analytics stays enabled.
+          const origin = optOutOrigin;
+          setOptOutModalVisible(false);
+          setOptOutOrigin(null);
+          if (origin === "consent") setConsentModalVisible(true);
+        }}
+      />
+      <AnalyticsReEnableModal
+        visible={reEnableModalVisible}
+        onAllow={() => {
+          setReEnableModalVisible(false);
+          applyAnalyticsChoice(true);
+        }}
+        onClose={() => setReEnableModalVisible(false)}
       />
       {alarmDismissData ? (
         <AlarmDismissModal
@@ -1896,8 +2160,11 @@ export default function HomeScreen() {
   if (fullScreen) {
     // Mirror the same sort used by the normal view: exclude passed cues and
     // order active cues by seconds-remaining ascending so the soonest is first.
+    // Only filter out passed cues when the user wants them minimized. With
+    // the toggle off, passed cues stay in the queue and tick toward the
+    // next-day rollover (the documented past-midnight use case).
     const onAirActiveBlocks = targetBlocks
-      .filter((b) => passedAt[b.id] == null)
+      .filter((b) => !autoMinimizePassed || passedAt[b.id] == null)
       .slice()
       .sort((a, b) => {
         const totalFor = (block: TargetBlockType) => {
@@ -1936,7 +2203,10 @@ export default function HomeScreen() {
     // Split blocks into passed (compressed strips) and active (primary + queue).
     // Active list preserves the user's drag order; passed list is sorted by
     // when each cue fired so the most recent expiry sits closest to primary.
-    const passedIds = passedAt;
+    // When `autoMinimizePassed` is false, we want zero PassedStrips above
+    // the primary card. Treat the passed map as empty for both the strip
+    // list AND the active-list filter so cues remain in their normal slots.
+    const passedIds = autoMinimizePassed ? passedAt : (EMPTY_PASSED as Record<number, number>);
     const passedBlocks = targetBlocks
       .filter((b) => passedIds[b.id] != null)
       .sort((a, b) => passedIds[a.id] - passedIds[b.id]);
@@ -1975,6 +2245,16 @@ export default function HomeScreen() {
           // layout). Native keeps the pinned bottom CTA as the primary
           // entry-point so it sits within thumb reach.
           onAddCue={isWeb ? () => openEditor("new") : undefined}
+          // Nudge appears only when the user has explicitly opted out
+          // (analyticsEnabled === false). null (unasked) and true both hide it.
+          // Tapping reopens the consent modal as a Settings-origin choice -
+          // the friction sheet is still reachable from there if they want to
+          // bail, but the default is the optimistic "Allow analytics" CTA.
+          showAnalyticsNudge={analyticsEnabled === false}
+          // WHY ReEnable instead of Consent: the consent modal is a GDPR
+          // first-launch gauntlet; for a re-opt-in the user has already seen
+          // disclosures, so we route to the lighter single-sheet path.
+          onAnalyticsNudge={() => setReEnableModalVisible(true)}
         />
         <ScrollView
           ref={scrollViewRef}
@@ -2567,10 +2847,22 @@ export default function HomeScreen() {
         onToggleShowSeconds={setShowSeconds}
         keepOn={keepOn}
         onToggleKeepOn={setKeepOn}
+        autoMinimizePassed={autoMinimizePassed}
+        onToggleAutoMinimizePassed={setAutoMinimizePassed}
+        finalBeep={finalBeep}
+        onToggleFinalBeep={setFinalBeep}
         analyticsEnabled={analyticsEnabled}
         onRequestOptOut={() => {
           setSettingsVisible(false);
+          setOptOutOrigin("settings");
           setOptOutModalVisible(true);
+        }}
+        onRequestOptIn={() => {
+          // Close Settings first so the re-enable sheet animates in cleanly
+          // (two stacked native Modals race on Android - see consent->opt-out
+          // tick-delay note above). 280ms covers the sheet's slide-out.
+          setSettingsVisible(false);
+          setTimeout(() => setReEnableModalVisible(true), 280);
         }}
         onTestAlarm={isDebugLogEnabled() ? runTestAlarm : undefined}
         onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}
@@ -2602,11 +2894,27 @@ export default function HomeScreen() {
 
       <AnalyticsOptOutModal
         visible={optOutModalVisible}
+        dismissable={optOutOrigin !== "consent"}
         onConfirmOptOut={() => {
           setOptOutModalVisible(false);
+          setOptOutOrigin(null);
           applyAnalyticsChoice(false);
         }}
-        onCancel={() => setOptOutModalVisible(false)}
+        onCancel={() => {
+          const origin = optOutOrigin;
+          setOptOutModalVisible(false);
+          setOptOutOrigin(null);
+          if (origin === "consent") setConsentModalVisible(true);
+        }}
+      />
+
+      <AnalyticsReEnableModal
+        visible={reEnableModalVisible}
+        onAllow={() => {
+          setReEnableModalVisible(false);
+          applyAnalyticsChoice(true);
+        }}
+        onClose={() => setReEnableModalVisible(false)}
       />
 
       {alarmDismissData && (

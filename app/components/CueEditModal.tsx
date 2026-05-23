@@ -5,6 +5,7 @@ import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
 import { computeCountdown, shortCity } from "@/lib/time";
 import { MaterialIcons } from "@expo/vector-icons";
+import { DateTime } from "luxon";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
@@ -95,7 +96,22 @@ export function CueEditModal({
   // user is editing.
   const existingId = existing?.id ?? null;
   const seed = useMemo<FormState>(() => {
-    const now = new Date();
+    // WHY zone1 (not device-local): the new cue defaults to targetZone "zone1",
+    // so the displayed AM/PM half should match what the user sees on the
+    // zone1 clock. Operators routinely run the app from one timezone while
+    // cueing for another (PST device, Tokyo zone1) - device hours would
+    // suggest the wrong AM/PM and waste a tap.
+    const zoneNow = DateTime.now().setZone(zone1);
+    const zoneHour = zoneNow.isValid ? zoneNow.hour : new Date().getHours();
+    // Bump to next hour rounded down to :00, BUT preserve the current AM/PM
+    // half in 12-hour mode. At 11:43 PM (h=23), naive (+1)%24 gives 0 which
+    // flips to AM - we don't want that. Cap at the half-boundary (h=23 stays
+    // 23, h=11 stays 11) so the picker still shows PM / AM respectively.
+    const candidate = (zoneHour + 1) % 24;
+    const candidateIsPM = candidate >= 12;
+    const currentIsPM = zoneHour >= 12;
+    const seedHour =
+      is24Hour || candidateIsPM === currentIsPM ? candidate : zoneHour;
     return existing
       ? {
           name: existing.name ?? "",
@@ -108,7 +124,7 @@ export function CueEditModal({
         }
       : {
           name: "",
-          targetHour: (now.getHours() + 1) % 24,
+          targetHour: seedHour,
           targetMinute: 0,
           deductMinute: 0,
           deductSecond: 0,

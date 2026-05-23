@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
 import { MaterialIcons } from "@expo/vector-icons";
-import { ReactNode, useEffect, useMemo, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import {
   Animated,
   Easing,
@@ -97,15 +97,20 @@ export function ModalShell({
   const insets = useSafeAreaInsets();
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslate = useRef(new Animated.Value(60)).current;
-  // Extra upward translate applied while a soft keyboard is open (driven by
-  // the keyboard effect below). Composed with `sheetTranslate` via
-  // `Animated.add` so the sheet keeps a single translateY transform - both
-  // inputs run on the native driver, so the lift stays at 60fps.
-  const keyboardOffset = useRef(new Animated.Value(0)).current;
-  const combinedTranslate = useMemo(
-    () => Animated.add(sheetTranslate, keyboardOffset),
-    [sheetTranslate, keyboardOffset],
-  );
+  // Padding-bottom applied to the OUTER container while a soft keyboard is
+  // open. WHY container-padding instead of a translateY on the sheet itself:
+  // translating the sheet by -keyboardHeight worked for short forms but broke
+  // for tall lists (e.g. ZonePickerModal at maxHeight 88%). Filtering the
+  // list shrank the sheet's intrinsic height, but on clearing the filter the
+  // sheet expanded back to max-height AND was still translated up by the
+  // keyboard height - the top edge punched above the status bar and the only
+  // way to recover was to dismiss the keyboard. Shrinking the available area
+  // with paddingBottom keeps `maxHeight` doing its job: the sheet stays
+  // anchored to the (now smaller) container, and can never exceed it.
+  // useNativeDriver:false because layout props can't run on the native
+  // driver - the cost is a single keyboard show/hide animation, not a hot
+  // loop, so the main-thread layout pass is fine.
+  const keyboardPad = useRef(new Animated.Value(0)).current;
   // Overlay animation values - start off-screen / transparent so the first
   // open animates in. `overlayMounted` keeps the overlay in the tree during
   // its exit transition so its slide-down completes before unmount.
@@ -149,30 +154,32 @@ export function ModalShell({
   // Android only fires the `Did` events reliably.
   useEffect(() => {
     if (!visible) {
-      keyboardOffset.setValue(0);
+      keyboardPad.setValue(0);
       return;
     }
     const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     const showSub = Keyboard.addListener(showEvt, (e: KeyboardEvent) => {
-      Animated.timing(keyboardOffset, {
-        toValue: -(e.endCoordinates?.height ?? 0),
+      Animated.timing(keyboardPad, {
+        toValue: e.endCoordinates?.height ?? 0,
         duration: e.duration || 220,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
     });
     const hideSub = Keyboard.addListener(hideEvt, (e: KeyboardEvent) => {
-      Animated.timing(keyboardOffset, {
+      // Force EXACT 0 on hide. HyperOS reports imperfect end-coordinates on
+      // dismiss, so trusting any computed value risks a residual gap.
+      Animated.timing(keyboardPad, {
         toValue: 0,
         duration: e?.duration || 220,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
     });
     return () => {
       showSub.remove();
       hideSub.remove();
     };
-  }, [visible, keyboardOffset]);
+  }, [visible, keyboardPad]);
 
   useEffect(() => {
     if (overlayVisible) {
@@ -216,10 +223,11 @@ export function ModalShell({
       onRequestClose={handleRequestClose}
       statusBarTranslucent
     >
-      {/* Plain container - keyboard avoidance is handled by the animated
-          `keyboardOffset` translate on the sheet itself (see the keyboard
-          effect above), not by a KeyboardAvoidingView. */}
-      <View
+      {/* Animated container - `paddingBottom` shrinks with the keyboard so
+          the bottom-anchored sheet sits above it, and `maxHeight` naturally
+          clamps the sheet to the remaining viewport (top edge can never
+          punch above the status bar even when content height = max). */}
+      <Animated.View
         style={{
           flex: 1,
           // Sheet variant pins to bottom; centered floats in the middle (used
@@ -228,6 +236,7 @@ export function ModalShell({
           justifyContent: variant === "centered" ? "center" : "flex-end",
           alignItems: variant === "centered" ? "center" : "stretch",
           padding: variant === "centered" ? 20 : 0,
+          paddingBottom: keyboardPad,
         }}
       >
         {/* Dimmed backdrop. Tap-to-close only when `dismissable`; otherwise
@@ -268,7 +277,7 @@ export function ModalShell({
                   paddingBottom: Math.max(insets.bottom, 8),
                 }),
             borderColor: colors.surfaceBorder,
-            transform: [{ translateY: combinedTranslate }],
+            transform: [{ translateY: sheetTranslate }],
           }}
         >
           {/* Grab handle - only meaningful on the bottom-sheet variant; on a
@@ -376,7 +385,7 @@ export function ModalShell({
             </Animated.View>
           ) : null}
         </Animated.View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }

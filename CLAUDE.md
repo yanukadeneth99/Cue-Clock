@@ -27,15 +27,17 @@ app/                            React Native (Expo SDK 55) mobile app
     QueuedRow                   compact secondary cue row (list is auto-sorted by remaining time)
     AddCueButton                pinned-bottom accent CTA, safe-area aware
     OnAirView                   fullscreen broadcast layout, auto-dimming exit
-    ModalShell                  shared bottom-sheet chrome (handle / title / body / footer); wraps content in `KeyboardAvoidingView` (padding iOS / height Android) so any TextInput stays above the keyboard - every modal in the app inherits this
-    CueEditModal                unified add/edit cue sheet
+    ModalShell                  shared bottom-sheet chrome (handle / title / body / footer); the outer container's `paddingBottom` is animated from RN `Keyboard` events (NOT a sheet `translateY`) so the sheet's `maxHeight` clamps naturally and never over-scrolls above the status bar - fixes the ZonePicker over-push when clearing the search input
+    CueEditModal                unified add/edit cue sheet; in 12-hour mode the new-cue default hour preserves the current zone1 AM/PM half (11:43 PM → defaults to 11:00 PM, not 12:00 AM)
     ZonePickerModal             search + 23-IANA-tz picker
-    SettingsModal               grouped settings (preferences / zones / display / alerts / system)
+    SettingsModal               flat settings sheet. Includes the "Minimize ended cues" toggle (past-midnight escape hatch) and the "Final 3s beep" toggle (native-only). When `analyticsEnabled === false`, the bottom row swaps from a muted "Turn off" to an accent-blue "Turn on analytics" CTA with a diamond glyph and `${accent}55` glow border
     HelpModal                   "How to use" - glossary + Android warning + about
     AndroidBackgroundHelpModal  5-step setup wizard (Xiaomi/MIUI critical)
     AlarmDismissModal           full-screen alarm; snooze count is informational
     AnalyticsConsentModal       first-launch opt-in
-    AnalyticsOptOutModal        Settings → Turn off confirmation
+    AnalyticsOptOutModal        friction-heavy "We'll miss your support..." sheet. Used by BOTH Settings "Turn off analytics" AND consent-flow "No thanks". Accepts `dismissable` (default true) - the consent-origin call sets it false so backdrop tap / Android back / × can't escape the choice; from Settings it stays true
+    AnalyticsReEnableModal      single warm re-opt-in sheet (NOT the consent gauntlet again). Triggered by Settings "Turn on analytics" CTA AND the pulsing diamond nudge in the Header. One accent "Allow analytics" + one muted "Not now" - re-routing through `AnalyticsConsentModal` for re-opt-in reads as manipulative, so this exists as a separate positive surface
+    Header                      brand dot + wordmark + Help/Settings/Fullscreen. When `analyticsEnabled === false`, renders an animated `AnalyticsNudge` (pulsing accent halo + scaling diamond glyph) before the Help icon to draw the opted-out user back to the re-enable sheet
     DebugLogModal               internal-build ring-buffer viewer
     TimeStepper                 chevron stepper + tap-to-native-picker (hm / ms)
     TargetBlock, AlertModal,    legacy editor surfaces - only the web /
@@ -51,7 +53,7 @@ app/                            React Native (Expo SDK 55) mobile app
   modules/expo-alarm-vibrator/  Local native Kotlin module (ALARM-class vibration)
   plugins/withFullScreenAlarm.js  Adds showWhenLocked + turnScreenOn to MainActivity
   constants/                    colors.ts, typography.ts, timezones.ts (23 zones)
-  assets/                       icons, splash, SpaceMono, alarm.mp3 (Inter via @expo-google-fonts/inter)
+  assets/                       icons, splash, SpaceMono, alarm.mp3, beep.mp3 (130ms 880Hz tick), beep_go.mp3 (420ms 1320Hz "go" tone) (Inter via @expo-google-fonts/inter)
 website/                        Next.js 16 landing page (Tailwind 4, GSAP)
                                 Tokens mirror app/constants/colors.ts via @theme in globals.css
 .github/
@@ -97,7 +99,7 @@ Three-tier surface stack: `page` (#0a0b0e) → `background` (#1a1d23, default sc
 
 **State.** All app state lives on `HomeScreen` (`app/app/index.tsx`) and persists to AsyncStorage via `multiSet`/`multiGet`. Rehydrated on mount.
 
-Key persisted keys: `zone1`, `zone2`, `targetBlocks`, `is24Hour`, `alertMode` (`"notification"` | `"alarm"`), `showSeconds`, `soundAlerts`, `keepOn`, `analyticsEnabled` (3-state: null = unasked), `androidBackgroundHelpSeen`.
+Key persisted keys: `zone1`, `zone2`, `targetBlocks`, `is24Hour`, `alertMode` (`"notification"` | `"alarm"`), `showSeconds`, `soundAlerts`, `keepOn`, `autoMinimizePassed` (default true; off = past-zero cues stay visible for past-midnight shows), `finalBeep` (default true; native-only T-3/T-2/T-1/go tones on the primary cue), `analyticsEnabled` (3-state: null = unasked), `androidBackgroundHelpSeen`.
 
 **Reset preserves `analyticsEnabled`** - `doReset` uses `multiRemove` on specific keys, not `clear`.
 
@@ -110,6 +112,16 @@ Key persisted keys: `zone1`, `zone2`, `targetBlocks`, `is24Hour`, `alertMode` (`
 **Auto-sort by remaining time.** The render path sorts active blocks by `computeCountdown(...).total` ascending each tick - soonest cue is always primary, the rest fall in line below it. Zones are not part of the sort key: `computeCountdown` already projects each target into its own zone, so `total` is in real wall-clock seconds-from-now regardless of where the cue lives. The persisted order in `targetBlocks` no longer drives display; cues are reordered purely visually as time advances.
 
 **`OnAirView` is a pure presenter.** It does not sort or filter its `blocks` prop. The caller (`index.tsx` fullscreen branch) must pre-filter passed cues (`passedAt[b.id] == null`) and sort ascending by `computeCountdown` total before passing — identical to the normal-view `activeBlocks` logic. Passing raw `targetBlocks` causes inverse/wrong ordering in fullscreen.
+
+**Auto-minimize toggle gates RENDER, not DETECTION.** The `passedAt` detection effect runs unconditionally on every tick (always populates the map on the prev≤5 → next≥86395 rollover). The `autoMinimizePassed` toggle only gates whether the render path consults `passedAt` or treats it as empty (via the frozen module-level `EMPTY_PASSED` sentinel). Symptom of regressing this: toggling OFF during a cue's rollover then back ON silently fails to minimize, because `lastTotalsRef` already holds the post-rollover ~86400 and the transition can't be re-detected.
+
+**Final-3s beep (`finalBeep` toggle).** Native-only short countdown SFX for the PRIMARY (soonest) cue: 130ms 880Hz tick at T-3 / T-2 / T-1, then a 420ms 1320Hz "go" tone at zero. Implemented inline in `app/index.tsx` via three `useAudioPlayer` instances - a **2-player pool** (`beepPlayerA` / `beepPlayerB`) alternated per tick plus a dedicated `goPlayer`. Three non-obvious things:
+
+1. **Pool is required, not optional.** `expo-audio`'s `seekTo` dispatches the head-reset to the playback thread; back-to-back `seekTo+play` 1s apart on the SAME instance races - the second `play()` lands before the head reset and that beep is silently dropped (caused a missed T-2 on the Redmi Note 12 calibration target). Alternating pre-warmed players guarantees each beep gets an idle instance.
+2. **Predictive scheduling, not reactive.** Detection fires ONE SECOND EARLY (on the tick where `current = N+1` for digit `N`) and schedules a `setTimeout(1000 - BEEP_LEAD_MS)` so the beep lands ~`BEEP_LEAD_MS` (default 300ms) BEFORE the next wall-clock-second boundary. Compensates for native dispatch + speaker output latency so the operator perceives beep and digit transition as simultaneous. `BEEP_LEAD_MS` is the single tuning knob.
+3. **Pre-warm on mount.** A silent `play→pause→seekTo(0)` cycle per player at mount forces MediaCodec to JIT-decode the MP3 assets up front; without it the FIRST beep eats a ~50-100ms cold-decode cost.
+
+Pending beep timeouts are tracked in `pendingBeepTimersRef` and cleared on: cue removal, primary swap, toggle off, and unmount - prevents a beep firing into a screen that no longer matches. The "go" tone is gated by a per-block-id `goFiredForRef` map (1h eviction) so the next-day rollover at +24h doesn't refire it.
 
 ---
 

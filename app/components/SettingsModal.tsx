@@ -1,6 +1,7 @@
 import { ModalShell } from "@/components/ModalShell";
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
+import { MaterialIcons } from "@expo/vector-icons";
 import { Platform, Pressable, Text, View } from "react-native";
 
 const isWeb = Platform.OS === "web";
@@ -17,8 +18,15 @@ type Props = {
   onToggleShowSeconds: (value: boolean) => void;
   keepOn: boolean;
   onToggleKeepOn: (value: boolean) => void;
+  autoMinimizePassed: boolean;
+  onToggleAutoMinimizePassed: (value: boolean) => void;
+  /** Short 880Hz beep on the primary cue's last 3 seconds. */
+  finalBeep: boolean;
+  onToggleFinalBeep: (value: boolean) => void;
   analyticsEnabled: boolean | null;
   onRequestOptOut: () => void;
+  /** Fired when the "Turn on analytics" CTA is tapped (shown only when off). */
+  onRequestOptIn: () => void;
   /** Internal-build-only: trigger a 5-second test alarm. Undefined → row hidden. */
   onTestAlarm?: () => void;
   /** Internal-build-only: open the in-app debug log viewer. Undefined → row hidden. */
@@ -48,8 +56,13 @@ export function SettingsModal({
   onToggleShowSeconds,
   keepOn,
   onToggleKeepOn,
+  autoMinimizePassed,
+  onToggleAutoMinimizePassed,
+  finalBeep,
+  onToggleFinalBeep,
   analyticsEnabled,
   onRequestOptOut,
+  onRequestOptIn,
   onTestAlarm,
   onShowDebugLog,
 }: Props) {
@@ -105,8 +118,63 @@ export function SettingsModal({
           onToggle={() => onToggleKeepOn(!keepOn)}
         />
       ) : null}
+      {/* Native-only: web's autoplay policies block short SFX without a user
+          gesture in-frame, so the beep would never fire reliably from a
+          setInterval callback. Hidden on web to avoid a setting that lies. */}
+      {!isWeb ? (
+        <SettingRow
+          label="Final 3s beep"
+          description={
+            finalBeep
+              ? "Short beep on the next cue's last 3 seconds (3, 2, 1)."
+              : "No beep on the final countdown. Visual cues only."
+          }
+          toggle={finalBeep}
+          onToggle={() => onToggleFinalBeep(!finalBeep)}
+        />
+      ) : null}
+      <SettingRow
+        label="Minimize ended cues"
+        description={
+          autoMinimizePassed
+            ? "Cues fade out after they end. Turn off for streams that cross midnight so cues keep counting."
+            : "Cues stay visible after they end and roll over to the next day's countdown."
+        }
+        toggle={autoMinimizePassed}
+        onToggle={() => onToggleAutoMinimizePassed(!autoMinimizePassed)}
+      />
 
-      {analyticsEnabled !== false ? (
+      {analyticsEnabled === false ? (
+        // Eye-catching opt-back-in CTA: tinted accent fill + glyph + glow
+        // border. Same visual language as the header diamond nudge so the
+        // user reads "this is the path back".
+        <Pressable
+          onPress={onRequestOptIn}
+          style={({ pressed }) => ({
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            backgroundColor: colors.accent,
+            borderRadius: 12,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+            gap: 10,
+            opacity: pressed ? 0.85 : 1,
+            marginTop: 8,
+            // Subtle outer glow via thick translucent border so the button
+            // visually pops out of the surface stack.
+            borderWidth: 2,
+            borderColor: `${colors.accent}55`,
+          })}
+        >
+          <MaterialIcons name="diamond" size={16} color={colors.page} />
+          <Text
+            style={[textStyles.body, { color: colors.page, fontWeight: "700" }]}
+          >
+            Turn on analytics
+          </Text>
+        </Pressable>
+      ) : (
         <Pressable
           onPress={onRequestOptOut}
           style={({ pressed }) => ({
@@ -125,7 +193,7 @@ export function SettingsModal({
             Turn off analytics
           </Text>
         </Pressable>
-      ) : null}
+      )}
 
       {/* Internal-build extras - moved here from Help. Only renders when at
           least one of the handlers is wired, which only happens when
