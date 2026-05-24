@@ -7,13 +7,31 @@ import { memo, useEffect, useRef } from "react";
 import { Animated, Easing, Platform, Pressable, Text, View } from "react-native";
 import type { TargetBlockType } from "./TargetBlock";
 
+/**
+ * Section names mirror `CueEditSection` in CueEditModal. Kept as a plain
+ * string union here (rather than importing the type) to keep PrimaryCard
+ * decoupled from the modal's implementation - the parent (HomeScreen) is
+ * the only place that knows about both sides.
+ */
+export type PrimaryEditSection = "time" | "zone" | "alert" | "name";
+
 type Props = {
   block: TargetBlockType;
   now: Date;
   zone1: string;
   zone2: string;
   is24Hour: boolean;
-  onEdit: () => void;
+  /**
+   * Open the edit sheet. Optional `section` is the field the user "aimed
+   * at" - e.g. tapping the countdown passes 'time' so the modal opens with
+   * the time picker already up.
+   */
+  onEdit: (section?: PrimaryEditSection) => void;
+  /**
+   * Request deletion of this cue. Parent is expected to show a confirmation
+   * before actually removing (we never destroy silently from the card).
+   */
+  onDelete: () => void;
 };
 
 /**
@@ -30,7 +48,7 @@ type Props = {
  * (red border + tinted background + pulsing dot). The colour swap reads as a
  * deliberate state change against the smooth size growth.
  */
-function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) {
+function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit, onDelete }: Props) {
   const tz = block.targetZone === "zone1" ? zone1 : zone2;
   // Buffer = deductMinute minutes + deductSecond seconds, in seconds.
   const deductSec = block.deductMinute * 60 + block.deductSecond;
@@ -91,8 +109,15 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) 
   const progressPct = Math.min(100, Math.max(2, 100 - (cd.total / horizon) * 100));
 
   return (
-    <View
-      style={{
+    // Whole card is a Pressable so a tap on any otherwise-empty region (gaps
+    // between the chip, name, countdown, meta row) still opens the editor.
+    // Nested Pressables below (countdown, city, etc.) capture the touch
+    // first when applicable - RN routes the tap to the innermost responder -
+    // so each subregion can deep-link to its own section while the wrapper
+    // remains a forgiving "tap anywhere" fallback.
+    <Pressable
+      onPress={() => onEdit()}
+      style={({ pressed }) => ({
         marginHorizontal: 20,
         marginBottom: 18,
         paddingTop: vPad,
@@ -104,6 +129,9 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) 
         borderColor,
         position: "relative",
         overflow: "hidden",
+        // Subtle press feedback on the card-level fallback; inner Pressables
+        // have their own (stronger) opacity so the visual hierarchy stays.
+        opacity: pressed ? 0.97 : 1,
         ...(haloWidth > 0
           ? Platform.select({
               ios: {
@@ -116,7 +144,7 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) 
               default: { boxShadow: `0 0 0 ${haloWidth}px ${haloColor}` as unknown as string },
             })
           : {}),
-      }}
+      })}
     >
       {/* Label row: Up Next chip (left) + optional bell badge (right) */}
       <View
@@ -147,8 +175,11 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) 
           <Text style={[text.chip, { color: accentColor }]}>Up Next</Text>
         </View>
         {block.alertMinutesBefore != null ? (
-          <View
-            style={{
+          // Bell badge is a tap-target: routes straight to the alert picker.
+          <Pressable
+            onPress={() => onEdit("alert")}
+            hitSlop={6}
+            style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
               gap: 5,
@@ -156,42 +187,57 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) 
               paddingHorizontal: 10,
               borderRadius: 100,
               backgroundColor: `${colors.countdown}1a`,
-            }}
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
             <MaterialIcons name="notifications-none" size={12} color={colors.countdown} />
             <Text style={[text.footnote, { color: colors.countdown, fontWeight: "600" }]}>
               {block.alertMinutesBefore}m
             </Text>
-          </View>
+          </Pressable>
         ) : null}
       </View>
 
-      {/* Cue name */}
-      <Text
-        style={[
-          text.cueName,
-          { color: colors.text, fontSize: nameFs, lineHeight: Math.round(nameFs * 1.3) },
-        ]}
-        numberOfLines={2}
-      >
-        {block.name}
-      </Text>
+      {/* Cue name - tap to edit name (focuses the TextInput in the modal). */}
+      <Pressable onPress={() => onEdit("name")} hitSlop={4}>
+        {({ pressed }) => (
+          <Text
+            style={[
+              text.cueName,
+              {
+                color: colors.text,
+                fontSize: nameFs,
+                lineHeight: Math.round(nameFs * 1.3),
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+            numberOfLines={2}
+          >
+            {block.name}
+          </Text>
+        )}
+      </Pressable>
 
-      {/* Countdown */}
-      <Text
-        style={[
-          text.countdownPrimary,
-          {
-            color: accentColor,
-            fontSize: countdownFs,
-            lineHeight: countdownFs,
-            textAlign: "center",
-            marginTop: 20,
-          },
-        ]}
-      >
-        {showHours ? `${cd.h}:${cd.m}:${cd.s}` : `${cd.m}:${cd.s}`}
-      </Text>
+      {/* Countdown - the dominant tap target. Routes to the time picker. */}
+      <Pressable onPress={() => onEdit("time")} hitSlop={6}>
+        {({ pressed }) => (
+          <Text
+            style={[
+              text.countdownPrimary,
+              {
+                color: accentColor,
+                fontSize: countdownFs,
+                lineHeight: countdownFs,
+                textAlign: "center",
+                marginTop: 20,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            {showHours ? `${cd.h}:${cd.m}:${cd.s}` : `${cd.m}:${cd.s}`}
+          </Text>
+        )}
+      </Pressable>
 
       {/* Meta row */}
       <View
@@ -205,12 +251,17 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) 
           borderColor: colors.surfaceBorder,
         }}
       >
-        <Meta label="Target" value={fmtHM(block.targetHour, block.targetMinute, !is24Hour)} />
+        <Meta
+          label="Target"
+          value={fmtHM(block.targetHour, block.targetMinute, !is24Hour)}
+          onPress={() => onEdit("time")}
+        />
         <Divider />
         <Meta
           label="City"
           value={shortCity(tz)}
           dotColor={block.targetZone === "zone1" ? colors.zone1 : colors.zone2}
+          onPress={() => onEdit("zone")}
         />
         {hasDeduct ? (
           <>
@@ -219,23 +270,34 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) 
               label="Buffer"
               value={`−${pad2(block.deductMinute)}:${pad2(block.deductSecond)}`}
               accent
+              // Buffer lives in the time-picker section of the modal (same
+              // surface as Target time), so route it there too.
+              onPress={() => onEdit("time")}
             />
           </>
         ) : null}
         <View style={{ flex: 1 }} />
+        {/* Delete: a red trash icon that asks the parent to confirm. The
+            confirmation modal (ConfirmModal driven by `pendingDeleteId` in
+            HomeScreen) is the actual destructive step - this is just the
+            trigger. Hit-slop pads the tap target without enlarging the icon. */}
         <Pressable
-          onPress={onEdit}
+          onPress={onDelete}
+          hitSlop={10}
+          accessibilityLabel="Delete cue"
           style={({ pressed }) => ({
-            backgroundColor: "transparent",
-            borderWidth: 1,
-            borderColor: colors.surfaceBorder,
-            paddingVertical: 8,
-            paddingHorizontal: 14,
+            width: 38,
+            height: 38,
             borderRadius: 10,
+            borderWidth: 1,
+            borderColor: `${colors.danger}55`,
+            backgroundColor: `${colors.danger}14`,
+            alignItems: "center",
+            justifyContent: "center",
             opacity: pressed ? 0.55 : 1,
           })}
         >
-          <Text style={[text.bodySmall, { color: colors.text }]}>Edit</Text>
+          <MaterialIcons name="delete-outline" size={20} color={colors.danger} />
         </Pressable>
       </View>
 
@@ -258,7 +320,7 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit }: Props) 
           }}
         />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -267,24 +329,33 @@ function Meta({
   value,
   accent,
   dotColor,
+  onPress,
 }: {
   label: string;
   value: string;
   accent?: boolean;
   dotColor?: string;
+  onPress?: () => void;
 }) {
+  // Press feedback dims the value to signal interactivity without adding
+  // any extra chrome (border / bg) - the card already has visual weight,
+  // and decorating each Meta would make the meta row look like buttons.
   return (
-    <View>
-      <Text style={[text.metaLabel, { color: colors.textMuted }]}>{label}</Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 }}>
-        {dotColor ? (
-          <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: dotColor }} />
-        ) : null}
-        <Text style={[text.metaValue, { color: accent ? colors.accent : colors.text }]}>
-          {value}
-        </Text>
-      </View>
-    </View>
+    <Pressable onPress={onPress} hitSlop={6}>
+      {({ pressed }) => (
+        <View style={{ opacity: pressed ? 0.6 : 1 }}>
+          <Text style={[text.metaLabel, { color: colors.textMuted }]}>{label}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 }}>
+            {dotColor ? (
+              <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: dotColor }} />
+            ) : null}
+            <Text style={[text.metaValue, { color: accent ? colors.accent : colors.text }]}>
+              {value}
+            </Text>
+          </View>
+        </View>
+      )}
+    </Pressable>
   );
 }
 
@@ -311,6 +382,7 @@ export const PrimaryCard = memo(PrimaryCardImpl, (prev, next) => {
     prev.zone1 === next.zone1 &&
     prev.zone2 === next.zone2 &&
     prev.is24Hour === next.is24Hour &&
-    prev.onEdit === next.onEdit
+    prev.onEdit === next.onEdit &&
+    prev.onDelete === next.onDelete
   );
 });

@@ -6,7 +6,7 @@ import { text as textStyles } from "@/constants/typography";
 import { computeCountdown, shortCity } from "@/lib/time";
 import { MaterialIcons } from "@expo/vector-icons";
 import { DateTime } from "luxon";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -29,6 +29,14 @@ const ALERT_ROW_H = 48;
 // it every render would make the list redo work it could otherwise skip.
 const alertKeyExtractor = (item: number) => String(item);
 
+/**
+ * Which field on the cue the user "aimed at" when opening the modal.
+ * Lets PrimaryCard route a tap on the countdown/time directly into the time
+ * picker, a tap on the bell badge into the alert picker, etc. - rather than
+ * always landing the user on a generic form they have to re-navigate.
+ */
+export type CueEditSection = "time" | "zone" | "alert" | "name";
+
 type Props = {
   visible: boolean;
   /** null = adding a new cue, defined = editing an existing one. */
@@ -37,6 +45,13 @@ type Props = {
   zone2: string;
   /** Display time-picker in 24-hour mode; false → show 12-hour + AM/PM pill. */
   is24Hour: boolean;
+  /**
+   * Optional "deep-link" into a specific field when the sheet opens. WHY:
+   * tapping the countdown on PrimaryCard should drop the user straight into
+   * the time picker, not the generic editor. `undefined` keeps legacy
+   * behaviour (open the form, no auto-action).
+   */
+  autoOpenSection?: CueEditSection;
   /** Whether the form is in "edit" or "add" mode determines footer + title copy. */
   onSave: (patch: {
     name: string;
@@ -82,10 +97,15 @@ export function CueEditModal({
   zone1,
   zone2,
   is24Hour,
+  autoOpenSection,
   onSave,
   onDelete,
   onClose,
 }: Props) {
+  // Ref to the optional Name TextInput so the `name` deep-link can focus it
+  // once the sheet's open animation has settled (calling focus() during the
+  // slide-up race causes the keyboard to flicker or miss on Android).
+  const nameInputRef = useRef<TextInput>(null);
   const editing = existing != null;
   // IMPORTANT: depend on `existing?.id`, not `existing` itself. The parent
   // (HomeScreen) replaces every cue's object reference every second when the
@@ -157,6 +177,34 @@ export function CueEditModal({
     setForm(seed);
     setAlertPickerOpen(false);
   }, [visible, seed]);
+
+  // Deep-link side effects. WHY a `setTimeout`: the parent ModalShell does a
+  // slide-up animation (~250ms on native). Triggering the alert picker or
+  // calling `focus()` mid-animation makes the keyboard pop while the sheet
+  // is still moving - the keyboard layout then settles in the wrong place
+  // on Android. 320ms lets the sheet land first.
+  useEffect(() => {
+    if (!visible || !autoOpenSection) return;
+    if (autoOpenSection === "alert") {
+      const t = setTimeout(() => {
+        // Only open if there's room (matches the Pressable disabled state
+        // for the "Alert before" row).
+        if (maxAlertMins >= 1) setAlertPickerOpen(true);
+      }, 320);
+      return () => clearTimeout(t);
+    }
+    if (autoOpenSection === "name") {
+      const t = setTimeout(() => nameInputRef.current?.focus(), 320);
+      return () => clearTimeout(t);
+    }
+    // 'time' is handled by TimeStepper's own autoOpen prop (below).
+    // 'zone' has no nested picker - the toggle is already visible, so just
+    // opening the sheet is sufficient.
+    return;
+    // maxAlertMins recomputes on every render; we only want to act on the
+    // open transition, so we deliberately exclude it from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, autoOpenSection]);
 
   // Keep `alertListMounted` in sync with the picker (see the state decl above).
   // Mount immediately on open; delay the unmount so the exit slide isn't empty.
@@ -437,7 +485,12 @@ export function CueEditModal({
         <TimeStepper
           // Re-mount when toggling between Add and Edit modes so the
           // `autoOpen` effect inside TimeStepper fires fresh for new cues.
-          key={existing ? `edit-${existing.id}` : "add"}
+          // Including `autoOpenSection` in the key forces a remount when the
+          // user re-opens the modal targeting a different field on the same
+          // cue - TimeStepper's `autoOpen` is a mount-only effect, so without
+          // the remount a second "tap on the countdown" wouldn't re-pop the
+          // native picker.
+          key={`${existing ? `edit-${existing.id}` : "add"}-${autoOpenSection ?? "none"}`}
           h={form.targetHour}
           m={form.targetMinute}
           onChange={(th, tm) => setForm((f) => ({ ...f, targetHour: th, targetMinute: tm }))}
@@ -449,7 +502,11 @@ export function CueEditModal({
           hour12={!is24Hour}
           // autoOpen pops the native picker which doesn't exist on web; web
           // has the inline TextInput in TimeStepper instead.
-          autoOpen={!editing && !isWeb}
+          // Auto-open the native picker when:
+          //   - it's a new cue on native (legacy behaviour), OR
+          //   - the user explicitly deep-linked to the time field by tapping
+          //     the countdown / target / buffer on PrimaryCard.
+          autoOpen={(!editing && !isWeb) || (autoOpenSection === "time" && !isWeb)}
         />
       </View>
 
@@ -566,6 +623,7 @@ export function CueEditModal({
           name saves as "Untitled cue" (see onSave handler). */}
       <Label>Name (optional)</Label>
       <TextInput
+        ref={nameInputRef}
         value={form.name}
         onChangeText={(name) => setForm((f) => ({ ...f, name }))}
         placeholder="e.g. Show open"

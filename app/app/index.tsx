@@ -411,6 +411,12 @@ export default function HomeScreen() {
   // a numeric id = editing that block in CueEditModal.
   // `zonePickerFor` controls which display clock the ZonePickerModal targets.
   const [editingBlockId, setEditingBlockId] = useState<number | "new" | null>(null);
+  // Optional "deep-link" hint passed to CueEditModal so a tap on the
+  // countdown opens the time picker, a tap on the bell opens the alert
+  // picker, etc. Null = open the generic form.
+  const [editingSection, setEditingSection] = useState<
+    "time" | "zone" | "alert" | "name" | null
+  >(null);
   const [zonePickerFor, setZonePickerFor] = useState<"zone1" | "zone2" | null>(null);
   // Wall-clock-aligned 1s tick - fuels the new design's ClockRail / PrimaryCard /
   // QueuedRow render path. The legacy TargetBlock still pulls its `countdown`
@@ -1565,11 +1571,19 @@ export default function HomeScreen() {
 
   // New-design path: open the unified CueEditModal in add or edit mode.
   // Pass a numeric id to edit that block; pass "new" to open the Add Cue sheet.
-  const openEditor = useCallback((id: number | "new") => {
-    setEditingBlockId(id);
-  }, []);
+  const openEditor = useCallback(
+    (id: number | "new", section?: "time" | "zone" | "alert" | "name") => {
+      // Set section FIRST so CueEditModal sees the hint on the same render
+      // it becomes visible - otherwise the deep-link effect would fire one
+      // tick later and the time picker would briefly show the generic form.
+      setEditingSection(section ?? null);
+      setEditingBlockId(id);
+    },
+    [],
+  );
   const closeEditor = useCallback(() => {
     setEditingBlockId(null);
+    setEditingSection(null);
   }, []);
 
   // Keep the keyboard-shortcut ref pointed at the latest handler closures
@@ -2298,7 +2312,11 @@ export default function HomeScreen() {
                 zone1={zone1}
                 zone2={zone2}
                 is24Hour={is24Hour}
-                onEdit={() => openEditor(primary.id)}
+                onEdit={(section) => openEditor(primary.id, section)}
+                // Delete goes through the existing pendingDeleteId pathway
+                // so the user gets the same confirmation modal that the
+                // PassedStrip × button uses - one destructive-action UX.
+                onDelete={() => setPendingDeleteId(primary.id)}
               />
             ) : null}
             {rest.length > 0 ? (
@@ -2349,6 +2367,12 @@ export default function HomeScreen() {
           zone1={zone1}
           zone2={zone2}
           is24Hour={is24Hour}
+          // Only honour the section hint when editing an existing cue;
+          // 'new' always lands on the default form (TimeStepper already
+          // auto-opens for new cues via its own legacy flag).
+          autoOpenSection={
+            editingBlockId !== "new" && editingSection ? editingSection : undefined
+          }
           onClose={closeEditor}
           onSave={(patch) => {
             // Web: ask for Notification permission from this click handler.
