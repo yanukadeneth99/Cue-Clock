@@ -55,7 +55,7 @@ const BEEP_SOURCE = require("../assets/beep.mp3");
 // as "fire" without any extra design language.
 const BEEP_GO_SOURCE = require("../assets/beep_go.mp3");
 import { DateTime } from "luxon";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   AppState,
@@ -444,60 +444,44 @@ export default function HomeScreen() {
   // Keep ref in sync with state for use in async callbacks
   useEffect(() => { targetBlocksRef.current = targetBlocks; }, [targetBlocks]);
 
-  // ─── Passed-cue detection ──────────────────────────────────────────
-  // When a block's countdown crosses zero, `computeCountdown` snaps total
-  // back near 86400 (next-day rollover). We watch for that prev≤5 → next≥86395
-  // transition per block on each tick, stamp the id into `passedAt`, and the
-  // render path lifts that block out of the primary/queued positions and
-  // shows a compressed strip above the primary card. Strips auto-expire
-  // after PASSED_TTL_MS so the UI doesn't grow indefinitely.
-  const PASSED_TTL_MS = 5 * 60 * 1000;
-  const [passedAt, setPassedAt] = useState<Record<number, number>>({});
-  const passedAtRef = useRef<Record<number, number>>({});
-  useEffect(() => { passedAtRef.current = passedAt; }, [passedAt]);
-  const lastTotalsRef = useRef<Record<number, number>>({});
-  useEffect(() => {
-    // Detection runs ALWAYS, independent of `autoMinimizePassed`. WHY: if we
-    // short-circuited when OFF, a cue that rolled past zero during the OFF
-    // window would silently miss its prev<=5 -> next>=86395 transition, and
-    // toggling back ON would not re-detect it (lastTotalsRef would already
-    // hold the post-rollover ~86400 value). Keeping detection always-on
-    // makes `passedAt` the single source of truth; the user-facing toggle
-    // only gates whether the render path presents passed cues as minimized
-    // strips or as normal active rows (see render-path filters below).
-    const updates: Record<number, number> = {};
-    let mutated = false;
+  // ─── Passed-cue derivation (stateless) ─────────────────────────────
+  // A cue is "passed" iff its most-recent fire timestamp falls inside the
+  // current zone1 calendar day AND is at/before `now`. Recomputed every
+  // tick from absolute time - NO edge detection, NO TTL. WHY stateless:
+  //   - Edge detection (prev<=5 -> next>=86395) silently misses the
+  //     transition whenever the 1Hz ticker skips the zero-crossing tick
+  //     (background, device sleep, modal-induced JS stall, ticker drift).
+  //     Once missed, it could never be re-detected without app restart.
+  //   - Toggle flips, app resumes, and reschedules now all "just work"
+  //     because we re-derive from current wall-clock state each tick.
+  //   - Day boundary anchored to zone1 (per product spec) so the user
+  //     has a single, predictable reset point regardless of cue zones.
+  //
+  // Derivation: `computeCountdown` returns seconds-until-next-fire. The
+  // most-recent fire (today or yesterday) is therefore:
+  //     mostRecentFireMs = nowMs - (86400 - cd.total) * 1000
+  // If that timestamp >= the most recent zone1 midnight AND <= now, the
+  // cue fired earlier today (zone1 perspective) and should be minimized.
+  // Manual × dismissals are keyed by fire-timestamp (not cue id alone) so a
+  // dismissal naturally clears when the cue fires again next day - the new
+  // fire's timestamp won't match the stored one, so the strip reappears.
+  const [dismissedFireMs, setDismissedFireMs] = useState<Record<number, number>>({});
+  const passedAt = useMemo(() => {
     const nowMs = now.getTime();
+    const z1MidnightMs = DateTime.fromJSDate(now).setZone(zone1).startOf("day").toMillis();
+    const out: Record<number, number> = {};
     for (const b of targetBlocks) {
       const tz = b.targetZone === "zone1" ? zone1 : zone2;
       const deductSec = b.deductMinute * 60 + b.deductSecond;
       const cd = computeCountdown(now, tz, { h: b.targetHour, m: b.targetMinute }, deductSec);
-      const prev = lastTotalsRef.current[b.id];
-      if (
-        prev !== undefined &&
-        prev <= 5 &&
-        cd.total >= 86395 &&
-        !passedAtRef.current[b.id]
-      ) {
-        updates[b.id] = nowMs;
-        mutated = true;
+      const mostRecentFireMs = nowMs - (86400 - cd.total) * 1000;
+      if (mostRecentFireMs >= z1MidnightMs && mostRecentFireMs <= nowMs) {
+        if (dismissedFireMs[b.id] === mostRecentFireMs) continue;
+        out[b.id] = mostRecentFireMs;
       }
-      lastTotalsRef.current[b.id] = cd.total;
     }
-    // Expire stale entries.
-    for (const id of Object.keys(passedAtRef.current)) {
-      if (nowMs - passedAtRef.current[+id] > PASSED_TTL_MS) mutated = true;
-    }
-    if (mutated) {
-      setPassedAt((prev) => {
-        const next: Record<number, number> = { ...prev, ...updates };
-        for (const id of Object.keys(next)) {
-          if (nowMs - next[+id] > PASSED_TTL_MS) delete next[+id];
-        }
-        return next;
-      });
-    }
-  }, [now, targetBlocks, zone1, zone2]);
+    return out;
+  }, [now, targetBlocks, zone1, zone2, dismissedFireMs]);
 
   // ─── Final-3s beep ────────────────────────────────────────────────
   // Two-instance pool for the short tick. WHY pool: expo-audio's seekTo is
@@ -512,15 +496,25 @@ export default function HomeScreen() {
   // pre-empted by an in-flight tick beep.
   const goPlayer = useAudioPlayer(BEEP_GO_SOURCE);
   const beepPoolToggleRef = useRef(0);
+  // WHY a "ready" gate: the previous prime() paused at 60ms but the clip is
+  // 130ms, so the player was still mid-playback when the first real T-3
+  // seekTo+play arrived - the second play() lost the race and dropped silently
+  // (player A used for T-3, B for T-2, then A again for T-1 was idle and
+  // worked). beepReadyRef flips true only AFTER the prime clip would have
+  // fully finished, guaranteeing the playback thread is idle before the first
+  // real beep dispatches.
+  const beepReadyRef = useRef(false);
   // Pre-warm all three players on mount: forces the codec to JIT-decode the
-  // assets so the first real beep doesn't pay the ~50-100ms cold-start cost
-  // (the "lag before" the user heard). We play at volume 0 then restore - a
-  // silent play+pause cycle is enough to prime the native decoder.
+  // assets so the first real beep doesn't pay the ~50-100ms cold-start cost.
+  // We play at volume 0 then wait past the clip length before pausing - this
+  // lets the silent clip play to completion, leaving the player in a fully
+  // idle state. Then we restore volume and seekTo(0) for the real beep.
   useEffect(() => {
-    const prime = (p: typeof beepPlayerA) => {
+    // Beep clip is 130ms, go clip is 420ms. Settle to 500ms covers both with
+    // generous margin for decode jitter on mid-range Android.
+    const SETTLE_MS = 500;
+    const prime = (p: typeof beepPlayerA, label: string) => {
       try {
-        // Some installs surface .volume directly; others through .setVolume.
-        // We set via assignment when available (expo-audio's documented API).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (p as any).volume = 0;
         p.play();
@@ -530,13 +524,26 @@ export default function HomeScreen() {
             p.seekTo(0);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (p as any).volume = 1;
-          } catch { /* player not ready - real beep will retry */ }
-        }, 60);
-      } catch { /* no-op */ }
+            dlog("beep:prime:done", { player: label });
+          } catch (e) {
+            dlog("beep:prime:err", { player: label, err: String(e) });
+          }
+        }, SETTLE_MS);
+      } catch (e) {
+        dlog("beep:prime:start:err", { player: label, err: String(e) });
+      }
     };
-    prime(beepPlayerA);
-    prime(beepPlayerB);
-    prime(goPlayer);
+    prime(beepPlayerA, "A");
+    prime(beepPlayerB, "B");
+    prime(goPlayer, "go");
+    // Flip ready slightly AFTER the prime settles so the scheduler waits out
+    // the silent clip + pause dispatch. Without this gate, the very first
+    // primary cue's T-3 and T-2 raced the prime cycle and dropped silently.
+    const readyTimer = setTimeout(() => {
+      beepReadyRef.current = true;
+      dlog("beep:ready", {});
+    }, SETTLE_MS + 100);
+    return () => clearTimeout(readyTimer);
     // intentionally one-shot at mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -576,7 +583,7 @@ export default function HomeScreen() {
     let primaryId: number | null = null;
     let primaryTotal = Number.POSITIVE_INFINITY;
     for (const b of targetBlocks) {
-      if (passedAtRef.current[b.id] != null) continue;
+      if (passedAt[b.id] != null) continue;
       const tz = b.targetZone === "zone1" ? zone1 : zone2;
       const deductSec = b.deductMinute * 60 + b.deductSecond;
       const total = computeCountdown(now, tz, { h: b.targetHour, m: b.targetMinute }, deductSec).total;
@@ -606,22 +613,43 @@ export default function HomeScreen() {
     // enough for human perception (digit + beep feel simultaneous).
     const scheduleBeep = (kind: "tick" | "go") => {
       const delay = Math.max(0, 1000 - BEEP_LEAD_MS);
+      // Pick + reserve the player NOW (at schedule time, ~700ms before fire)
+      // and seekTo(0) immediately. WHY: expo-audio's seekTo is async-dispatched
+      // to the playback thread; doing it 700ms before play() guarantees the
+      // head reset has landed by the time play() arrives, eliminating the
+      // race that silently dropped T-3 / T-2 on the first cue.
+      let player: typeof beepPlayerA;
+      let playerLabel: string;
+      if (kind === "tick") {
+        const useA = beepPoolToggleRef.current === 0;
+        player = useA ? beepPlayerA : beepPlayerB;
+        playerLabel = useA ? "A" : "B";
+        beepPoolToggleRef.current = useA ? 1 : 0;
+      } else {
+        player = goPlayer;
+        playerLabel = "go";
+      }
+      try {
+        player.seekTo(0);
+      } catch (e) {
+        dlog("beep:schedule:seek:err", { kind, player: playerLabel, err: String(e) });
+      }
+      dlog("beep:schedule", {
+        kind,
+        player: playerLabel,
+        primaryId,
+        primaryTotal,
+        prev,
+        delay,
+        ready: beepReadyRef.current,
+      });
       const timer = setTimeout(() => {
+        const firedAt = Date.now();
         try {
-          if (kind === "tick") {
-            // Alternate between the two short-beep players. The "off" player
-            // is guaranteed idle (last played >=2s ago vs. 130ms clip
-            // length), so seekTo+play has no race window.
-            const player = beepPoolToggleRef.current === 0 ? beepPlayerA : beepPlayerB;
-            beepPoolToggleRef.current = beepPoolToggleRef.current === 0 ? 1 : 0;
-            player.seekTo(0);
-            player.play();
-          } else {
-            goPlayer.seekTo(0);
-            goPlayer.play();
-          }
-        } catch {
-          // Player may not be ready; not worth retrying for a missed SFX.
+          player.play();
+          dlog("beep:fire", { kind, player: playerLabel, primaryId, firedAt });
+        } catch (e) {
+          dlog("beep:fire:err", { kind, player: playerLabel, err: String(e) });
         }
         // Drop self from the pending list so memory doesn't accumulate.
         pendingBeepTimersRef.current = pendingBeepTimersRef.current.filter(
@@ -666,14 +694,13 @@ export default function HomeScreen() {
     }
   }, [now, targetBlocks, zone1, zone2, finalBeep, beepPlayerA, beepPlayerB, goPlayer, clearPendingBeeps]);
 
+  // Record the fire-timestamp of the dismissal so the suppression is scoped
+  // to THIS occurrence - next day's fire (different timestamp) will re-show.
   const dismissPassed = useCallback((id: number) => {
-    setPassedAt((prev) => {
-      if (!(id in prev)) return prev;
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  }, []);
+    const fireMs = passedAt[id];
+    if (fireMs == null) return;
+    setDismissedFireMs((prev) => ({ ...prev, [id]: fireMs }));
+  }, [passedAt]);
 
   // Confirmation dialog state for the × button on a PassedStrip - deletes
   // the underlying cue (via `removeBlock`) after the user confirms.
