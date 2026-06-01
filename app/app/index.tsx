@@ -278,14 +278,13 @@ function createDefaultBlock(id: number): TargetBlockType {
  * Persists state to AsyncStorage and rehydrates on mount.
  */
 export default function HomeScreen() {
-  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [zone1, setZone1] = useState("Europe/Berlin");
   const [zone2, setZone2] = useState("Asia/Colombo");
   const [fullScreen, setFullScreen] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const [resetModalVisible, setResetModalVisible] = useState(false);
-  const [exitButtonOpacity, setExitButtonOpacity] = useState(1);
   const [notifBlocked, setNotifBlocked] = useState(false);
   // null = first launch (consent not yet given); true/false = user's explicit choice
   const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean | null>(null);
@@ -360,7 +359,6 @@ export default function HomeScreen() {
   const pendingBackgroundFiresRef = useRef<
     { id: number; name: string; minutes: number; snoozeCount: number; targetTime: string }[]
   >([]);
-  const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirror of targetBlocks for use in async callbacks without stale closure issues
   const targetBlocksRef = useRef<TargetBlockType[]>([createDefaultBlock(1)]);
 
@@ -779,32 +777,6 @@ export default function HomeScreen() {
       }
     })();
   }, []);
-
-  /**
-   * Keep the fullscreen view visually focused on the clocks/timers.
-   * The exit control becomes prominent on interaction, then fades back so the
-   * display is less distracting for people watching the screen on-air/in-studio.
-   */
-  const resetOpacityTimer = useCallback(() => {
-    setExitButtonOpacity(1);
-    if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-    exitButtonTimerRef.current = setTimeout(() => setExitButtonOpacity(0.3), 3000);
-  }, []);
-
-  // In fullscreen on web and Android, prioritize the time display over controls.
-  // The button stays accessible, but fades after inactivity so viewers are not
-  // distracted by persistent UI chrome.
-  useEffect(() => {
-    if (!fullScreen) {
-      setExitButtonOpacity(1);
-      if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-      return;
-    }
-    resetOpacityTimer();
-    return () => {
-      if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-    };
-  }, [fullScreen, resetOpacityTimer]);
 
   // Inject web-specific styles for select elements and time inputs
   useEffect(() => {
