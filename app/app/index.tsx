@@ -1374,19 +1374,6 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const requestNotifPermission = useCallback(async () => {
-    if (!Notifications) return;
-    try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status === "granted") {
-        setNotifBlocked(false);
-      } else {
-        // Permanently denied - send user to app settings
-        await Linking.openSettings();
-      }
-    } catch {}
-  }, []);
-
   // New-design path: open the unified CueEditModal in add or edit mode.
   // Pass a numeric id to edit that block; pass "new" to open the Add Cue sheet.
   const openEditor = useCallback(
@@ -1652,15 +1639,6 @@ export default function HomeScreen() {
     Linking.openSettings().catch(() => {});
   }, []);
 
-  const openBatterySettings = useCallback(() => {
-    if (Platform.OS !== "android") return;
-    Linking.sendIntent("android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS").catch(() => {
-      Linking.sendIntent("android.settings.SETTINGS").catch(() => {
-        Linking.openSettings().catch(() => {});
-      });
-    });
-  }, []);
-
   const openExactAlarmSettings = useCallback(() => {
     if (Platform.OS !== "android") return;
     Linking.sendIntent("android.settings.REQUEST_SCHEDULE_EXACT_ALARM").catch(() => {
@@ -1806,12 +1784,6 @@ export default function HomeScreen() {
   const safeTop = Math.max(insets.top + 4, Platform.OS === "web" ? 20 : 36);
 
   const isWeb = Platform.OS === "web";
-  const notifUnavailableReason =
-    !isWeb && isExpoGo
-      ? "Expo Go falls back to in-app alerts here, so alarms will not fire after you leave the app."
-      : (!isWeb && !Notifications
-          ? "Native notifications are unavailable in this build, so background alerts cannot be scheduled."
-          : null);
   // Alarm mode is available when we're on Android, permissions are not blocked,
   // and we're not running in Expo Go (which lacks full notification support).
   const alarmAvailable = Platform.OS === "android" && !notifBlocked && !isExpoGo && !!Notifications;
