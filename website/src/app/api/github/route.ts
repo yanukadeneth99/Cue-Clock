@@ -30,6 +30,29 @@ type RepoStats = {
   latestBetaUrl: string | null;
 };
 
+// Defense-in-depth for the URLs this route emits. Every URL below is rendered
+// straight into a DOM sink on the landing page — contributor + release links
+// into `<a href>`, avatars into `next/image` `src`. GitHub controls these
+// values today, but a compromised token, an upstream API change, or an
+// unexpected payload should never be able to smuggle a `javascript:` / `data:`
+// href (or an off-allowlist image host) into the page. We already pinned
+// contributor `html_url` to github.com; these helpers extend the same guard to
+// the release links and avatar host so the allowlist is applied consistently.
+const GITHUB_URL_PREFIX = "https://github.com/";
+// Matches the CSP `img-src` and `next.config.ts` `remotePatterns` allowlist —
+// any other host would already be rejected by `next/image` at render time.
+const AVATAR_URL_PREFIX = "https://avatars.githubusercontent.com/";
+
+/** Return `value` only if it is a string on the github.com origin, else null. */
+function safeGitHubUrl(value: unknown): string | null {
+  return typeof value === "string" && value.startsWith(GITHUB_URL_PREFIX) ? value : null;
+}
+
+/** Return `value` only if it is a string on the GitHub avatar host, else null. */
+function safeAvatarUrl(value: unknown): string | null {
+  return typeof value === "string" && value.startsWith(AVATAR_URL_PREFIX) ? value : null;
+}
+
 async function ghFetch(path: string): Promise<unknown> {
   const res = await fetch(`https://api.github.com${path}`, {
     headers: { Accept: "application/vnd.github+json" },
@@ -84,7 +107,7 @@ export async function GET() {
   if (release) {
     if (typeof release.tag_name === "string") latestReleaseTag = release.tag_name;
     else if (typeof release.name === "string") latestReleaseTag = release.name;
-    if (typeof release.html_url === "string") latestReleaseUrl = release.html_url;
+    latestReleaseUrl = safeGitHubUrl(release.html_url);
   }
 
   // The /releases list is ordered newest-first by created_at. Find the first
@@ -100,7 +123,7 @@ export async function GET() {
       if (rel.prerelease !== true) continue;
       if (typeof rel.tag_name === "string") latestBetaTag = rel.tag_name;
       else if (typeof rel.name === "string") latestBetaTag = rel.name;
-      if (typeof rel.html_url === "string") latestBetaUrl = rel.html_url;
+      latestBetaUrl = safeGitHubUrl(rel.html_url);
       if (latestBetaTag) break;
     }
   }
@@ -120,13 +143,13 @@ export async function GET() {
 
   const contributors: Contributor[] = Array.isArray(contributorsData)
     ? contributorsData
-        .filter(
-          (c): c is Contributor =>
-            c !== null &&
-            typeof c === "object" &&
-            typeof (c as Record<string, unknown>).html_url === "string" &&
-            ((c as Record<string, unknown>).html_url as string).startsWith("https://github.com/"),
-        )
+        .filter((c): c is Contributor => {
+          if (c === null || typeof c !== "object") return false;
+          const rec = c as Record<string, unknown>;
+          // Both URLs reach a DOM sink (profile link + avatar image), so both
+          // must be on their expected GitHub origin before we emit the row.
+          return safeGitHubUrl(rec.html_url) !== null && safeAvatarUrl(rec.avatar_url) !== null;
+        })
         .map((c) => ({
           id: c.id,
           login: c.login,
