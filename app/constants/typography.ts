@@ -95,11 +95,3 @@ export const text: Record<string, TextStyle> = {
     textTransform: "uppercase",
   },
 };
-
-/**
- * Linear interpolation between two text presets - used by PrimaryCard to grow
- * countdown font size as urgency rises 0 → 1.
- */
-export function lerpFontSize(min: number, max: number, t: number): number {
-  return Math.round(min + (max - min) * Math.max(0, Math.min(1, t)));
-}
