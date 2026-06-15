@@ -11,9 +11,9 @@
     "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@langchain/core": "^0.3.0",
-    "@langchain/google-genai": "^0.2.0",
-    "@langchain/langgraph": "^0.2.0",
+    "@langchain/core": "^1.1.49",
+    "@langchain/google-genai": "^2.1.31",
+    "@langchain/langgraph": "^1.4.2",
     "dotenv": "^16.4.0",
     "zod": "^3.23.0"
   },
