@@ -11,8 +11,26 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import { useEffect } from "react";
-import { Platform } from "react-native";
+import { LogBox, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+// Suppress benign dev-only LogBox warnings at the EARLIEST point in the module
+// graph. WHY here in the root layout (not index.tsx): the Firebase deprecation
+// warnings are emitted when applyAnalyticsCollection() runs in _layout's
+// useEffect below; LogBox.ignoreLogs only filters logs emitted AFTER it runs,
+// so the suppression must be registered before that effect. _layout is the
+// router root, evaluated before any route module — so a module-level call here
+// is guaranteed to win the race that index.tsx's call could lose. These are
+// cosmetic, never appear in release builds, and the badge floats above real
+// buttons (blocking both manual use and the AI E2E agent's taps):
+//   - SafeAreaView deprecation: from expo-router internals, not our code.
+//   - React Native Firebase namespaced-API deprecation: every Firebase call
+//     logs this until we migrate to the v22 modular API (tracked separately).
+//     One substring matches them all. This does NOT hide real future warnings.
+LogBox.ignoreLogs([
+  "SafeAreaView has been deprecated",
+  "React Native Firebase namespaced API",
+]);
 
 // Keep the splash screen up until fonts have loaded - without this gate, the
 // first frame ships with system fallbacks and snaps to Inter/SpaceMono on the

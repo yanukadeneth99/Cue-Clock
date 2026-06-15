@@ -5,20 +5,24 @@
 <img src="https://i.imgur.com/2C7aUM8.png" width="800">
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](./LICENSE)
+
 [![Android Internal](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml)
+
 [![Android Beta](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-beta.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-beta.yml)
+
 [![Android Promote](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-promote.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-promote.yml)
+
 [![Last commit](https://img.shields.io/github/last-commit/yanukadeneth99/Cue-Clock)](https://github.com/yanukadeneth99/Cue-Clock/commits/master)
+
 [![Made with Expo](https://img.shields.io/badge/Expo-SDK_55-000020?logo=expo)](https://expo.dev)
+
 [![Sponsor](https://img.shields.io/github/sponsors/yanukadeneth99?logo=githubsponsors&label=Sponsor)](https://github.com/sponsors/yanukadeneth99)
 
 A minimal, distraction-free clock app built specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously.
 
-**🌐 Live site:** [cueclock.app](https://cueclock.app)
-
-<!-- TODO: Uncomment the line below once the Google Play listing is public.
-**📱 Google Play:** [Beta testers welcome](https://play.google.com/store/apps/details?id=com.yanukadeneth99.cueclock)
--->
+**🌐 Live site:** [Cueclock.app](https://cueclock.app)
+**🌐 Web Application:** [Live App](https://live.cueclock.app)
+**📱 Android Application:** [Google Play Store](https://play.google.com/store/apps/details?id=com.yanukadeneth99.cueclock)
 
 ---
 
@@ -43,6 +47,9 @@ In high-pressure broadcast environments, every second counts. **Cue Clock** is b
 - 🕒 **Dual Timezone Clocks:** Side-by-side live clocks configurable to 18 global broadcast timezones.
 - ⏳ **Infinite Countdowns:** Create as many named countdowns as you need, tied to any timezone.
 - 📐 **Deduction Offsets:** Subtract pre-show buffers automatically from your countdown targets.
+- ✅ **Passed Cues:** Fired countdowns surface as compact strips so you always know what already aired.
+- 🔔 **Alerts & Alarms:** Fire a notification — or a full-screen alarm that wakes the device — at a configurable lead time before zero (Android).
+- 🔊 **Final 3-Second Beep:** Audio tick at T−3/−2/−1 and a "go" tone at zero for the primary cue (native).
 - 🎬 **On-Air Mode:** A dedicated full-screen mode that strips away all controls for studio display.
 - 📱 **Native Everywhere:** Optimized for iOS, Android, and Web with local state persistence.
 
@@ -50,19 +57,25 @@ In high-pressure broadcast environments, every second counts. **Cue Clock** is b
 
 ## 🏗️ Project Structure
 
-This is a monolithic codebase containing two main projects:
+This is a monolithic codebase containing three main products:
 
-### 1. The Mobile App (`app/`)
+### 1. The App (`app/`)
 
-The core React Native (Expo) application. It handles the clock logic, state persistence, and native notifications.
+The core React Native (Expo SDK 55) application — the product itself. Runs on iOS, Android, and Web from one codebase.
 
 **[Get Started with the App](./app/README.md)**
 
 ### 2. The Landing Page (`website/`)
 
-A modern Next.js 15 landing page showcasing Cue Clock’s features and design.
+A Next.js 16 marketing site at [cueclock.app](https://cueclock.app). Tailwind 4, GSAP animations, design tokens mirroring the app’s colour system.
 
 **[Get Started with the Website](./website/README.md)**
+
+### 3. AI E2E Tests (`tests/`)
+
+Gemini-driven end-to-end test harness that exercises the real running app. Two runners share one plain-markdown scenario format: `web/` (Python, browser-use + Playwright against the Expo web build) and `android/` (TypeScript, LangChain.js + LangGraph driving a physical device via `agent-device`). Run from `app/` with `npm test`.
+
+**[Test harness docs](./tests/ai/README.md)**
 
 ---
 
@@ -73,21 +86,26 @@ A modern Next.js 15 landing page showcasing Cue Clock’s features and design.
 git clone https://github.com/yanukadeneth99/Cue-Clock.git
 cd Cue-Clock
 
-# Start the Mobile App
+# Start the app (iOS / Android / Web)
 cd app && npm install && npx expo start
 
-# Start the Website
+# Start the landing page
 cd ../website && npm install && npm run dev
+
+# Run the AI E2E test suite (Gemini API key required — see tests/ai/README.md)
+cd app && npm test          # web + physical Android device
+cd app && npm run test:web  # web only
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Project        | Tech Stack                                                      |
-| -------------- | --------------------------------------------------------------- |
-| **Mobile App** | React Native, Expo, Luxon, TypeScript, Reanimated, AsyncStorage |
-| **Website**    | Next.js 15, Tailwind CSS 4, TypeScript                          |
+| Project     | Tech Stack                                                                                |
+| ----------- | ----------------------------------------------------------------------------------------- |
+| **App**     | React Native 0.83, Expo SDK 55, Luxon, TypeScript 5.9 (strict), Expo Router, AsyncStorage |
+| **Website** | Next.js 16, Tailwind CSS 4, GSAP, TypeScript                                              |
+| **Tests**   | Python (browser-use, Playwright), TypeScript (LangChain.js, LangGraph), Gemini API        |
 
 ---
 

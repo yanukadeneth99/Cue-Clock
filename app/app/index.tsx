@@ -59,8 +59,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Alert,
   AppState,
+  BackHandler,
   Linking,
-  LogBox,
   Platform,
   Pressable,
   ScrollView,
@@ -70,8 +70,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Suppress deprecation warning from expo-router internals (uses RN's SafeAreaView)
-LogBox.ignoreLogs(["SafeAreaView has been deprecated"]);
+// LogBox suppression lives in app/_layout.tsx (the router root, evaluated first)
+// so it's registered before the Firebase warnings fire in _layout's useEffect.
+// Kept here previously but moved up to win that ordering race.
 
 // Only load expo-notifications outside Expo Go and not on web
 // (remote notifications removed in SDK 53; expo-notifications unsupported on web)
@@ -403,9 +404,10 @@ export default function HomeScreen() {
     /** Pre-formatted target HH:MM string for the modal's Target column. */
     targetTime: string;
   } | null>(null);
-  const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([
-    createDefaultBlock(1),
-  ]);
+  // Start empty — hydration overwrites this from AsyncStorage on every resumed
+  // session. A placeholder cue saves zero clicks (user still taps to fill it in)
+  // and a blank queue with the AddCueButton is the honest first-launch state.
+  const [targetBlocks, setTargetBlocks] = useState<TargetBlockType[]>([]);
   // ─── New-design modal routing ───────────────────────────────────────
   // `editingBlockId === "new"` = the Add Cue sheet is open, awaiting save;
   // a numeric id = editing that block in CueEditModal.
@@ -438,8 +440,9 @@ export default function HomeScreen() {
     { id: number; name: string; minutes: number; snoozeCount: number; targetTime: string }[]
   >([]);
   const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Mirror of targetBlocks for use in async callbacks without stale closure issues
-  const targetBlocksRef = useRef<TargetBlockType[]>([createDefaultBlock(1)]);
+  // Mirror of targetBlocks for use in async callbacks without stale closure issues.
+  // Must match useState initial value (empty) so ref and state are in sync before hydration.
+  const targetBlocksRef = useRef<TargetBlockType[]>([]);
 
   // Keep ref in sync with state for use in async callbacks
   useEffect(() => { targetBlocksRef.current = targetBlocks; }, [targetBlocks]);
@@ -1073,13 +1076,28 @@ export default function HomeScreen() {
   // second from targetHour/targetMinute/deduct/zone, so writing it on every tick
   // would churn the disk unnecessarily. Stripping it also prevents the write from
   // firing at all on pure countdown ticks (the persisted slice is reference-equal).
-  const persistPayloadRef = useRef<string>("");
+  const persistSignatureRef = useRef<string>("");
   useEffect(() => {
     if (!isLoadedRef.current) return;
     const slim = targetBlocks.map(({ countdown, isTargetPickerVisible, isDeductPickerVisible, isAlertModalVisible, ...rest }) => rest);
     const serialized = JSON.stringify(slim);
-    if (serialized === persistPayloadRef.current) return;
-    persistPayloadRef.current = serialized;
+    // Dedup signature MUST cover EVERY persisted value, not just the cue list.
+    // WHY: this guard's job is to skip disk writes on the pure 1s countdown tick
+    // (the stripped `countdown` makes the cue slice serialize identically then).
+    // Keying it on `serialized` (cues) ALONE was a bug: a settings-only change
+    // with no cue edit — e.g. toggling "24-hour clock" OFF — produced an
+    // unchanged cue signature, so the effect early-returned and the new setting
+    // NEVER reached AsyncStorage. It worked in-session (React state) but reverted
+    // on the next cold launch, which rehydrates from disk (persistence-restart
+    // E2E caught exactly this). Folding all scalar settings into the signature
+    // makes any persisted field change trigger the write, while a bare countdown
+    // tick (nothing here changes) still no-ops.
+    const signature = JSON.stringify([
+      zone1, zone2, serialized, is24Hour, alertMode,
+      showSeconds, soundAlerts, keepOn, autoMinimizePassed, finalBeep,
+    ]);
+    if (signature === persistSignatureRef.current) return;
+    persistSignatureRef.current = signature;
     AsyncStorage.multiSet([
       ["zone1", zone1],
       ["zone2", zone2],
@@ -1329,6 +1347,27 @@ export default function HomeScreen() {
       return next;
     });
   }, []);
+
+  // Hardware BACK exits the On-Air view (Android). WHY: previously the ONLY way
+  // out of fullscreen was the small "Exit full screen" pill, which auto-dims and
+  // is easy to miss — a near-miss tap lands on the surrounding full-screen
+  // Pressable (which only re-arms the dim timer, never exits), so the user (and
+  // the E2E agent, which taps via vision-estimated coordinates because the
+  // ticking clock times out `snapshot`) could get stuck. Back is the standard
+  // Android "leave this immersive screen" gesture and gives a precise,
+  // coordinate-free exit. Gated on `fullScreen` so it ONLY intercepts back while
+  // On-Air; returning true consumes the event so the app isn't backgrounded.
+  // The alarm flow already drops `fullScreen` before its modal mounts (see the
+  // fullScreenBeforeAlarmRef effect), so this never competes with alarm dismiss.
+  // Native only — web has no hardware back and drives exit via the Fullscreen API.
+  useEffect(() => {
+    if (Platform.OS === "web" || !fullScreen) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      toggleFullScreen();
+      return true;
+    });
+    return () => sub.remove();
+  }, [fullScreen, toggleFullScreen]);
 
   // Web: when the user exits browser fullscreen via Esc / the OS, sync our
   // React `fullScreen` state down to false so the On-Air view also exits.
@@ -1657,8 +1696,9 @@ export default function HomeScreen() {
       setShowSeconds(true);
       setSoundAlerts(true);
       setKeepOn(true);
-      nextIdRef.current = 2;
-      setTargetBlocks([createDefaultBlock(1)]);
+      nextIdRef.current = 1;
+      // Reset to empty — same as fresh install; user adds their own cues.
+      setTargetBlocks([]);
     } catch {
       // silently fail - state already reset above
     }
@@ -2125,6 +2165,13 @@ export default function HomeScreen() {
           // tick-delay note above). 280ms covers the sheet's slide-out.
           setSettingsVisible(false);
           setTimeout(() => setReEnableModalVisible(true), 280);
+        }}
+        onReset={() => {
+          // Close Settings first so the confirm dialog (web ConfirmModal /
+          // native Alert) and the cleared home are what the user sees - not a
+          // dialog stacked over a still-open Settings sheet.
+          setSettingsVisible(false);
+          resetAll();
         }}
         onTestAlarm={isDebugLogEnabled() ? runTestAlarm : undefined}
         onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}
@@ -2914,6 +2961,13 @@ export default function HomeScreen() {
           // tick-delay note above). 280ms covers the sheet's slide-out.
           setSettingsVisible(false);
           setTimeout(() => setReEnableModalVisible(true), 280);
+        }}
+        onReset={() => {
+          // Close Settings first so the confirm dialog (web ConfirmModal /
+          // native Alert) and the cleared home are what the user sees - not a
+          // dialog stacked over a still-open Settings sheet.
+          setSettingsVisible(false);
+          resetAll();
         }}
         onTestAlarm={isDebugLogEnabled() ? runTestAlarm : undefined}
         onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}

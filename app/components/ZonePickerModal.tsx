@@ -4,7 +4,7 @@ import { timezones } from "@/constants/timezones";
 import { text as textStyles } from "@/constants/typography";
 import { shortCity } from "@/lib/time";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Platform, Pressable, Text, TextInput, View } from "react-native";
 
 type Props = {
@@ -23,6 +23,19 @@ type Props = {
  */
 export function ZonePickerModal({ visible, title, current, onPick, onClose }: Props) {
   const [q, setQ] = useState("");
+  // Clear the search query whenever the sheet exits. WHY: one ZonePickerModal
+  // instance is REUSED for both zones (the parent toggles `visible` + swaps the
+  // title/current props rather than mounting a fresh modal — RN Android can't
+  // reliably stack two native Modals, so ModalShell keeps the instance alive).
+  // Without this, `q` survives the close, so typing a search for zone 1 then
+  // opening zone 2 shows the stale query (the reported bug). Keying on `visible`
+  // (not wrapping onClose) covers every dismissal path — row pick, backdrop tap,
+  // hardware back — since all of them flip `visible` to false. Reset-on-exit (vs
+  // on-open) is flicker-free here because ModalShell uses `animationType="none"`
+  // and the content is gone the instant `visible` is false.
+  useEffect(() => {
+    if (!visible) setQ("");
+  }, [visible]);
   const needle = q.toLowerCase().replace(/ /g, "_");
   const filtered = needle ? timezones.filter((tz) => tz.toLowerCase().includes(needle)) : timezones;
 

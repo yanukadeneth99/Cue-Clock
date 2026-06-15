@@ -471,7 +471,7 @@ export function CueEditModal({
         </View>
       }
     >
-      <Label>Target time</Label>
+      <Label noTop>Target time</Label>
       <View
         style={{
           padding: isWeb ? 8 : 12,
@@ -648,12 +648,29 @@ export function CueEditModal({
   );
 }
 
-function Label({ children, noBottom }: { children: string; noBottom?: boolean }) {
+function Label({
+  children,
+  noBottom,
+  noTop,
+}: {
+  children: string;
+  noBottom?: boolean;
+  noTop?: boolean;
+}) {
   return (
     <Text
       style={[
         textStyles.metaLabel,
-        { color: colors.textMuted, marginBottom: noBottom ? 0 : 6 },
+        {
+          color: colors.textMuted,
+          // Larger gap ABOVE than BELOW so each label groups with the field it
+          // describes (proximity principle) - without this the label sat
+          // equidistant and read as belonging to the field above it. `noTop`
+          // suppresses the top gap for the first label so the sheet doesn't
+          // gain stray padding under the header.
+          marginTop: noTop ? 0 : 14,
+          marginBottom: noBottom ? 0 : 6,
+        },
       ]}
     >
       {children}

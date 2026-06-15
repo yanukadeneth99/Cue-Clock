@@ -352,6 +352,14 @@ export function OnAirView({ blocks, zone1, zone2, is24Hour, showSeconds, now, on
       <Animated.View style={{ alignItems: "center", marginTop: 12, opacity: exitOpacity }}>
         <Pressable
           onPress={onExit}
+          // Expand the touch target well beyond the pill's small visual bounds.
+          // WHY: the pill is intentionally compact (a 13px icon + footnote), but
+          // a near-miss tap lands on the parent full-screen Pressable, which only
+          // re-arms the dim timer — so the user perceives the exit as "not
+          // working". hitSlop catches those near-misses without changing the
+          // visual size. Hardware back (handled in index.tsx) is the primary
+          // exit; this just makes the on-screen control forgiving too.
+          hitSlop={{ top: 16, bottom: 16, left: 24, right: 24 }}
           style={({ pressed }) => ({
             backgroundColor: colors.surface,
             borderWidth: 1,

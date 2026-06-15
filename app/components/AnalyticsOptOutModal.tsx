@@ -1,7 +1,12 @@
 import { ModalShell } from "@/components/ModalShell";
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
+
+// WHY web centers: a full-width bottom strip reads as a page footer on a desktop
+// browser, so web renders a centered card to match "Help improve Cue Clock?"
+// (AnalyticsConsentModal); native keeps the bottom sheet. See ModalShell `variant`.
+const isWeb = Platform.OS === "web";
 
 type Props = {
   visible: boolean;
@@ -35,6 +40,47 @@ export default function AnalyticsOptOutModal({
       onClose={onCancel}
       dismissable={dismissable}
       hideClose={!dismissable}
+      // Match AnalyticsConsentModal: centered card on web, bottom sheet on native.
+      variant={isWeb ? "centered" : "sheet"}
+      footer={
+        // Actions live in the footer so the centered web card pins them below the
+        // body (mirrors the consent modal). Accent = reconsider, ghost = opt out.
+        <View style={{ gap: 10 }}>
+          <Pressable
+            onPress={onCancel}
+            style={({ pressed }) => ({
+              paddingVertical: 14,
+              backgroundColor: colors.accent,
+              borderRadius: 12,
+              alignItems: "center",
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <Text
+              style={[textStyles.body, { color: colors.page, fontWeight: "600" }]}
+            >
+              Keep Supporting
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onConfirmOptOut}
+            style={({ pressed }) => ({
+              paddingVertical: 13,
+              borderWidth: 1,
+              borderColor: colors.surfaceBorder,
+              borderRadius: 12,
+              alignItems: "center",
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Text
+              style={[textStyles.bodySmall, { color: colors.textMuted, fontWeight: "500" }]}
+            >
+              Opt Out Anyway
+            </Text>
+          </Pressable>
+        </View>
+      }
     >
       <Text
         style={[
@@ -76,41 +122,6 @@ export default function AnalyticsOptOutModal({
         free, useful tool; and we won&apos;t be able to know what to fix or improve
         next.
       </Text>
-      <View style={{ gap: 10 }}>
-        <Pressable
-          onPress={onCancel}
-          style={({ pressed }) => ({
-            paddingVertical: 14,
-            backgroundColor: colors.accent,
-            borderRadius: 12,
-            alignItems: "center",
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text
-            style={[textStyles.body, { color: colors.page, fontWeight: "600" }]}
-          >
-            Keep Supporting
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={onConfirmOptOut}
-          style={({ pressed }) => ({
-            paddingVertical: 13,
-            borderWidth: 1,
-            borderColor: colors.surfaceBorder,
-            borderRadius: 12,
-            alignItems: "center",
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Text
-            style={[textStyles.bodySmall, { color: colors.textMuted, fontWeight: "500" }]}
-          >
-            Opt Out Anyway
-          </Text>
-        </Pressable>
-      </View>
     </ModalShell>
   );
 }

@@ -1,0 +1,25 @@
+{
+  "appPackage": "com.yanukadeneth99.cueclock",
+  "appActivity": "com.yanukadeneth99.cueclock.MainActivity",
+  "expoWebUrl": "http://localhost:8081",
+  "llm": {
+    "model": "gemini-2.5-flash",
+    "fallbackModel": "gemini-2.5-flash",
+    "_note_model": "Gemini-only AGENT chain — SEPARATE from the vision describer, which is hardcoded to gemini-2.5-flash-lite in android/src/tools.ts and is unaffected by anything here. Policy: `model` (PRIMARY) drives the run; if that attempt fails (the @langchain/google-genai 0.2.18 thought-signature round-trip INTERMITTENTLY returns an empty turn mid-flow → 'no finish() called'), the scenario is retried ONCE with `fallbackModel`, then it fails. WHY `fallbackModel` is the SAME model (a deliberate same-model re-roll): the empty-turn failure is a per-attempt COIN FLIP, not a capability gap, so a second roll of the proven primary recovers it with high probability. We previously used a DIFFERENT model here (gemini-3-flash-preview) on the theory that an independent model both recovers the coin-flip AND covers model-specific bugs — but Gemini 3 HARD-REQUIRES thought_signature blobs to round-trip across turns, which 0.2.18 does NOT forward, so EVERY gemini-3 attempt 400s on its 2nd tool turn ('Function call is missing a thought_signature'). An always-failing fallback recovers nothing. gemini-2.5's signature requirement is SOFT (degrade, not 400), so 2.5-flash is the only Gemini that both works on this binding and re-rolls the flake. To use gemini-3 (or any thinking-strict model) you must first upgrade @langchain/google-genai + core + langgraph in lockstep so signatures round-trip — see langchain-google #1364 / langchainjs #9624. Swap to a newer compatible flash here when ready — no code change needed; on the free tier flash is $0 (just rate-limited).",
+    "_note_key": "Needs GEMINI_API_KEY in tests/ai/.env (gitignored — never commit it)."
+  },
+  "pricing": {
+    "inputPerMTok": 0.3,
+    "outputPerMTok": 2.5,
+    "_note": "USD per 1M tokens, used ONLY to turn measured token counts into a rough cost in verdict.json. NOT billed — the free tier is $0. Editable like `model`: when you swap models, update these to match. Defaults are gemini-2.5-flash paid-tier rates (input $0.30, output $2.50). Verify current numbers at https://ai.google.dev/pricing . Delete this block to omit cost (tokens are still recorded). NOTE: the runner bills output as (total - input), which includes Gemini's thinking tokens — they bill at the output rate but are excluded from the API's output_tokens field."
+  },
+  "visionPricing": {
+    "inputPerMTok": 0.1,
+    "outputPerMTok": 0.4,
+    "_note": "Rates for the VISION describer model (gemini-2.5-flash-lite), priced separately from the agent because it's a different, cheaper model. Defaults are flash-lite paid-tier rates (input $0.10, output $0.40). The describer runs on EVERY auto-visual checkpoint + every screenshot tool call, so its spend is real; this stops it being silently free. The describer model is hardcoded to gemini-2.5-flash-lite in android/src/tools.ts (NOT llm.fallbackModel — that's now gemini-3-flash-preview); keep these rates in sync with flash-lite. Verify at https://ai.google.dev/pricing ."
+  },
+  "avds": [
+    { "name": "Pixel_9_API36", "label": "modern", "apiLevel": 36, "device": "pixel_9", "image": "system-images;android-36;google_apis_playstore;arm64-v8a" },
+    { "name": "Pixel_4_API30", "label": "old",    "apiLevel": 30, "device": "pixel_4", "image": "system-images;android-30;google_apis_playstore;arm64-v8a" }
+  ]
+}

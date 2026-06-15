@@ -75,13 +75,13 @@ export function Header({
         {showAnalyticsNudge && onAnalyticsNudge ? (
           <AnalyticsNudge onPress={onAnalyticsNudge} />
         ) : null}
-        <HeaderButton onPress={onHelp}>
+        <HeaderButton onPress={onHelp} label="Help">
           <MaterialIcons name="help-outline" size={19} color={colors.textMuted} />
         </HeaderButton>
-        <HeaderButton onPress={onSettings}>
+        <HeaderButton onPress={onSettings} label="Settings">
           <MaterialIcons name="settings" size={18} color={colors.textMuted} />
         </HeaderButton>
-        <HeaderButton onPress={onFullscreen}>
+        <HeaderButton onPress={onFullscreen} label="Full screen">
           <MaterialIcons name="fullscreen" size={20} color={colors.textMuted} />
         </HeaderButton>
       </View>
@@ -91,14 +91,25 @@ export function Header({
 
 function HeaderButton({
   onPress,
+  label,
   children,
 }: {
   onPress: () => void;
+  // WHY required: the children are MaterialIcons glyphs (icon-font characters),
+  // which contribute NO text node to the accessibility tree. Without an explicit
+  // label these buttons surface as indistinguishable unlabeled tap targets — a
+  // real screen-reader defect, and the reason the E2E agent (which navigates via
+  // the accessibility snapshot) could not tell Settings from Help/Full screen and
+  // would pick the wrong one by tree order. The label becomes the Android node's
+  // contentDescription, making each control deterministically addressable.
+  label: string;
   children: React.ReactNode;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={({ pressed }) => ({
         width: 40,
         height: 40,

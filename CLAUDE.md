@@ -2,129 +2,65 @@
 
 > ⚠ **Public repo.** No secrets, internal URLs, unreleased names, or partner info in commits.
 
-**Cue Clock** is a minimal, distraction-free clock app built specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously.
+**Cue Clock** is a minimal, distraction-free clock app for broadcast professionals monitoring multiple timezones and countdown timers simultaneously. It MUST stay minimal, fast, and intuitive; the timers (including zone time) must be perfect.
 
-## Important
-
-- This document must only contain useful information as briefly and concise as possible.
-- This application NEEDS to be minimal and fast while being intuitive.
-- The timers need to be working perfectly, including the zone time.
+You can use the Expo Skills/Plugin as needed to fetch Expo related details and perform operations.
 
 ---
 
-## Project Layout
+## Repository Architecture
 
-```
-app/                            React Native (Expo SDK 55) mobile app
-  app/                          Expo Router screens
-    _layout.tsx                 Root layout, analytics init, useFonts gate
-    index.tsx                   HomeScreen - all primary state lives here
-  components/                   UI primitives + modals (see below)
-    Header                      brand dot + wordmark + Help/Settings/Fullscreen
-    ClockRail                   two-zone live clocks (tap → ZonePickerModal)
-    PrimaryCard                 "Up Next" card, continuous urgency scaling
-    PassedStrip                 compressed one-line strip for cues that just crossed zero (× deletes w/ confirm, auto-expires after 5 min)
-    QueuedRow                   compact secondary cue row (list is auto-sorted by remaining time)
-    AddCueButton                pinned-bottom accent CTA, safe-area aware
-    OnAirView                   fullscreen broadcast layout, auto-dimming exit
-    ModalShell                  shared bottom-sheet chrome (handle / title / body / footer); the outer container's `paddingBottom` is animated from RN `Keyboard` events (NOT a sheet `translateY`) so the sheet's `maxHeight` clamps naturally and never over-scrolls above the status bar - fixes the ZonePicker over-push when clearing the search input
-    CueEditModal                unified add/edit cue sheet; in 12-hour mode the new-cue default hour preserves the current zone1 AM/PM half (11:43 PM → defaults to 11:00 PM, not 12:00 AM)
-    ZonePickerModal             search + 23-IANA-tz picker
-    SettingsModal               flat settings sheet. Includes the "Minimize ended cues" toggle (compresses fired cues into PassedStrips until zone1 midnight) and the "Final 3s beep" toggle (native-only). When `analyticsEnabled === false`, the bottom row swaps from a muted "Turn off" to an accent-blue "Turn on analytics" CTA with a diamond glyph and `${accent}55` glow border
-    HelpModal                   "How to use" - glossary + Android warning + about
-    AndroidBackgroundHelpModal  5-step setup wizard (Xiaomi/MIUI critical)
-    AlarmDismissModal           full-screen alarm; snooze count is informational
-    AnalyticsConsentModal       first-launch opt-in
-    AnalyticsOptOutModal        friction-heavy "We'll miss your support..." sheet. Used by BOTH Settings "Turn off analytics" AND consent-flow "No thanks". Accepts `dismissable` (default true) - the consent-origin call sets it false so backdrop tap / Android back / × can't escape the choice; from Settings it stays true
-    AnalyticsReEnableModal      single warm re-opt-in sheet (NOT the consent gauntlet again). Triggered by Settings "Turn on analytics" CTA AND the pulsing diamond nudge in the Header. One accent "Allow analytics" + one muted "Not now" - re-routing through `AnalyticsConsentModal` for re-opt-in reads as manipulative, so this exists as a separate positive surface
-    Header                      brand dot + wordmark + Help/Settings/Fullscreen. When `analyticsEnabled === false`, renders an animated `AnalyticsNudge` (pulsing accent halo + scaling diamond glyph) before the Help icon to draw the opted-out user back to the re-enable sheet
-    DebugLogModal               internal-build ring-buffer viewer
-    TimeStepper                 chevron stepper + tap-to-native-picker (hm / ms)
-    TargetBlock, AlertModal,    legacy editor surfaces - only the web /
-      ClockPicker, ConfirmModal   fullscreen-web branch still consumes them
-  lib/
-    alarms.ts                   Notifee wrapper (schedule/cancel/channels/permissions)
-    alarmHandlers.ts            Notifee bg/fg event dispatcher + bg vibration loop
-    analytics.ts                Firebase/Clarity init
-    debugLog.ts                 Ring-buffer logger, gated by EXPO_PUBLIC_DEBUG_LOGS
-    time.ts                     formatInZone, fmtHM, zoneAbbr, shortCity, computeCountdown
-    urgency.ts                  urgencyFactor (0→1 over 300s→60s window) + lerp helpers
-    useNow.ts                   wall-clock-aligned 1s ticker (first tick on second boundary)
-  modules/expo-alarm-vibrator/  Local native Kotlin module (ALARM-class vibration)
-  plugins/withFullScreenAlarm.js  Adds showWhenLocked + turnScreenOn to MainActivity
-  constants/                    colors.ts, typography.ts, timezones.ts (23 zones)
-  assets/                       icons, splash, SpaceMono, alarm.mp3, beep.mp3 (130ms 880Hz tick), beep_go.mp3 (420ms 1320Hz "go" tone) (Inter via @expo-google-fonts/inter)
-website/                        Next.js 16 landing page (Tailwind 4, GSAP)
-                                Tokens mirror app/constants/colors.ts via @theme in globals.css
-.github/
-  workflows/
-    android-internal.yml        push→master → signed AAB → Play Internal Testing
-    android-beta.yml            GH pre-release (vX.Y.Z-beta.N) → signed AAB → Play Open Testing
-    android-promote.yml         GH full release (vX.Y.Z) → promote beta AAB → Play Production (no rebuild)
-    android-release-verify.yml  PR dry-run of the release build pipeline (throwaway keystore)
-    web-deploy.yml              GH full release (vX.Y.Z) → triggers Coolify deploy of the web app
-  scripts/
-    promote-to-production.js    googleapis-based promotion logic invoked by android-promote.yml
-```
+Three top-level products live in this one repo. Read this map first to know which folder a change belongs in.
+
+- **`app/`** — the Cue Clock application itself: an Expo (SDK 55) / React Native project that ships to **Android, iOS, and web from one codebase** (`app.json` declares all three platforms; the web build is a Metro static export, `web.output: "static"`). This is THE product — everything in `## Stack & Layout`, `## Design System`, `## Architecture`, and `## Alert System` below describes this folder unless stated otherwise. Web and native render the SAME modern component tree (see Render branches); the web build only diverges where a platform feature forces it (header `+` instead of the pinned-bottom add button, inline `TimeStepper` digit fields instead of the OS time picker, no alarm/FSI, no Android onboarding wizard).
+- **`website/`** — the public marketing / branding site for Cue Clock (the landing page, not the app): a **Next.js 16** app (React 19, Tailwind 4, GSAP) with the App Router under `website/src/app/` (`page.tsx` landing, `privacy/`, `robots.ts`, `sitemap.ts`, assets in `public/`). Its design tokens mirror `app/constants/colors.ts` via `@theme` in `globals.css` so brand colours stay in sync. Deployed by `web-deploy.yml` → Coolify on full release. It does NOT import from `app/`.
+- **`tests/`** — automated tests for the app. Currently just `tests/ai/`, the Gemini-driven AI E2E harness that exercises the REAL running app: `tests/ai/android/` (TypeScript, LangChain.js + LangGraph) drives `agent-device` against a physical Android phone, and `tests/ai/web/` (Python, `browser-use` + Playwright) drives Chromium against the web build at `localhost:8081`. Scenarios are plain markdown in `tests/ai/scenarios/{android,web}/` (one shared `Setup / Steps / Expected / Visual / Verdict` format, parsed by both runners); `tests/ai/scripts/test-all.sh` is the orchestrator. Gemini-only, key in gitignored `tests/ai/.env`.
 
 ---
 
-## Tech Stack (Mobile)
+## Stack & Layout
 
-React Native 0.83, Expo SDK 55, TypeScript 5.9 (strict), Expo Router, Luxon 3, AsyncStorage, `@notifee/react-native` 9.1.8, `expo-audio` 55, `@react-native-firebase/*`, `@microsoft/react-native-clarity`.
+React Native 0.83, Expo SDK 55, TypeScript 5.9 (strict), Expo Router, Luxon 3, AsyncStorage, `@notifee/react-native` 9.1.8, `expo-audio` 55, `@react-native-firebase/*`, `@microsoft/react-native-clarity`. Styling is inline `style={...}` only (no StyleSheet libs); colors via `app/constants/colors.ts`, typography via `app/constants/typography.ts`, safe area via `useSafeAreaInsets()` (never hardcode insets). Package: `com.yanukadeneth99.cueclock`.
 
-Styling: inline `style={...}` only (no StyleSheet libraries). Colors via `app/constants/colors.ts`, typography via `app/constants/typography.ts`. Safe area via `useSafeAreaInsets()` - never hardcode insets.
+- `app/app/index.tsx` — HomeScreen; ALL app state lives here and persists to AsyncStorage. Three render branches (see below).
+- `app/lib/` — `alarms.ts` (Notifee wrapper), `alarmHandlers.ts` (bg/fg event dispatcher + bg vibration loop), `time.ts` (`computeCountdown` etc.), `urgency.ts` (`urgencyFactor`), `useNow.ts` (wall-clock-aligned 1s ticker).
+- `app/modules/expo-alarm-vibrator/` — local native Kotlin module for ALARM-class vibration.
+- `app/plugins/withFullScreenAlarm.js` — adds `showWhenLocked` + `turnScreenOn` to MainActivity (Android-only, no-op elsewhere).
+- `website/` — Next.js 16 landing page (Tailwind 4, GSAP); tokens mirror `app/constants/colors.ts` via `@theme` in `globals.css`.
+- `tests/ai/` — Gemini-driven E2E harness with TWO runners sharing one markdown scenario format: `android/` (LangChain.js + LangGraph driving `agent-device` against a physical Android phone, run via `cold-reload.sh` + Metro) and `web/` (Python `browser-use` + Playwright driving Chromium against the web build). Gemini-only (`config.json` `llm.model`, key in gitignored `tests/ai/.env`). See `## Repository Architecture` above.
+- `.github/workflows/` — `android-internal` (push→master), `android-beta` (pre-release), `android-promote` (full release→Production), `android-release-verify` (PR dry-run), `web-deploy` (full release→Coolify).
 
 ---
 
 ## Design System
 
-Three-tier surface stack: `page` (#0a0b0e) → `background` (#1a1d23, default screen bg) → `surface` (#252830, cards/sheets). Single blue `accent` (#60a5fa) for CTA + brand. Amber `countdown` (#fbbf24) is reserved for time-urgency + alarm state only. Red `danger` (#ef4444) is reserved for <1m critical + destructive actions only. Zone dots: `zone1` green / `zone2` red.
+Surface stack: `page` (#0a0b0e) → `background` (#1a1d23, default screen bg) → `surface` (#252830, cards/sheets). Single blue `accent` (#60a5fa) for CTA + brand. Amber `countdown` (#fbbf24) is reserved for time-urgency + alarm state ONLY. Red `danger` (#ef4444) is reserved for <1m critical + destructive actions ONLY. Zone dots: `zone1` green / `zone2` red.
 
-**Typography.** Inter for all UI (weights 400/500/600/700 loaded via `@expo-google-fonts/inter`). Space Mono for all numerics (`SpaceMono-Regular.ttf` bundled). Always pair clock/countdown displays with `fontVariantNumeric: 'tabular-nums'` (already wired in the `text.*` presets in `constants/typography.ts`) so digit changes don't shift layout.
+**Typography.** Inter for UI, Space Mono for all numerics. Always pair clock/countdown displays with `fontVariantNumeric: 'tabular-nums'` (wired into the `text.*` presets) so digit changes don't shift layout.
 
-**Continuous urgency scaling.** The home `PrimaryCard` and `OnAirView` hero card interpolate font size, padding, and the amber halo radius from a single `urgencyFactor(total)` - 0 when calm (>5 min), 1 in the last minute, linear across the 300s→60s window. Border and background swap discretely at the warn / crit thresholds; the size growth is continuous. Implemented in `app/lib/urgency.ts`.
+**Continuous urgency scaling.** `PrimaryCard` and the `OnAirView` hero card interpolate font size, padding, and halo radius from `urgencyFactor(total)` — 0 when calm (>5 min), 1 in the last minute, linear across the 300s→60s window. Border/background swap discretely at warn/crit thresholds; size growth is continuous (`app/lib/urgency.ts`).
 
-**Web parity.** The Next.js landing (`website/`) mirrors the same tokens via Tailwind 4 `@theme` in `src/app/globals.css`. New token names: `bg-page`, `bg-bg-app`, `bg-card`, `border-card-border`, `text-fg`, `text-fg-muted`, `text-accent`, `bg-zone1`, `bg-zone2`, `bg-countdown`, `bg-danger`, plus `cta-primary` and `surface-card` component utilities. The legacy Material-3 token block is still present, labelled "slated for removal" - kept only to keep the `/privacy` page rendering until it's restyled.
-
-**Render branches.** `app/app/index.tsx` ships three render paths:
-
-- `!isWeb && !fullScreen` → new-design mobile home (Header + ClockRail + PrimaryCard + QueuedRow + AddCueButton; modals via `ModalShell`).
-- `!isWeb && fullScreen` → `OnAirView`.
-- `isWeb` (any) → legacy render path (still uses `ClockPicker` + `TargetBlock` + `AlertModal` + `ConfirmModal`). Slated for migration in a follow-up.
+**Render branches** in `index.tsx` (web and native share the SAME tree now): `!fullScreen` → the unified home (`Header` + `ClockRail` + `PrimaryCard`/`QueuedRow`/`PassedStrip` + `CueEditModal`/`ZonePickerModal`), used by both native and web; `fullScreen` → `OnAirView` (cross-platform RN primitives, reachable on web via the header full-screen button too). A THIRD `return` at the tail of the file still renders the old `ClockPicker`/`TargetBlock`/`AlertModal` path, but it is now **unreachable dead code** kept only until a follow-up cleanup commit — do NOT build against it or assume web hits it.
 
 ---
 
 ## Architecture
 
-**State.** All app state lives on `HomeScreen` (`app/app/index.tsx`) and persists to AsyncStorage via `multiSet`/`multiGet`. Rehydrated on mount.
+**State.** All state lives on `HomeScreen` and persists via `multiSet`/`multiGet`, rehydrated on mount. Persisted keys include `zone1`/`zone2`, `targetBlocks`, `is24Hour`, `alertMode` (`notification`|`alarm`), `showSeconds`, `soundAlerts`, `keepOn`, `autoMinimizePassed` (default true), `finalBeep` (default true, native-only), `analyticsEnabled` (3-state: null = unasked), `androidBackgroundHelpSeen`. **Reset preserves `analyticsEnabled`** — `doReset` uses `multiRemove` on specific keys, NOT `clear`.
 
-Key persisted keys: `zone1`, `zone2`, `targetBlocks`, `is24Hour`, `alertMode` (`"notification"` | `"alarm"`), `showSeconds`, `soundAlerts`, `keepOn`, `autoMinimizePassed` (default true; off = past-zero cues stay as normal active rows instead of compressed strips — for shows that need every cue visible regardless of fire state), `finalBeep` (default true; native-only T-3/T-2/T-1/go tones on the primary cue), `analyticsEnabled` (3-state: null = unasked), `androidBackgroundHelpSeen`.
+**Countdown.** `setInterval(1s)`. Per-block: target time in zone, +1 day if past, minus deduction, formatted `HH:MM:SS`; skip React reconciliation if the formatted string didn't change.
 
-**Reset preserves `analyticsEnabled`** - `doReset` uses `multiRemove` on specific keys, not `clear`.
+**Fire-and-forget async.** `handleTargetConfirm`/`handleAlertConfirm`/`removeBlock` update state synchronously, then reschedule notifications in a background IIFE so UI stays <16ms.
 
-**Countdown.** `setInterval(1s)` in HomeScreen. Per-block: target time in zone, +1 day if past, minus deduction, formatted `HH:MM:SS`. Skip React reconciliation if formatted string didn't change.
+**Passed-cue rotation (stateless, zone1-anchored).** `computeCountdown` rolls past zero to ~86400, so "expired" isn't a native state. `passedAt` is a `useMemo` derived from `now` + `targetBlocks` + zones every tick — NO edge detection, NO TTL, NO refs. Per cue: `mostRecentFireMs = nowMs - (86400 - cd.total) * 1000`, included iff inside `[zone1Midnight, now]`. The render path lifts those ids into `PassedStrip`s above the primary card (auto-promoting the next cue); strips never reschedule alarms. Day boundary is zone1, so all passed cues un-minimize together at zone1 midnight. Manual × goes into `dismissedFireMs` keyed by fire timestamp, so next-day re-fire re-shows the strip automatically. **Do NOT reintroduce the old edge-detected design** (`lastTotalsRef` + 5-min TTL) — it missed rollovers whenever the JS ticker was suspended.
 
-**Fire-and-forget async.** `handleTargetConfirm`, `handleAlertConfirm`, `removeBlock` update state synchronously, then reschedule notifications in a background IIFE so UI stays <16ms.
+**Auto-minimize toggle gates RENDER only** — it swaps the source between live `passedAt` and a frozen `EMPTY_PASSED` sentinel. Because `passedAt` is stateless, flipping off then on hours later still minimizes correctly.
 
-**Passed-cue rotation (stateless, zone1-anchored).** `computeCountdown` rolls past zero to ~86400 (next-day rollover), so "expired" isn't a native state. `passedAt: Record<id, fireMs>` is a `useMemo` derived from `now` + `targetBlocks` + zones each tick — NO edge detection, NO TTL, NO refs. For each cue: `mostRecentFireMs = nowMs - (86400 - cd.total) * 1000`, then include iff that timestamp lies inside `[zone1Midnight, now]`. The render path lifts those ids out of the primary/queue split and shows them as `PassedStrip`s above the primary card — promoting the next cue automatically. Strips never reschedule alarms — they're a pure presentation layer. Day boundary is zone1 (per spec), so all passed cues un-minimize together at zone1 midnight regardless of each cue's own zone. Manual × dismissal goes into `dismissedFireMs: Record<id, fireMs>` keyed by the fire timestamp — when the cue fires again next day, the new timestamp differs and the strip re-appears automatically (no manual reset needed).
+**Auto-sort by remaining time.** Render path sorts active blocks by `computeCountdown(...).total` ascending each tick; zones aren't in the sort key (`total` is already real wall-clock seconds-from-now). Persisted order no longer drives display.
 
-**Auto-sort by remaining time.** The render path sorts active blocks by `computeCountdown(...).total` ascending each tick - soonest cue is always primary, the rest fall in line below it. Zones are not part of the sort key: `computeCountdown` already projects each target into its own zone, so `total` is in real wall-clock seconds-from-now regardless of where the cue lives. The persisted order in `targetBlocks` no longer drives display; cues are reordered purely visually as time advances.
+**`OnAirView` is a pure presenter** — it does NOT sort/filter. The fullscreen caller MUST pre-filter passed cues (`passedAt[b.id] == null`) and sort ascending by `computeCountdown` total before passing, identical to `activeBlocks`. Passing raw `targetBlocks` causes wrong ordering.
 
-**`OnAirView` is a pure presenter.** It does not sort or filter its `blocks` prop. The caller (`index.tsx` fullscreen branch) must pre-filter passed cues (`passedAt[b.id] == null`) and sort ascending by `computeCountdown` total before passing — identical to the normal-view `activeBlocks` logic. Passing raw `targetBlocks` causes inverse/wrong ordering in fullscreen.
-
-**Auto-minimize toggle gates RENDER only.** Because `passedAt` is stateless (re-derived from absolute time every tick), the `autoMinimizePassed` toggle just swaps the render-path source between live `passedAt` and the frozen `EMPTY_PASSED` sentinel. Flipping the toggle OFF mid-day, then back ON hours later, correctly minimizes every cue whose fire timestamp is still inside today's zone1 window — there's no longer any edge to miss. The previous edge-detected design (prev≤5 → next≥86395 via `lastTotalsRef`, plus 5-min TTL eviction) is gone; do NOT reintroduce it. Symptoms it caused: missed rollovers when JS ticker was suspended (background, device sleep, alarm-modal animation stall, wall-clock ticker drift), and cues un-minimizing 5 minutes after firing even though it was still the same broadcast day.
-
-**Final-3s beep (`finalBeep` toggle).** Native-only short countdown SFX for the PRIMARY (soonest) cue: 130ms 880Hz tick at T-3 / T-2 / T-1, then a 420ms 1320Hz "go" tone at zero. Implemented inline in `app/index.tsx` via three `useAudioPlayer` instances - a **2-player pool** (`beepPlayerA` / `beepPlayerB`) alternated per tick plus a dedicated `goPlayer`. Three non-obvious things:
-
-1. **Pool is required, not optional.** `expo-audio`'s `seekTo` dispatches the head-reset to the playback thread; back-to-back `seekTo+play` 1s apart on the SAME instance races - the second `play()` lands before the head reset and that beep is silently dropped (caused a missed T-2 on the Redmi Note 12 calibration target). Alternating pre-warmed players guarantees each beep gets an idle instance.
-2. **Predictive scheduling, not reactive.** Detection fires ONE SECOND EARLY (on the tick where `current = N+1` for digit `N`) and schedules a `setTimeout(1000 - BEEP_LEAD_MS)` so the beep lands ~`BEEP_LEAD_MS` (default 300ms) BEFORE the next wall-clock-second boundary. Compensates for native dispatch + speaker output latency so the operator perceives beep and digit transition as simultaneous. `BEEP_LEAD_MS` is the single tuning knob — do NOT confuse it with `SETTLE_MS` (one-shot warmup, see #4).
-3. **Pre-seek at schedule time, not at fire time.** `scheduleBeep` picks the pool player and calls `seekTo(0)` IMMEDIATELY at schedule (~700ms before play). Because `seekTo` is async-dispatched to the playback thread, doing it 700ms early guarantees the head reset has landed by the time `play()` arrives — closes the same race the pool was added for, on the player's first use after pre-warm.
-4. **Pre-warm settle MUST exceed clip length.** A silent `play→pause→seekTo(0)` cycle at mount forces MediaCodec to JIT-decode the MP3 assets. **`SETTLE_MS = 500`** (not 60ms — the previous value paused the silent prime mid-playback because the beep clip is 130ms, leaving the player non-idle when the first real T-3 `seekTo+play` arrived 5-10s later; that race silently dropped T-3 AND T-2 on the very first cue after launch, while T-1 — reusing player A by then idle — and the dedicated `goPlayer` were unaffected). `beepReadyRef` flips true at `SETTLE_MS + 100ms` post-mount; the scheduler still fires before ready (any cue ≥1s out is fine), but the `ready` flag is logged at schedule time for diagnostics. `SETTLE_MS` is a one-shot warmup cost — it has NO effect on digit/sound sync; that's `BEEP_LEAD_MS`'s job exclusively.
-
-**Beep diagnostic events** (gated by `EXPO_PUBLIC_DEBUG_LOGS=1`): `beep:prime:done` / `beep:prime:err` / `beep:prime:start:err` (per player A/B/go), `beep:ready` (~600ms after mount), `beep:schedule` (kind, player, primaryId, primaryTotal, prev, delay, ready), `beep:fire` (kind, player, primaryId, firedAt), `beep:fire:err`, `beep:schedule:seek:err`. A `beep:schedule` without a matching `beep:fire` means the timer was cancelled (primary swap, cue removal, toggle-off, unmount); a `beep:fire` with no audible sound means the OS dropped it.
-
-Pending beep timeouts are tracked in `pendingBeepTimersRef` and cleared on: cue removal, primary swap, toggle off, and unmount - prevents a beep firing into a screen that no longer matches. The "go" tone is gated by a per-block-id `goFiredForRef` map (1h eviction) so the next-day rollover at +24h doesn't refire it.
+**Final-3s beep (`finalBeep`).** Native-only SFX for the PRIMARY cue: 130ms 880Hz tick at T-3/T-2/T-1, then a 420ms 1320Hz "go" at zero. Three non-obvious invariants: (1) a **2-player pool** (`beepPlayerA`/`beepPlayerB`) alternated per tick is REQUIRED — back-to-back `seekTo+play` 1s apart on one instance races and drops a beep; (2) scheduling is **predictive** — detection fires one second early and `setTimeout(1000 - BEEP_LEAD_MS)` lands the beep ~`BEEP_LEAD_MS` (300ms) before the second boundary to compensate for dispatch+output latency (`BEEP_LEAD_MS` is the ONLY A/V-sync knob); (3) **pre-warm `SETTLE_MS = 500`** must exceed the 130ms clip length, else the silent prime pauses mid-playback and the first cue's T-3/T-2 are dropped. Pending timeouts are tracked in `pendingBeepTimersRef`, cleared on cue removal / primary swap / toggle-off / unmount. The "go" tone is gated by `goFiredForRef` (1h eviction) so the +24h rollover doesn't refire it. Beep diagnostics are gated by `EXPO_PUBLIC_DEBUG_LOGS=1`.
 
 ---
 
@@ -132,260 +68,83 @@ Pending beep timeouts are tracked in `pendingBeepTimersRef` and cleared on: cue 
 
 Dual-mode, Android-first.
 
-### Alarm Mode (Android, primary)
+**Alarm Mode (primary).** Full-screen UX that wakes the device over the lock screen. Audio (`expo-audio` looping `alarm.mp3`) and vibration (`expo-alarm-vibrator`) are owned by `AlarmDismissModal` in-activity — Android suppresses channel sound once FSI launches an Activity, so channel config is fallback only. **60s safety cap.** Notifee quirks that matter:
 
-Full-screen alarm UX that wakes the device and shows over lock screen. Audio (`expo-audio` looping `assets/alarm.mp3`) and vibration (local `expo-alarm-vibrator` module) are owned by `AlarmDismissModal` in-activity - Android suppresses channel sound the moment FSI launches an Activity, so the channel config is fallback only. **60s safety cap** prevents an unattended phone from sounding forever.
-
-**Notifee config quirks that matter:**
-
-- `fullScreenAction.launchActivity` and `pressAction.launchActivity` MUST be the fully-qualified class name (`com.yanukadeneth99.cueclock.MainActivity`). HyperOS/Android 14+ silently refuses to elevate FSI with `"default"`.
-- `vibrationPattern` must be an even-length array of strictly-positive values (e.g. `[500, 500, 500, 500]`, NOT `[0, 500, …]`). Bad pattern throws synchronously inside `createChannel`/`createTriggerNotification`.
-- Channel IDs versioned: `cue-clock-alarm-v3`, `cue-clock-notif-v3`. Android channels are immutable post-creation; v1/v2 IDs are explicitly deleted on first run.
+- `fullScreenAction.launchActivity` / `pressAction.launchActivity` MUST be the fully-qualified class name (`com.yanukadeneth99.cueclock.MainActivity`). HyperOS/Android 14+ silently refuses `"default"`.
+- `vibrationPattern` must be even-length, strictly-positive values (`[500,500,500,500]`, NOT `[0,500,…]`) — a bad pattern throws synchronously in `createChannel`/`createTriggerNotification`.
+- Channel IDs are versioned (`cue-clock-alarm-v3`, `cue-clock-notif-v3`) and immutable post-creation; v1/v2 are deleted on first run.
 - Trigger uses `AlarmManager.SET_EXACT_AND_ALLOW_WHILE_IDLE` (survives Doze).
 
-**Four modal-mount paths** (every alarm fire reaches the modal regardless of OS state):
+**Four modal-mount paths** (every fire reaches the modal): (1) foreground tick — exact-second match (`totalMinutes === alertMinutesBefore && seconds === 0`), NOT a `<=` range check (snooze fires at non-aligned times); (2) foreground Notifee delivery — `alarmHandlers.ts` `fgDeliveredQueue` drained by the ticker, OS heads-up cancelled via `pendingCancelRef` AFTER mount (synchronous cancel breaks FSI launches); (3) cold start via `notifee.getInitialNotification()`; (4) warm resume — `pendingBackgroundFiresRef` drained on `AppState=active`.
 
-1. **Foreground tick** - countdown ticker at `alert:shouldFire` queues into `alertQueueRef`. **Match is exact-second** (`totalMinutes === alertMinutesBefore && seconds === 0`), NOT a `<= trigger` range check. Snooze reschedules at a non-aligned timestamp (e.g. snooze at 10:38:03 → fire at 10:39:03); a range check would refire instantly because `remaining ≤ alertMinutesBefore*60` already holds for the rest of the snooze window.
-2. **Foreground Notifee delivery** - covers snoozed alarms whose non-minute-aligned fire times slip past path 1. `lib/alarmHandlers.ts` exposes a module-level `fgDeliveredQueue: { notifId, blockId }[]`; `onForegroundEvent` pushes on `EventType.DELIVERED` for `cue-clock-alarm-v3`. The 1-Hz ticker drains the queue and calls `setAlarmDismissData` directly (bypasses `alertQueueRef` because that drain is keyed on `targetBlocks` changes and a snoozed fire doesn't necessarily mutate the block). Cancellation of the OS heads-up goes through `pendingCancelRef` _after_ the modal mounts - NOT synchronously inside the handler (synchronous cancel breaks FSI activity launches; we tried). Bridge is a mutable array because `alarmHandlers.ts` registers at module load before React mounts, so it cannot capture a React setter.
-3. **Cold start via FSI** - `notifee.getInitialNotification()` read after AsyncStorage hydration mounts modal with stored block context.
-4. **Warm resume** - alarm fires while backgrounded; ticker records into `pendingBackgroundFiresRef` (`alert:bgFireRecorded`). On `AppState=active`, ref is drained (`appState:resume:drainBgFires`) → modal mounts. Defensive `fireDate === null` path (`appState:resume:fallbackQueueModal`) covers locked-screen case where the JS ticker was suspended.
+**Fullscreen interaction.** RN `<Modal>` is silently dropped by HyperOS while the host activity is in immersive mode, so on alarm-while-fullscreen the effect captures `fullScreenBeforeAlarmRef` and calls `setFullScreen(false)`; dismiss/snooze restore it (works across repeated snoozes).
 
-**Fullscreen (On-Air) interaction.** RN `<Modal>` on Android is a separate Dialog window; when the host activity is in immersive mode (status-bar hidden by OnAirView's `<StatusBar hidden translucent>`), HyperOS/MIUI silently drops the Dialog on mount, so the AlarmDismissModal would never appear over OnAirView. The effect at `index.tsx:1198-1210` watches `alarmDismissData`: on transition to non-null while `fullScreen` is true, it captures the pre-alarm value into `fullScreenBeforeAlarmRef` and calls `setFullScreen(false)`. Both `handleAlarmDismiss` and `handleAlarmSnooze` consume the ref to restore fullscreen, so the operator drops back into On-Air automatically - including across repeated snooze cycles.
+**Scheduling source of truth — `rescheduleInBackground`.** ALL CueEditModal save paths (add-new, edit-with-alert, edit-to-add-alert) MUST flow through it. It gates on the **merged** `tempBlock.alertMinutesBefore`, NOT the pre-patch `block.alertMinutesBefore` — otherwise add-new (block not yet in `targetBlocksRef`) and edit-to-add-alert (pre-patch value is null) silently drop the schedule.
 
-**Scheduling source of truth - `rescheduleInBackground` (`app/index.tsx`).** All CueEditModal save paths (add-new, edit-existing-with-alert, edit-existing-to-add-alert) MUST flow through this helper. It builds `tempBlock = { ...(block ?? createDefaultBlock(id)), ...patch, id }` and gates on the **merged** `tempBlock.alertMinutesBefore`, NOT `block.alertMinutesBefore`. Two regressions this guards against:
+**Background heads-up vibration.** When the OS downgrades FSI to a plain heads-up (Android 14+ refuses to launch an Activity when screen is on + another app focused), `onBackgroundEvent` starts a 1.2s `AlarmVibrator.vibrateAsAlarm(600)` loop (60s cap), self-cancelling on `AppState=active`/`DISMISSED`/`ACTION_PRESS`.
 
-1. **Add-new**: `targetBlocksRef.current` doesn't contain the brand-new block yet (React state flush is async). A `find()` returns undefined → silent bail if the bail condition consults the ref.
-2. **Edit-to-add-alert**: the pre-patch block has `alertMinutesBefore === null`. A bail keyed on the pre-patch value drops the schedule for cues gaining their first alert.
+**Snooze.** `MAX_SNOOZES = Infinity`; `snoozeCount` resets to 0 when a new alert is configured.
 
-Symptom of either regression: cues appear configured in the UI and the JS-side `fallbackQueueModal` fires on resume, but `alarms:scheduleAlarm:perms` / `:ok` never log because Notifee was never invoked - so locked-screen FSI has nothing to elevate.
+**Required permissions:** `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `USE_FULL_SCREEN_INTENT`, `VIBRATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED`. Runtime checks `canScheduleExactAlarms()` / `canUseFullScreenIntent()` deep-link to settings if missing.
 
-**Background heads-up vibration** (`lib/alarmHandlers.ts`). When the OS downgrades FSI to a plain heads-up (Android 14+ refuses to launch Activity when screen is on + another app focused - documented, not overridable), `onBackgroundEvent` watches for `EventType.DELIVERED` on the alarm channel and starts a 1.2s `AlarmVibrator.vibrateAsAlarm(600)` loop with a 60s cap. Loop self-cancels on `AppState=active`, `DISMISSED`, or `ACTION_PRESS`.
-
-**Snooze.** `MAX_SNOOZES = Number.POSITIVE_INFINITY`. Modal shows "Snoozed N times" once N > 0. `snoozeCount` resets to 0 in `handleAlertConfirm` when a new alert is configured.
-
-**Required permissions:** `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `USE_FULL_SCREEN_INTENT`, `VIBRATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED`. Runtime checks: `canScheduleExactAlarms()`, `canUseFullScreenIntent()`. Both deep-link to settings if missing.
-
-### Notification Mode (fallback)
-
-Heads-up only, channel `cue-clock-notif-v3`. Same exact-alarm trigger.
-
-### Web/iOS
-
-Web Notifications API → `window.alert` as final fallback. iOS uses `expo-notifications`.
+**Notification mode** (fallback): heads-up only, channel `cue-clock-notif-v3`, same exact-alarm trigger. **Web/iOS:** Web Notifications API → `window.alert`; iOS uses `expo-notifications`.
 
 ---
 
 ## ALARM-class Vibration (`modules/expo-alarm-vibrator`)
 
-Local Expo native module. Dispatches `Vibrator.vibrate(VibrationEffect, AudioAttributes.USAGE_ALARM)`. Without this, RN's `Vibration.vibrate(ms)` is classified `mUsage=TOUCH` and rejected by Xiaomi/HyperOS `VibratorService` with `IGNORED_FOR_SETTINGS` when "Vibrate on Tap" is off. The ALARM usage class is gated by `alarm_vibration_intensity` (default-on across virtually all devices).
-
-**API:** `AlarmVibrator.vibrateAsAlarm(durationMs)`, `AlarmVibrator.cancel()`.
-
-**Verification in logcat:** `mUsage=ALARM ... status FINISHED`. Failure mode: `mUsage=TOUCH ... IGNORED_FOR_SETTINGS` means JS still using `Vibration.vibrate()` somewhere.
-
-Registered via Expo autolinking (`expo-module.config.json` + `file:` dep in `app/package.json`). Survives `expo prebuild --clean`.
+Dispatches `Vibrator.vibrate(VibrationEffect, AudioAttributes.USAGE_ALARM)`. Without it, RN's `Vibration.vibrate(ms)` is classified `mUsage=TOUCH` and rejected by Xiaomi/HyperOS with `IGNORED_FOR_SETTINGS` when "Vibrate on Tap" is off. API: `vibrateAsAlarm(durationMs)`, `cancel()`. Logcat success = `mUsage=ALARM ... FINISHED`; `mUsage=TOUCH ... IGNORED_FOR_SETTINGS` means JS still calls `Vibration.vibrate()` somewhere. Registered via Expo autolinking; survives `expo prebuild --clean`.
 
 ---
 
-## Debug Log (`lib/debugLog.ts`, `components/DebugLogModal.tsx`)
+## Debug Log & Onboarding
 
-In-memory ring buffer (200 entries). **Gated three ways for release safety:**
+**Debug log** (`lib/debugLog.ts`): 200-entry ring buffer, gated three ways for release safety — build-time `EXPO_PUBLIC_DEBUG_LOGS=1` (set ONLY by `android-internal.yml`), `dlog()` no-ops when unset, and the Help-modal row is hidden when `onTestAlarm`/`onShowDebugLog` are undefined (release). Log at platform/permission boundaries, never in 1s-tick hot loops.
 
-1. Build-time env var `EXPO_PUBLIC_DEBUG_LOGS=1` (only set by `android-internal.yml`, NEVER by `android-beta.yml` or `android-promote.yml`).
-2. `dlog()` short-circuits to no-op when flag unset.
-3. UI: `onTestAlarm`/`onShowDebugLog` props are `undefined` in release, hiding the Help-modal row entirely.
-
-**Access on internal builds:** Help (?) → row below "About the Developer" → Test Alarm / Debug Log buttons.
-
-Log at platform/permission boundaries. Never at 1s-tick hot loops.
-
----
-
-## Onboarding Flow (Android, first launch)
-
-Two-step wizard:
-
-1. `AndroidBackgroundHelpModal` - bottom sheet (`ModalShell`) with 5 numbered step cards: (01) Disable activity pause, (02) Set battery to Unrestricted, (03) Allow exact alarms, (04) ⚠️ **Xiaomi/Redmi/POCO Autostart** (amber-bordered critical card), (05) Lock in Recents. Below the steps: an "Open directly" group of ghost rows that deep-link to App settings, Battery, Alarms & reminders, HyperOS Other Permissions, and MIUI Autostart. Internal builds additionally see a "Verify it works → Run test" card and a "View debug log" row. **Continue button is scroll-gated** - starts as a muted "Scroll down" label, flips to the accent "Got it" pill once the user reaches the bottom (16px slack). `onLayout` auto-unlocks when content fits without scrolling.
-2. `AnalyticsConsentModal` - non-dismissable opt-in. Opens automatically when step 1 closes IF `analyticsEnabled === null`.
-
-The native notification-permission dialog and the "Allow Exact Alarms" Alert are deliberately suppressed on first launch (in `app/index.tsx` we only call `getPermissionsAsync`, never `requestPermissionsAsync`). The wizard's deep-links cover the same ground without fragmenting the UX.
-
-iOS/web skip step 1.
-
----
-
-## Expo Config Plugin
-
-`plugins/withFullScreenAlarm.js` - adds `android:showWhenLocked="true"` and `android:turnScreenOn="true"` to MainActivity. Android-only, no-op elsewhere.
+**Onboarding (Android, first launch):** two-step wizard — (1) `AndroidBackgroundHelpModal` (5 step cards incl. Xiaomi/Redmi/POCO Autostart; scroll-gated Continue), then (2) `AnalyticsConsentModal` (non-dismissable, opens iff `analyticsEnabled === null`). The native notification-permission dialog and exact-alarm Alert are deliberately suppressed on first launch (we only call `getPermissionsAsync`, never `requestPermissionsAsync`); the wizard's deep-links cover the same ground. iOS/web skip step 1.
 
 ---
 
 ## CI/CD
 
-Three-track release flow. **Closed Testing (Alpha) is retired** — close it in Play Console manually.
+Tags are the source of truth. **No manual `app.json` version bumps** — `versionName` is derived from git tags by CI scripts and `expo.version` is rewritten before each build.
 
-| Trigger                                        | Workflow               | Play Track            |
-| ---------------------------------------------- | ---------------------- | --------------------- |
-| Push to `master`                               | `android-internal.yml` | Internal Testing      |
-| Publish a GH **pre-release** (`vX.Y.Z-beta.N`) | `android-beta.yml`     | Open Testing (Beta)   |
-| Flip pre-release → full release (`vX.Y.Z`)     | `android-promote.yml`  | Production (promoted) |
-| Flip pre-release → full release (`vX.Y.Z`)     | `web-deploy.yml`       | Web app (Coolify)     |
+| Trigger                            | Workflow               | Play Track            |
+| ---------------------------------- | ---------------------- | --------------------- |
+| Push to `master`                   | `android-internal.yml` | Internal Testing      |
+| GH **pre-release** `vX.Y.Z-beta.N` | `android-beta.yml`     | Open Testing          |
+| GH **full release** `vX.Y.Z`       | `android-promote.yml`  | Production (promoted) |
+| GH **full release** `vX.Y.Z`       | `web-deploy.yml`       | Web app (Coolify)     |
 
-Build workflows (internal, beta): Ubuntu 24.04, JDK 17, Node 22, Android SDK 35. Steps: `npm ci` → `expo prebuild --platform android --clean` → `gradlew bundleRelease` → upload via Play service account.
+Build workflows: Ubuntu 24.04, JDK 17, Node 22, SDK 35; `npm ci` → `expo prebuild --clean` → `gradlew bundleRelease` → upload. Promote does NOT rebuild — it copies the highest-versionCode completed `X.Y.Z-beta.*` AAB byte-identically to Production via the Play Developer API (idempotent). The AAB's internal `versionName` keeps the `-beta.N` suffix for traceability; `HelpModal` strips it so production shows clean semver. web-deploy force-updates a CI-owned `release` branch to the tagged commit, which Coolify tracks.
 
-**ABIs are ARM-only.** All three build workflows pass `-PreactNativeArchitectures=arm64-v8a,armeabi-v7a` — x86/x86_64 are deliberately excluded. Every real Android phone is ARM; x86 environments (emulators/ChromeOS) run the ARM split via their translation layer. Dropping x86/x86_64 just shrinks the AAB. Do NOT re-add them.
+**Hard invariants (do NOT change):**
 
-**`useLegacyPackaging` MUST stay `true`** (set via `expo-build-properties` in `app.json` → writes `expo.useLegacyPackaging=true` to `gradle.properties`). This forces `android:extractNativeLibs="true"`, so the OS extracts native `.so` libs to the app's private `lib/` dir at install. With `false` (the modern Expo default), libs stay uncompressed inside the APK and load directly via SoLoader's `DirectApkSoSource` — **Android 11 and below have a buggy direct-from-APK path for transitive deps like `libc++_shared.so`**, which fatally crashed RN's New Architecture at `MainApplication.onCreate` (`SoLoaderDSONotFoundError`, Crashlytics — 100% Android 11, real ARM devices). Android 12+ is unaffected, but do NOT flip this back.
+- **ABIs are ARM-only** (`arm64-v8a,armeabi-v7a`). x86/x86_64 are deliberately excluded; emulators run ARM via translation. Do NOT re-add.
+- **`useLegacyPackaging` MUST stay `true`** (via `expo-build-properties` in `app.json`). It forces `extractNativeLibs="true"`; with `false`, Android 11 and below have a buggy direct-from-APK path for `libc++_shared.so` that fatally crashes RN's New Architecture at `MainApplication.onCreate` (100% Android 11, real devices). Android 12+ is unaffected, but do NOT flip back.
 
-Promote workflow: no build. Calls Google Play Developer API directly (`.github/scripts/promote-to-production.js`, uses `googleapis`) to copy the most recent matching beta AAB to the production track — **byte-identical** to what beta testers validated.
-
-**No manual `app.json` version bumps.** `versionName` is derived from git tags by `app/scripts/derive-internal-version.js` (internal track) and from the release tag itself by `app/scripts/prepare-android-release.js` (beta + production). The `expo.version` field in `app.json` is rewritten by CI before every build; the value committed to git only matters as a bootstrap fallback if zero `v*` tags exist.
-
-**Web app deploy.** The Coolify-hosted web app is the Expo web export of `app/` (HelpModal's footer reads `Constants.expoConfig.version`). On `release: released` (full releases only), `web-deploy.yml` checks out the released tag and force-updates a CI-owned `release` branch to that exact commit. Coolify tracks the `release` branch (not `master`), so its existing git webhook auto-deploys the tagged tree — the web app deploys the exact release commit, never master HEAD. Coolify's build command must be `npm run build:web:deploy`, which runs `app/scripts/derive-web-version.js` first — that fetches the latest full GitHub release and stamps it into `app.json` `expo.version`, so the web footer matches mobile production. No Coolify API token/secrets needed. Setup steps are in the `web-deploy.yml` header.
-
-### Release lifecycle
-
-Tags are the source of truth. Two shapes only:
-
-- `vX.Y.Z-beta.N` (`v0.1.0-beta.1`, `v0.1.0-beta.2`, …) — GitHub **pre-release**. Triggers `android-beta.yml`, builds a signed AAB, uploads to Open Testing with `versionName = X.Y.Z-beta.N`. Beta testers see the suffix and know which beta they're on.
-- `vX.Y.Z` (`v0.1.0`) — GitHub **full release**. Triggers `android-promote.yml`. Picks the highest-versionCode completed beta release whose name matches `X.Y.Z-beta.*` and promotes that exact AAB to Production with release name `X.Y.Z`. No rebuild. The AAB's internal `versionName` stays `X.Y.Z-beta.N` for audit/crash-report traceability — `HelpModal` strips the `-beta.N` suffix at display time so the in-app footer reads `X.Y.Z` for production users (Play Store release name + Help footer both show clean semver).
-
-Typical cycle:
-
-```
-master push       → internal     (versionName auto-derived from latest tag, versionCode = unix timestamp)
-master push       → internal
-tag v0.1.0-beta.1 → open testing (versionName=0.1.0-beta.1, fresh build)
-master push       → internal
-tag v0.1.0-beta.2 → open testing (versionName=0.1.0-beta.2, fresh build)
-flip v0.1.0       → production   (promotes the beta.2 AAB, release name = "0.1.0")
-```
-
-Production users only ever see clean `0.1.0`, `0.1.1`, etc. — the intermediate beta cadence is invisible. **Author the release body for `vX.Y.Z` to summarise the whole cycle since the previous production release**, not just the delta from the last beta — production users skip every intermediate step.
-
-### Guards baked into the workflows
-
-- `android-beta.yml` rejects any tag not matching `vX.Y.Z-beta.N`.
-- `android-beta.yml` checks out the tag SHA (not master HEAD) so the build is reproducible from the release.
-- Concurrency: `group: android-beta` (no tag suffix) — serializes all beta builds so a fast second pre-release can't overtake a slower first one.
-- `android-promote.yml` rejects any tag not matching `vX.Y.Z` (bare semver). Refuses to promote beta-shaped tags accidentally flipped to full release.
-- Promotion script filters beta releases to `status === "completed"` (skips halted/rejected builds) and matches `versionName` family (`<target>-beta.*`) so an in-flight `v0.2.0-beta` cycle can't be misrouted as `v0.1.0`.
-- Promotion is idempotent: if the picked versionCode is already on production, the script exits cleanly. Safe to re-trigger via prerelease-flag toggling.
-
-### Manual prerequisites (one-time, can't be done in CI)
-
-1. **Play Console — service account permissions.** The identity in `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` needs Release manager (or equivalent) with access to **internal, beta, and production** tracks. The current alpha-era account may not have production yet.
-2. **Play Console — first production push gates.** Before the first promotion succeeds, fill: target audience declaration, data safety form, content rating, store listing graphics. The promote workflow will fail loudly with a Play API error until these are done.
-3. **Close the alpha track.** Once nothing's shipping there, archive in Play Console.
-
-**Workflow env var:** `EXPO_PUBLIC_DEBUG_LOGS=1` set ONLY in `android-internal.yml`.
-
-Required secrets: `EXPO_PUBLIC_CLARITY_KEY`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `GOOGLE_SERVICES_JSON_BASE64`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `EAS_PROJECT_ID`, `EAS_OWNER`. Package: `com.yanukadeneth99.cueclock`.
+Secrets: `EXPO_PUBLIC_CLARITY_KEY`, `ANDROID_KEYSTORE_BASE64`/`_PASSWORD`, `ANDROID_KEY_ALIAS`/`_PASSWORD`, `GOOGLE_SERVICES_JSON_BASE64`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `EAS_PROJECT_ID`, `EAS_OWNER`. Author each `vX.Y.Z` release body to summarise the whole cycle since the previous production release (users skip intermediate betas).
 
 ---
 
-## Local On-Device Testing (MacBook M1 → Redmi Note 12 / Android 15 / HyperOS V816)
+## Local On-Device Testing (MacBook M1)
 
-This device is the worst-case calibration target - almost every gotcha was found here. JDK 17 (Temurin) and Android SDK already installed; we pin `JAVA_HOME` per-command rather than changing the global.
+| Role        | Device            | Android     | Skin                | Serial         |
+| ----------- | ----------------- | ----------- | ------------------- | -------------- |
+| **Primary** | Xiaomi Mi A2 Lite | 10 (API 29) | Android One (stock) | `7dfe965e0405` |
+| Secondary   | Redmi Note 12     | 15 (API 35) | HyperOS V816        | `eb5f39be`     |
 
-### One-time
+Use the Mi A2 Lite (near-stock) for day-to-day dev and E2E runs; the Note 12 for HyperOS-specific validation. JDK 17 + Android SDK installed; pin `JAVA_HOME` per-command, don't change the global. **JS changes:** `./app/scripts/cold-reload.sh` (kills Metro, restarts with `--clear`, re-forwards the port, relaunches) — never trust Metro's warm cache; `--wipe` also `pm clear`s app data to re-fire onboarding. **Native changes** (Kotlin/Java, app.json, plugins, native deps): `gradlew app:installDebug` with `-PreactNativeArchitectures=arm64-v8a`.
 
-```bash
-brew install --cask android-platform-tools
-# Phone: Developer Options → USB debugging + Install via USB → plug in → Allow
-adb devices -l   # should list device as "device"
-```
-
-### Native rebuild (changed Kotlin/Java, app.json, plugins, native dep)
-
-```bash
-cd app/android
-JAVA_HOME=$(/usr/libexec/java_home -v 17) \
-PATH=$(/usr/libexec/java_home -v 17)/bin:$PATH \
-./gradlew app:installDebug -x lint -x test --build-cache -PreactNativeArchitectures=arm64-v8a
-```
-
-Arm64-only build cuts first-build to ~5min, incremental to ~90s.
-
-### Cold reload (preferred - use this for every JS change)
-
-**Never trust Metro's warm cache.** A stale delta-bundle has silently shipped old code more than once. The one-shot script kills Metro, restarts it with `--clear`, reverse-forwards the port, and relaunches the app:
-
-```bash
-./app/scripts/cold-reload.sh           # keep app data (cues, settings, consent flag)
-./app/scripts/cold-reload.sh --wipe    # also wipe app data via `pm clear` - re-fires onboarding
-```
-
-Metro logs stream to `/tmp/cueclock-metro.log` (`tail -f` it). Stop Metro later with `lsof -ti :8081 | xargs kill -9`.
-
-`CI=1` (set inside the script) avoids interactive prompts. `EXPO_PUBLIC_DEBUG_LOGS=1` enables the in-app log button locally.
-
-If you ever need the raw recipe (e.g. on a different OS or shell), the script's body is the same set of `adb` + `npx expo start` invocations the previous "Metro + JS hot reload" entry used.
-
-### Logcat (second terminal)
-
-```bash
-adb logcat -c
-adb logcat \
-  ReactNativeJS:V NotifeeApiModule:V NotifeeCore:V Notifee:V \
-  NotificationService:V AlarmManager:V \
-  VibratorService:V VibratorManagerService:V Vibrator:V \
-  ActivityManager:I ActivityTaskManager:I \
-  '*:S' > /tmp/cueclock-logcat.txt
-```
-
-In-app `dlog` shows what JS sees; logcat shows what the OS does (channel vibration accept/reject, AlarmManager fires, FSI Activity launches).
-
-### Gotchas
-
-- **`INSTALL_FAILED_VERSION_DOWNGRADE`** - Play Store version installed. `adb uninstall com.yanukadeneth99.cueclock` (wipes state).
-- **HyperOS Second Space leftover** - Play refuses install citing "incompatible version" even after normal uninstall. Check `adb shell pm list users`; if `10:security space` exists, `adb shell pm uninstall --user 10 com.yanukadeneth99.cueclock`.
-- **Replug drops tunnel** - every USB unplug breaks `adb reverse`. Re-run after every reconnect.
-- **Stale bundle with `CI=1`** - Metro doesn't watch files. Kill Metro by port and restart with `--clear`.
-- **Notifee `app.notifee:core:+` not found** - `expo prebuild` regenerates `android/build.gradle` without Notifee's local Maven entry. Add to `allprojects.repositories`:
-
-  ```gradle
-  maven { url "$rootDir/../node_modules/@notifee/react-native/android/libs" }
-  ```
-
-  (TODO: convert to config plugin for durability.)
-
-- **HyperOS settings reset on reinstall** - every fresh APK install wipes per-app HyperOS toggles. Re-enable Other Permissions + Autostart + Battery unrestricted, or background/locked FSI silently fails.
-
-### Diagnostic one-liners
-
-```bash
-# Granted permissions
-adb shell dumpsys package com.yanukadeneth99.cueclock | \
-  grep -E "VIBRATE|FULL_SCREEN|POST_NOTIFICATIONS|WAKE_LOCK|SCHEDULE_EXACT|RECEIVE_BOOT"
-
-# System vibration gates (TOUCH vs ALARM vs NOTIFICATION)
-adb shell settings list system | grep -i 'vib\|haptic'
-
-# showWhenLocked / turnScreenOn on installed MainActivity
-AAPT=$(find ~/Library/Android/sdk/build-tools -name aapt2 | sort -V | tail -1)
-"$AAPT" dump xmltree app/android/app/build/outputs/apk/debug/app-debug.apk \
-  --file AndroidManifest.xml | grep -A6 "MainActivity"
-```
+Gotchas: `INSTALL_FAILED_VERSION_DOWNGRADE` → uninstall the Play build first. Every USB replug breaks `adb reverse` — re-run. `expo prebuild` drops Notifee's local Maven entry from `android/build.gradle` — re-add `maven { url "$rootDir/../node_modules/@notifee/react-native/android/libs" }` to `allprojects.repositories`. Android 10 (Mi A2 Lite) doesn't need `POST_NOTIFICATIONS`. HyperOS (Note 12) wipes per-app toggles on every reinstall — re-enable Other Permissions + Autostart + Battery-unrestricted or background/locked FSI silently fails.
 
 ---
 
 ## Conventions
 
 - **TypeScript strict.** `T[]` not `Array<T>`. `Pressable` not `Button`.
-- **Components.** Function declarations for default exports. Handlers in `useCallback`. `React.memo` on list items (`TargetBlock`).
-- **Error handling.** Empty/commented `catch` for production silence. No `console.log` - use `dlog` at boundaries.
-- **Naming.** `camelCase` vars/functions, `UPPER_SNAKE_CASE` constants, `PascalCase` types.
-- **Imports.** Absolute aliases (`@/components/`, `@/constants/`).
-- **`(window as any).Notification` and `onHoverIn as any`** are intentional RN-Web escape hatches - leave them.
-
-### Git
-
-- **No `Co-Authored-By: Claude`/`Anthropic` trailers in commits.** Ever.
-- **Confirm before committing to `master`/`main`/`production`.**
-
----
-
-## License
-
-AGPL-3.0. Commercial: <hello@yashura.io>. Security reports: see `SECURITY.md`.
+- **Components.** Function declarations for default exports; handlers in `useCallback`; `React.memo` on list items.
+- **Error handling.** Empty/commented `catch` for production silence. No `console.log` — use `dlog` at boundaries.
+- **Naming.** `camelCase` vars/functions, `UPPER_SNAKE_CASE` constants, `PascalCase` types. **Imports** via absolute aliases (`@/components/`, `@/constants/`).
+- `(window as any).Notification` and `onHoverIn as any` are intentional RN-Web escape hatches — leave them.
+- **Git.** No `Co-Authored-By: Claude`/`Anthropic` trailers, ever. Confirm before committing to `master`/`main`/`production`.

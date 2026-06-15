@@ -51,6 +51,21 @@ release.keystore
 !.env.example
 .artifacts/
 
+# AI test harness
+tests/ai/results/
+tests/ai/.venv/
+tests/ai/web/.venv/
+tests/ai/web/__pycache__/
+tests/ai/android/node_modules/
+# Un-ignore the harness source — the top-level android/ rule would otherwise swallow it
+!tests/ai/android/
+!tests/ai/android/**
+tests/ai/android/node_modules/
+!tests/ai/scenarios/*
+
+docs/superpowers
+
 # Editor & tool configs
 .vscode/
 .claude/
+.remember/

@@ -212,6 +212,43 @@ Requires an Apple Developer account. See Expo's guide: https://docs.expo.dev/gui
 
 ---
 
+## AI E2E Test Harness
+
+The repo ships an AI-driven end-to-end test harness (`tests/ai/`) that uses Gemini to drive the real app: Android via `agent-device` (LangChain.js + LangGraph) against a USB-connected phone, and web via `browser-use` against the web build. Scenarios are plain markdown in `tests/ai/scenarios/{android,web}/*.md`. Design notes and the full scenario list live in [tests/ai/README.md](./tests/ai/README.md).
+
+### One-time setup
+
+1. Add a Gemini API key (the free tier is plenty — a full run is well under $0.01) from https://aistudio.google.com/app/apikey, then `cp tests/ai/.env.example tests/ai/.env` and paste it into `GEMINI_API_KEY`. The `.env` is gitignored — never commit it.
+2. Install the Android runner's dependencies: `cd tests/ai/android && npm ci`. The web runner under `tests/ai/web/` is `uv`-managed and installs itself on first run.
+3. For Android, plug in a phone with USB debugging on (it must show as `device` in `adb devices`) and have the `agent-device` CLI on your `PATH`. Web needs nothing extra — the orchestrator boots the Expo web server itself.
+
+### Running the tests
+
+Run these from `app/`. Each one boots everything, runs the scenarios, and aggregates the result automatically.
+
+| Command | Runs |
+| --- | --- |
+| `npm test` | web scenarios, then Android scenarios on the connected phone |
+| `npm run test:web` | web scenarios only |
+| `npm run test:android` | Android scenarios on the connected phone |
+
+To run a SINGLE scenario, pass its `.md` basename after `--`:
+
+```bash
+npm run test:web -- --scenarios add-cue          # one web scenario
+npm run test:android -- --scenarios edit-cue     # one Android scenario
+```
+
+If more than one phone is attached, pick one with `ANDROID_SERIAL`:
+
+```bash
+ANDROID_SERIAL=7dfe965e0405 npm run test:android
+```
+
+Results (per-scenario `verdict.json`, `trace.jsonl`, and frames) land in the gitignored `tests/ai/results/run-<timestamp>/`, and the run exits non-zero if anything didn't pass.
+
+---
+
 ## Contributing
 
 Please see the main [README.md](./README.md) for contribution guidelines.

@@ -1,0 +1,25 @@
+{
+  "name": "cueclock-ai-android-runner",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "LangChain.js + LangGraph agent driving agent-device against an Android AVD.",
+  "scripts": {
+    "_comment": "tsx runs ESM TS directly — no build step. WHY: scenarios iterate fast, type errors surface in dev; production reliability isn't relevant for a local-only harness.",
+    "run": "tsx src/runner.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/google-genai": "^0.2.0",
+    "@langchain/langgraph": "^0.2.0",
+    "dotenv": "^16.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

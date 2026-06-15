@@ -4,7 +4,7 @@ import { computeCountdown, fmtHM, shortCity } from "@/lib/time";
 import { lerpRound, urgencyFactor } from "@/lib/urgency";
 import { MaterialIcons } from "@expo/vector-icons";
 import { memo, useEffect, useRef } from "react";
-import { Animated, Easing, Platform, Pressable, Text, View } from "react-native";
+import { Animated, Easing, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
 import type { TargetBlockType } from "./TargetBlock";
 
 /**
@@ -67,8 +67,18 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit, onDelete 
     : colors.surfaceBorder;
   const bgColor = cd.crit ? "#2a1a1e" : colors.surface;
 
+  // Needs to be known before countdownFs so the width cap can pick char count.
+  const showHours = cd.h !== "00";
+
+  const { width: screenWidth } = useWindowDimensions();
+  // card: marginHorizontal 20×2=40, paddingHorizontal 24×2=48 → 88px consumed
+  const availableWidth = screenWidth - 88;
+  // HH:MM:SS = 8 glyphs, MM:SS = 5 glyphs; Space Mono glyph ≈ 0.6× fontSize
+  const charCount = showHours ? 8 : 5;
+  const widthCapFs = Math.floor(availableWidth / (charCount * 0.6));
+
   // Interpolated values
-  const countdownFs = lerpRound(58, 96, u);
+  const countdownFs = Math.min(lerpRound(58, 96, u), widthCapFs);
   const vPad = lerpRound(24, 34, u);
   const nameFs = lerpRound(19, 23, u);
   const haloWidth = u > 0.3 ? lerpRound(1, 4, u) : 0;
@@ -102,7 +112,6 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit, onDelete 
   }, [cd.crit, pulse]);
 
   const hasDeduct = block.deductMinute > 0 || block.deductSecond > 0;
-  const showHours = cd.h !== "00";
 
   // Progress hairline width: portion of the hour (or day, for cues >1h out).
   const horizon = cd.total > 3600 ? 86400 : 3600;

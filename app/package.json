@@ -9,7 +9,12 @@
     "web": "expo start --web",
     "build:web": "expo export --platform web && node scripts/inject-seo-meta.js",
     "build:web:deploy": "node scripts/derive-web-version.js && npm run build:web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "bash ../tests/ai/scripts/test-all.sh web && bash ../tests/ai/scripts/test-all.sh device",
+    "test:web": "bash ../tests/ai/scripts/test-all.sh web",
+    "test:android": "bash ../tests/ai/scripts/test-all.sh device",
+    "test:modern": "bash ../tests/ai/scripts/test-all.sh modern",
+    "test:old": "bash ../tests/ai/scripts/test-all.sh old"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

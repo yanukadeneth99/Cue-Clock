@@ -27,6 +27,12 @@ type Props = {
   onRequestOptOut: () => void;
   /** Fired when the "Turn on analytics" CTA is tapped (shown only when off). */
   onRequestOptIn: () => void;
+  /**
+   * Clears all timers and settings (analytics consent is preserved upstream in
+   * doReset). Confirmation is handled by the caller - web via ConfirmModal,
+   * native via Alert.alert - so this just kicks off that flow.
+   */
+  onReset: () => void;
   /** Internal-build-only: trigger a 5-second test alarm. Undefined → row hidden. */
   onTestAlarm?: () => void;
   /** Internal-build-only: open the in-app debug log viewer. Undefined → row hidden. */
@@ -63,6 +69,7 @@ export function SettingsModal({
   analyticsEnabled,
   onRequestOptOut,
   onRequestOptIn,
+  onReset,
   onTestAlarm,
   onShowDebugLog,
 }: Props) {
@@ -194,6 +201,28 @@ export function SettingsModal({
           </Text>
         </Pressable>
       )}
+
+      {/* Reset all - destructive, so it sits last (above the internal card)
+          with a danger outline. Confirmation lives in the caller (web
+          ConfirmModal / native Alert) so a stray tap can't wipe state. */}
+      <Pressable
+        onPress={onReset}
+        style={({ pressed }) => ({
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          backgroundColor: colors.background,
+          borderWidth: 1,
+          borderColor: `${colors.danger}55`,
+          borderRadius: 12,
+          alignItems: "center",
+          opacity: pressed ? 0.6 : 1,
+          marginTop: 8,
+        })}
+      >
+        <Text style={[textStyles.bodySmall, { color: colors.danger, fontWeight: "600" }]}>
+          Reset all
+        </Text>
+      </Pressable>
 
       {/* Internal-build extras - moved here from Help. Only renders when at
           least one of the handlers is wired, which only happens when
