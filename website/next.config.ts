@@ -26,7 +26,9 @@ const securityHeaders = [
       "img-src 'self' data: blob: https://avatars.githubusercontent.com",
       // GitHub API calls for contributors and repo stats
       "connect-src 'self' https://api.github.com",
-      // Never allow this page to be framed by any origin
+      // Allow YouTube embeds; youtube-nocookie.com is the privacy-enhanced variant
+      "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+      // Never allow THIS page to be framed by any origin
       "frame-ancestors 'none'",
       // Prevent base tag injection
       "base-uri 'self'",

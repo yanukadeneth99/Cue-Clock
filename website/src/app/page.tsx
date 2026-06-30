@@ -415,16 +415,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Live-status floating badge */}
-              <div className="hidden md:flex absolute -bottom-6 -left-6 items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border shadow-2xl">
-                <span className="w-2.5 h-2.5 rounded-full bg-zone1 animate-cue-pulse" />
-                <div>
-                  <div className="font-sans text-[10px] font-semibold uppercase tracking-[0.08em] text-fg-muted">
-                    Status
-                  </div>
-                  <div className="text-[13px] font-semibold text-fg">Live studio link active</div>
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -437,6 +427,37 @@ export default function Home() {
             <BannerItem icon="shield" label="No tracking without consent" />
           </div>
         </div>
+
+        {/* ─── Demo ─────────────────────────────────────────────── */}
+        <section className="py-20 md:py-28 px-4 md:px-6 bg-bg-app border-b border-card-border">
+          <div className="max-w-screen-xl mx-auto">
+            <div className="mb-12 text-center">
+              <div className="inline-flex items-center gap-2 mb-4">
+                <span className="w-2 h-2 rounded-full bg-accent" />
+                <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+                  See it in action
+                </span>
+              </div>
+              <h2 className="font-sans text-3xl md:text-5xl font-semibold tracking-[-0.02em] text-fg">
+                Demo
+              </h2>
+            </div>
+            {/* YouTube embed - aspect-video keeps 16:9 at every breakpoint;
+                iframe is absolutely positioned to fill the ratio container. */}
+            <div className="relative mx-auto max-w-4xl rounded-[20px] overflow-hidden border border-card-border shadow-2xl">
+              <div className="absolute -inset-8 bg-accent/[0.05] blur-3xl rounded-full pointer-events-none" />
+              <div className="relative aspect-video">
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src="https://www.youtube.com/embed/gJpCYPFmKuw"
+                  title="Cue Clock Demo"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* ─── Features ──────────────────────────────────────────── */}
         <section id="features" className="py-20 md:py-28 px-4 md:px-6">
