@@ -449,7 +449,7 @@ export default function Home() {
               <div className="relative aspect-video">
                 <iframe
                   className="absolute inset-0 w-full h-full"
-                  src="https://www.youtube.com/embed/gJpCYPFmKuw"
+                  src="https://www.youtube.com/embed/d-h9od8_0DM"
                   title="Cue Clock Demo"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
