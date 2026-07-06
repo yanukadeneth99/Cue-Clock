@@ -7,7 +7,6 @@ import AnalyticsConsentModal from "@/components/AnalyticsConsentModal";
 import AnalyticsOptOutModal from "@/components/AnalyticsOptOutModal";
 import AnalyticsReEnableModal from "@/components/AnalyticsReEnableModal";
 import { ClockRail } from "@/components/ClockRail";
-import ClockPicker from "@/components/ClockPicker";
 import ConfirmModal from "@/components/ConfirmModal";
 import { CueEditModal } from "@/components/CueEditModal";
 import { MobileWebInstallModal } from "@/components/MobileWebInstallModal";
@@ -18,7 +17,9 @@ import { PassedStrip } from "@/components/PassedStrip";
 import { PrimaryCard } from "@/components/PrimaryCard";
 import { QueuedRow } from "@/components/QueuedRow";
 import { SettingsModal } from "@/components/SettingsModal";
-import TargetBlock, { TargetBlockType } from "@/components/TargetBlock";
+// Only the type is still referenced; the TargetBlock component rendered solely
+// in the removed legacy branch, so this is now a type-only import.
+import type { TargetBlockType } from "@/components/TargetBlock";
 import { ZonePickerModal } from "@/components/ZonePickerModal";
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
@@ -151,12 +152,10 @@ function sendAlert(title: string, body: string) {
   }
 }
 
-const FULLSCREEN_CLOCK_HEIGHT = 100; // estimated height of ClockPicker in fullscreen (horizontal layout)
-const FULLSCREEN_EXIT_BTN_HEIGHT = 60; // height of exit button + margins
-const FULLSCREEN_MAX_FONT = 40;
-const FULLSCREEN_MIN_FONT = 24;
-// per-block height overhead beyond font size (marginVertical + name + target time line)
-const BLOCK_OVERHEAD = 52;
+// (Removed FULLSCREEN_CLOCK_HEIGHT / FULLSCREEN_EXIT_BTN_HEIGHT / FULLSCREEN_MAX_FONT /
+// FULLSCREEN_MIN_FONT / BLOCK_OVERHEAD - they only fed the legacy fullscreen
+// TargetBlock font-size math, which was removed with the dead render branch.
+// OnAirView computes its own hero-card sizing.)
 // Stable empty-map sentinel for the "Minimize ended cues" off state. Reusing
 // one frozen reference avoids re-creating an object every render, which would
 // invalidate downstream `useMemo` / `React.memo` keyed on `passedIds`.
@@ -280,74 +279,9 @@ function createDefaultBlock(id: number): TargetBlockType {
   };
 }
 
-/**
- * Icon button with tooltip for the header (web only).
- */
-function HeaderIconButton({
-  icon,
-  label,
-  onPress,
-  danger,
-}: {
-  icon: string;
-  label: string;
-  onPress: () => void;
-  danger?: boolean;
-}) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <View style={{ position: "relative", zIndex: hovered ? 9999 : 1 }}>
-      <Pressable
-        onPress={onPress}
-        {...({
-          onHoverIn: () => setHovered(true),
-          onHoverOut: () => setHovered(false),
-        } as any)}
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 8,
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.surfaceBorder,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text
-          style={{
-            color: danger ? colors.danger : colors.muted,
-            fontSize: 15,
-            textAlign: "center",
-          }}
-        >
-          {icon}
-        </Text>
-      </Pressable>
-      {hovered && (
-        <View
-          style={{
-            position: "absolute",
-            top: 38,
-            right: 0,
-            backgroundColor: colors.surface,
-            borderColor: colors.surfaceBorder,
-            borderWidth: 1,
-            borderRadius: 6,
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            zIndex: 9999,
-          }}
-        >
-          <Text style={{ color: colors.header, fontSize: 12, whiteSpace: "nowrap" } as any}>
-            {label}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
+// (Removed HeaderIconButton - the tooltip icon button was only rendered inside
+// the legacy header of the removed dead branch. The live Header component owns
+// its own icon buttons.)
 
 /**
  * Root screen for Cue Clock.
@@ -355,16 +289,18 @@ function HeaderIconButton({
  * Persists state to AsyncStorage and rehydrates on mount.
  */
 export default function HomeScreen() {
-  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  // Only width is needed now (mobile-web breakpoint). The height was used by
+  // the removed legacy fullscreen font-size math.
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [zone1, setZone1] = useState("Europe/Berlin");
   const [zone2, setZone2] = useState("Asia/Colombo");
   const [fullScreen, setFullScreen] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const [resetModalVisible, setResetModalVisible] = useState(false);
-  const [exitButtonOpacity, setExitButtonOpacity] = useState(1);
+  // (Removed exitButtonOpacity + addTargetHovered state - both only drove UI in
+  // the removed legacy render branch.)
   const [notifBlocked, setNotifBlocked] = useState(false);
-  const [addTargetHovered, setAddTargetHovered] = useState(false);
   // null = first launch (consent not yet given); true/false = user's explicit choice
   const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean | null>(null);
   const [consentModalVisible, setConsentModalVisible] = useState(false);
@@ -439,7 +375,8 @@ export default function HomeScreen() {
   const pendingBackgroundFiresRef = useRef<
     { id: number; name: string; minutes: number; snoozeCount: number; targetTime: string }[]
   >([]);
-  const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // (Removed exitButtonTimerRef - it timed the fade of the legacy fullscreen
+  // exit button, which was removed with the dead render branch.)
   // Mirror of targetBlocks for use in async callbacks without stale closure issues.
   // Must match useState initial value (empty) so ref and state are in sync before hydration.
   const targetBlocksRef = useRef<TargetBlockType[]>([]);
@@ -860,31 +797,8 @@ export default function HomeScreen() {
     })();
   }, []);
 
-  /**
-   * Keep the fullscreen view visually focused on the clocks/timers.
-   * The exit control becomes prominent on interaction, then fades back so the
-   * display is less distracting for people watching the screen on-air/in-studio.
-   */
-  const resetOpacityTimer = useCallback(() => {
-    setExitButtonOpacity(1);
-    if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-    exitButtonTimerRef.current = setTimeout(() => setExitButtonOpacity(0.3), 3000);
-  }, []);
-
-  // In fullscreen on web and Android, prioritize the time display over controls.
-  // The button stays accessible, but fades after inactivity so viewers are not
-  // distracted by persistent UI chrome.
-  useEffect(() => {
-    if (!fullScreen) {
-      setExitButtonOpacity(1);
-      if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-      return;
-    }
-    resetOpacityTimer();
-    return () => {
-      if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-    };
-  }, [fullScreen, resetOpacityTimer]);
+  // (Removed resetOpacityTimer + its fade effect - they auto-dimmed the legacy
+  // fullscreen exit button. OnAirView owns its own auto-dimming exit pill.)
 
   // Inject web-specific styles for select elements and time inputs
   useEffect(() => {
@@ -1454,21 +1368,8 @@ export default function HomeScreen() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const toggleTargetPicker = useCallback((id: number, show: boolean) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, isTargetPickerVisible: show } : b
-      )
-    );
-  }, []);
-
-  const toggleDeductPicker = useCallback((id: number, show: boolean) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, isDeductPickerVisible: show } : b
-      )
-    );
-  }, []);
+  // (Removed toggleTargetPicker + toggleDeductPicker - legacy TargetBlock picker
+  // toggles that were only wired into the removed dead render branch.)
 
   // Reschedule a block's native notification in the background without blocking
   // the UI. The state has already been updated optimistically; this just keeps
@@ -1498,114 +1399,11 @@ export default function HomeScreen() {
     })();
   }, [zone1, zone2, alertMode]);
 
-  const handleTargetConfirm = useCallback((id: number, date: Date) => {
-    const targetHour = date.getHours();
-    const targetMinute = date.getMinutes();
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, targetHour, targetMinute, isTargetPickerVisible: false, alertFired: false }
-          : b
-      )
-    );
-    rescheduleInBackground(id, { targetHour, targetMinute });
-  }, [rescheduleInBackground]);
-
-  const handleDeductConfirm = useCallback((id: number, date: Date) => {
-    const deductMinute = date.getHours();
-    const deductSecond = date.getMinutes();
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, deductMinute, deductSecond, isDeductPickerVisible: false, alertFired: false }
-          : b
-      )
-    );
-    rescheduleInBackground(id, { deductMinute, deductSecond });
-  }, [rescheduleInBackground]);
-
-  const toggleAlertModal = useCallback((id: number, show: boolean) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, isAlertModalVisible: show } : b
-      )
-    );
-  }, []);
-
-  const handleAlertConfirm = useCallback((id: number, minutes: number) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, alertMinutesBefore: minutes, isAlertModalVisible: false, alertFired: false, snoozeCount: 0 }
-          : b
-      )
-    );
-    // Schedule the native notification in the background. Use a temp block with
-    // the new alertMinutesBefore so scheduleBlockNotification computes the
-    // correct fire time even before React has flushed the state update.
-    const block = targetBlocksRef.current.find((b) => b.id === id);
-    if (!block) return;
-    const tempBlock = { ...block, alertMinutesBefore: minutes, alertFired: false, snoozeCount: 0 };
-    const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
-    (async () => {
-      try {
-        if (block.notificationId) await cancelAnyAlert(block.notificationId);
-        const notifId = await scheduleBlockAlert(tempBlock, zone, alertMode);
-        setTargetBlocks((blocks) =>
-          blocks.map((b) => (b.id === id ? { ...b, notificationId: notifId } : b))
-        );
-      } catch {}
-    })();
-  }, [zone1, zone2, alertMode]);
-
-  const handleAlertDelete = useCallback((id: number) => {
-    const block = targetBlocksRef.current.find((b) => b.id === id);
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, alertMinutesBefore: null, isAlertModalVisible: false, alertFired: false, notificationId: null }
-          : b
-      )
-    );
-    if (block?.notificationId) {
-      cancelAnyAlert(block.notificationId).catch(() => {});
-    }
-  }, []);
-
-  const updateTargetTime = useCallback((id: number, hour: number, minute: number) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, targetHour: hour, targetMinute: minute, alertFired: false } : b
-      )
-    );
-    rescheduleInBackground(id, { targetHour: hour, targetMinute: minute });
-  }, [rescheduleInBackground]);
-
-  const updateDeductTime = useCallback((id: number, minute: number, second: number) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, deductMinute: minute, deductSecond: second, alertFired: false } : b
-      )
-    );
-    rescheduleInBackground(id, { deductMinute: minute, deductSecond: second });
-  }, [rescheduleInBackground]);
-
-  const addTargetBlock = useCallback(() => {
-    const newId = nextIdRef.current++;
-    setTargetBlocks((blocks) => [
-      ...blocks.map((b) => ({
-        ...b,
-        isTargetPickerVisible: false,
-        isDeductPickerVisible: false,
-      })),
-      { ...createDefaultBlock(newId), isTargetPickerVisible: true },
-    ]);
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 0);
-    });
-  }, []);
+  // (Removed the legacy TargetBlock save/edit handlers - handleTargetConfirm,
+  // handleDeductConfirm, toggleAlertModal, handleAlertConfirm, handleAlertDelete,
+  // updateTargetTime, updateDeductTime, addTargetBlock. The unified CueEditModal
+  // in the live render path handles add/edit inline and reschedules through
+  // rescheduleInBackground directly, so these were only used by the dead branch.)
 
   const removeBlock = useCallback((id: number) => {
     const block = targetBlocksRef.current.find((b) => b.id === id);
@@ -1615,25 +1413,9 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const requestNotifPermission = useCallback(async () => {
-    if (!Notifications) return;
-    try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status === "granted") {
-        setNotifBlocked(false);
-      } else {
-        // Permanently denied - send user to app settings
-        await Linking.openSettings();
-      }
-    } catch {}
-  }, []);
-
-  const collapseExpandAll = useCallback(() => {
-    setTargetBlocks((blocks) => {
-      const shouldCollapse = blocks.some((b) => !b.isCollapsed);
-      return blocks.map((b) => ({ ...b, isCollapsed: shouldCollapse }));
-    });
-  }, []);
+  // (Removed requestNotifPermission + collapseExpandAll - the "permission
+  // needed" prompt and collapse/expand-all control lived only in the legacy
+  // header of the removed dead render branch.)
 
   // New-design path: open the unified CueEditModal in add or edit mode.
   // Pass a numeric id to edit that block; pass "new" to open the Add Cue sheet.
@@ -2067,18 +1849,12 @@ export default function HomeScreen() {
     }
   }, [doReset]);
 
-  // Compute dynamic font size for fullscreen target blocks
+  // Safe-area padding used by the live render path. (The fullscreen font-size
+  // math that used to sit here - fullscreenAvailableHeight / idealFontSize /
+  // countdownFontSize / fullscreenNeedsScroll - drove the removed legacy
+  // TargetBlock layout; OnAirView sizes its own hero card.)
   const safeTop = Math.max(insets.top + 4, Platform.OS === "web" ? 20 : 36);
   const safeBottom = Math.max(insets.bottom + 24, Platform.OS === "web" ? 32 : 52);
-  const fullscreenAvailableHeight =
-    screenHeight - FULLSCREEN_CLOCK_HEIGHT - FULLSCREEN_EXIT_BTN_HEIGHT - safeTop - safeBottom;
-  const blockCount = targetBlocks.length;
-  const idealFontSize =
-    blockCount > 0
-      ? Math.floor((fullscreenAvailableHeight / blockCount - BLOCK_OVERHEAD) / 1.2)
-      : FULLSCREEN_MAX_FONT;
-  const countdownFontSize = Math.min(FULLSCREEN_MAX_FONT, Math.max(FULLSCREEN_MIN_FONT, idealFontSize));
-  const fullscreenNeedsScroll = idealFontSize < FULLSCREEN_MIN_FONT;
 
   const isWeb = Platform.OS === "web";
   const notifUnavailableReason =
@@ -2278,15 +2054,13 @@ export default function HomeScreen() {
     );
   }
 
-  // ─── New-design mobile path (non-fullscreen) ─────────────────────────
-  // The visual shell of the redesign lives here; editing still routes back
-  // through the legacy TargetBlock for now, rendered below the new cards when
-  // a cue is selected (replaced by CueEditModal in step 5).
-  // Web now uses the new design too (legacy render below is dead code that
-  // we keep around until a follow-up cleanup commit). The `!fullScreen` gate
-  // means web-fullscreen falls through to OnAirView via the branch above on
-  // native and to legacy on web - but web has no fullscreen entry-point in
-  // the new Header, so this never executes.
+  // ─── New-design home path (non-fullscreen), native + web ──────────────
+  // The unified redesign renders here: Header + ClockRail + PrimaryCard /
+  // QueuedRow / PassedStrip, with editing driven by CueEditModal. This is the
+  // only non-fullscreen render path - the old legacy ClockPicker/TargetBlock/
+  // AlertModal branch that used to follow this function was removed as
+  // unreachable dead code. The `fullScreen` branch above already returns, so
+  // this always runs for the non-fullscreen case.
   if (!fullScreen) {
     // Split blocks into passed (compressed strips) and active (primary + queue).
     // Active list preserves the user's drag order; passed list is sorted by
@@ -2565,475 +2339,11 @@ export default function HomeScreen() {
     );
   }
 
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-    <View
-      style={{ flex: 1, paddingTop: safeTop, width: "100%" }}
-      onTouchStart={fullScreen ? resetOpacityTimer : undefined}
-    >
-      {/* Header - normal mode only */}
-      {!fullScreen && (
-        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: isWeb ? 32 : 16, marginBottom: 8, zIndex: 100, maxWidth: isWeb ? 1100 : undefined, alignSelf: "center", width: "100%" }}>
-          <Text style={{ color: colors.header, fontSize: 20, letterSpacing: 3, textTransform: "uppercase", fontWeight: "300", flex: 1 }}>
-            Cue Clock
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {!isWeb && notifUnavailableReason && (
-              <Pressable
-                onPress={() => {
-                  Alert.alert(
-                    "Background Alerts Need a Native Build",
-                    `${notifUnavailableReason}\n\nRun \`npx expo run:android\` or \`npx expo run:ios\` to test real background notifications.`
-                  );
-                }}
-                style={{
-                  backgroundColor: colors.background,
-                  borderColor: colors.countdown,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  paddingVertical: 4,
-                  paddingHorizontal: 10,
-                }}
-              >
-                <Text style={{ color: colors.countdown, fontSize: 11, fontWeight: "600" }}>
-                  Bell disabled in Expo Go
-                </Text>
-              </Pressable>
-            )}
-            {isWeb && notifBlocked && (
-              <Pressable
-                onPress={() => {
-                  if (typeof window === "undefined" || !("Notification" in window)) return;
-                  const perm = (window as any).Notification.permission;
-                  if (perm === "denied") {
-                    window.alert(
-                      "Notifications are blocked by your browser.\n\nTo enable them:\n1. Click the lock icon in the address bar\n2. Set Notifications to \"Allow\"\n3. Refresh the page"
-                    );
-                  } else {
-                    (window as any).Notification.requestPermission().then((result: string) => {
-                      if (result === "granted") setNotifBlocked(false);
-                    }).catch(() => {});
-                  }
-                }}
-                style={{
-                  backgroundColor: colors.background,
-                  borderColor: colors.danger,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  paddingVertical: 4,
-                  paddingHorizontal: 10,
-                }}
-              >
-                <Text style={{ color: colors.danger, fontSize: 11, fontWeight: "600" }}>
-                  🔕 Notifications blocked
-                </Text>
-              </Pressable>
-            )}
-            {isWeb && (
-              <>
-                <View style={{ position: "relative" }}>
-                  <Pressable
-                    onPress={addTargetBlock}
-                    {...({
-                      onHoverIn: () => setAddTargetHovered(true),
-                      onHoverOut: () => setAddTargetHovered(false),
-                    } as any)}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      backgroundColor: colors.accent,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 1,
-                      borderColor: colors.accent,
-                    }}
-                  >
-                    <Text style={{ color: "#ffffff", fontSize: 20, fontWeight: "600", textAlign: "center", lineHeight: 20 }}>+</Text>
-                  </Pressable>
-                  {addTargetHovered && (
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: 48,
-                        left: -30,
-                        backgroundColor: colors.surface,
-                        borderColor: colors.surfaceBorder,
-                        borderWidth: 1,
-                        borderRadius: 6,
-                        paddingHorizontal: 10,
-                        paddingVertical: 5,
-                        zIndex: 9999,
-                        minWidth: 100,
-                        justifyContent: "center",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Text style={{ color: colors.header, fontSize: 12, whiteSpace: "nowrap" } as any}>
-                        Add Target
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <HeaderIconButton icon="⛶" label="Full Screen" onPress={toggleFullScreen} />
-                <HeaderIconButton icon="↺" label="Reset All" onPress={resetAll} danger />
-                {analyticsEnabled === false && (
-                  <Pressable
-                    onPress={() => setConsentModalVisible(true)}
-                    style={{
-                      backgroundColor: colors.accent,
-                      borderRadius: 8,
-                      paddingVertical: 6,
-                      paddingHorizontal: 12,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "600" }}>
-                      Help make this app better
-                    </Text>
-                  </Pressable>
-                )}
-              </>
-            )}
-            {isWeb ? (
-              <HeaderIconButton icon="?" label="Help" onPress={() => setHelpVisible(true)} />
-            ) : (
-              <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-                <Pressable
-                  onPress={collapseExpandAll}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.surfaceBorder,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ color: colors.muted, fontSize: 14 }}>
-                    {targetBlocks.some((b) => !b.isCollapsed) ? "–" : "+"}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={toggleFullScreen}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.surfaceBorder,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ color: colors.muted, fontSize: 14 }}>⛶</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setHelpVisible(true)}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.surfaceBorder,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700" }}>?</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
-
-      {/* Clock section - always visible, not scrollable in fullscreen */}
-      {fullScreen && (
-        <ClockPicker
-          zone1={zone1}
-          zone2={zone2}
-          setZone1={setZone1}
-          setZone2={setZone2}
-          fullScreen
-          is24Hour={is24Hour}
-        />
-      )}
-
-      {/* Scrollable content */}
-      <ScrollView
-        ref={scrollViewRef}
-        scrollEnabled={fullScreen ? fullscreenNeedsScroll : true}
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: isWeb ? 32 : 16,
-          // Fullscreen only lists TargetBlocks: stretch so each row gets full width (avoids
-          // shrink-wrapped rows hugging the wrong edge on Android). Normal mode keeps center.
-          alignItems: fullScreen ? ("stretch" as const) : "center",
-          paddingBottom: fullScreen ? 0 : (isWeb ? safeBottom + 16 : 16),
-          ...(isWeb && { maxWidth: 1100, alignSelf: "center" as const, width: "100%" }),
-          ...(fullScreen && !fullscreenNeedsScroll ? { flexGrow: 1, justifyContent: "center" as const } : {}),
-        }}
-        showsVerticalScrollIndicator={fullScreen ? fullscreenNeedsScroll : true}
-      >
-        {/* Clock section in normal mode - scrolls with content */}
-        {!fullScreen && (
-          <ClockPicker
-            zone1={zone1}
-            zone2={zone2}
-            setZone1={setZone1}
-            setZone2={setZone2}
-            is24Hour={is24Hour}
-          />
-        )}
-
-        {targetBlocks.map((block) => (
-          <TargetBlock
-            key={block.id}
-            block={block}
-            toggleTargetPicker={toggleTargetPicker}
-            toggleDeductPicker={toggleDeductPicker}
-            handleTargetConfirm={handleTargetConfirm}
-            handleDeductConfirm={handleDeductConfirm}
-            updateTargetTime={updateTargetTime}
-            updateDeductTime={updateDeductTime}
-            toggleAlertModal={toggleAlertModal}
-            handleAlertConfirm={handleAlertConfirm}
-            handleAlertDelete={handleAlertDelete}
-            setTargetBlocks={setTargetBlocks}
-            removeBlock={removeBlock}
-            fullScreen={fullScreen}
-            countdownFontSize={fullScreen ? countdownFontSize : undefined}
-            notifBlocked={notifBlocked}
-            notifUnavailableReason={notifUnavailableReason}
-            onRequestNotifPermission={requestNotifPermission}
-            is24Hour={is24Hour}
-            alertMode={alertMode}
-          />
-        ))}
-
-      </ScrollView>
-
-      {/* Fixed bottom controls - mobile normal mode: 2-column action grid */}
-      {!isWeb && !fullScreen && (
-        <View
-          style={{
-            paddingHorizontal: 16,
-            paddingBottom: safeBottom,
-            paddingTop: 10,
-            borderTopWidth: 1,
-            borderTopColor: colors.surfaceBorder,
-            gap: 10,
-          }}
-        >
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Pressable
-              onPress={addTargetBlock}
-              style={{ flex: 1, backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 13, alignItems: "center" }}
-            >
-              <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "600" }}>+ Add Target</Text>
-            </Pressable>
-            <Pressable
-              onPress={resetAll}
-              style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceBorder, borderRadius: 12, paddingVertical: 13, alignItems: "center" }}
-            >
-              <Text style={{ color: colors.danger, fontSize: 14, fontWeight: "500" }}>Reset All</Text>
-            </Pressable>
-          </View>
-          {analyticsEnabled === false && (
-            <Pressable
-              onPress={() => setConsentModalVisible(true)}
-              style={{ backgroundColor: "#1e2110", borderWidth: 1, borderColor: "#a16207", borderRadius: 12, paddingVertical: 13, alignItems: "center" }}
-            >
-              <Text style={{ color: colors.countdown, fontSize: 14, fontWeight: "600" }}>
-                Help make this app better
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      )}
-
-      {/* Fixed bottom - mobile fullscreen: fading exit button */}
-      {!isWeb && fullScreen && (
-        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, opacity: exitButtonOpacity }}>
-          <Pressable
-            onPress={toggleFullScreen}
-            style={{
-              backgroundColor: colors.surface,
-              borderColor: colors.surfaceBorder,
-              borderWidth: 1,
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
-              Exit Full Screen
-            </Text>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Fixed bottom - web fullscreen: exit button */}
-      {isWeb && fullScreen ? (
-        <View style={{ paddingHorizontal: 16, paddingBottom: safeBottom, paddingTop: 4, alignItems: "center" }}>
-          <Pressable
-            onPress={toggleFullScreen}
-            {...({
-              onHoverIn: () => {
-                setExitButtonOpacity(1);
-                if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-              },
-              onHoverOut: () => {
-                exitButtonTimerRef.current = setTimeout(() => {
-                  setExitButtonOpacity(0.3);
-                }, 3000);
-              },
-            } as any)}
-            style={{
-              backgroundColor: colors.surface,
-              borderColor: colors.surfaceBorder,
-              borderWidth: 1,
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-              opacity: exitButtonOpacity,
-              width: "50%",
-              minWidth: 200,
-            }}
-          >
-            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>
-              Exit Full Screen
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      <ConfirmModal
-        visible={resetModalVisible}
-        title="Reset All"
-        message="This will clear all timers and settings. Are you sure?"
-        confirmLabel="Yes, Reset"
-        onConfirm={() => {
-          setResetModalVisible(false);
-          doReset();
-        }}
-        onCancel={() => setResetModalVisible(false)}
-      />
-
-      <HelpModal
-        visible={helpVisible}
-        onClose={() => setHelpVisible(false)}
-        onOpenAndroidBackgroundHelp={
-          Platform.OS === "android" ? () => setAndroidBackgroundHelpVisible(true) : undefined
-        }
-      />
-      <SettingsModal
-        visible={settingsVisible}
-        onClose={() => setSettingsVisible(false)}
-        is24Hour={is24Hour}
-        onToggle24Hour={setIs24Hour}
-        alertMode={alertMode}
-        onToggleAlertMode={setAlertMode}
-        alarmAvailable={alarmAvailable}
-        showSeconds={showSeconds}
-        onToggleShowSeconds={setShowSeconds}
-        keepOn={keepOn}
-        onToggleKeepOn={setKeepOn}
-        autoMinimizePassed={autoMinimizePassed}
-        onToggleAutoMinimizePassed={setAutoMinimizePassed}
-        finalBeep={finalBeep}
-        onToggleFinalBeep={setFinalBeep}
-        analyticsEnabled={analyticsEnabled}
-        onRequestOptOut={() => {
-          setSettingsVisible(false);
-          setOptOutOrigin("settings");
-          setOptOutModalVisible(true);
-        }}
-        onRequestOptIn={() => {
-          // Close Settings first so the re-enable sheet animates in cleanly
-          // (two stacked native Modals race on Android - see consent->opt-out
-          // tick-delay note above). 280ms covers the sheet's slide-out.
-          setSettingsVisible(false);
-          setTimeout(() => setReEnableModalVisible(true), 280);
-        }}
-        onReset={() => {
-          // Close Settings first so the confirm dialog (web ConfirmModal /
-          // native Alert) and the cleared home are what the user sees - not a
-          // dialog stacked over a still-open Settings sheet.
-          setSettingsVisible(false);
-          resetAll();
-        }}
-        onTestAlarm={isDebugLogEnabled() ? runTestAlarm : undefined}
-        onShowDebugLog={isDebugLogEnabled() ? () => setDebugLogVisible(true) : undefined}
-      />
-
-      <AnalyticsConsentModal
-        visible={consentModalVisible}
-        onAccept={() => handleAnalyticsConsent(true)}
-        onDecline={() => handleAnalyticsConsent(false)}
-      />
-
-      {/* Hard Platform guard: don't mount the AndroidBackgroundHelpModal on
-          non-Android at all. The modal logic already only flips visible to
-          true behind a Platform.OS check, but RN-Web briefly hydrates
-          inactive Modal children during the first render pass before
-          applying `visible={false}` - leading to the flash the user saw on
-          web refresh. Hard-skipping the JSX entirely on non-Android closes
-          that race conclusively. */}
-      {Platform.OS === "android" ? (
-        <AndroidBackgroundHelpModal
-          visible={androidBackgroundHelpVisible}
-          onClose={dismissAndroidBackgroundHelp}
-          onOpenAppSettings={openAppSettings}
-          onOpenExactAlarmSettings={openExactAlarmSettings}
-        />
-      ) : null}
-
-      <DebugLogModal visible={debugLogVisible} onClose={() => setDebugLogVisible(false)} />
-
-      <AnalyticsOptOutModal
-        visible={optOutModalVisible}
-        dismissable={optOutOrigin !== "consent"}
-        onConfirmOptOut={() => {
-          setOptOutModalVisible(false);
-          setOptOutOrigin(null);
-          applyAnalyticsChoice(false);
-        }}
-        onCancel={() => {
-          const origin = optOutOrigin;
-          setOptOutModalVisible(false);
-          setOptOutOrigin(null);
-          if (origin === "consent") setConsentModalVisible(true);
-        }}
-      />
-
-      <AnalyticsReEnableModal
-        visible={reEnableModalVisible}
-        onAllow={() => {
-          setReEnableModalVisible(false);
-          applyAnalyticsChoice(true);
-        }}
-        onClose={() => setReEnableModalVisible(false)}
-      />
-
-      {alarmDismissData && (
-        <AlarmDismissModal
-          visible
-          blockName={alarmDismissData.name}
-          minutes={alarmDismissData.minutes}
-          snoozeCount={alarmDismissData.snoozeCount}
-          targetTime={alarmDismissData.targetTime}
-          onDismiss={handleAlarmDismiss}
-          onSnooze={handleAlarmSnooze}
-        />
-      )}
-    </View>
-    </View>
-  );
+  // NOTE: A third `return` used to live here rendering the legacy
+  // ClockPicker/TargetBlock/AlertModal layout. It was unreachable dead code -
+  // the two branches above (`fullScreen` -> OnAirView, `!fullScreen` -> unified
+  // home) are exhaustive for the boolean `fullScreen`, so control never fell
+  // through to it. Removed along with its now-orphaned scaffolding (legacy
+  // handlers, HeaderIconButton, the fullscreen font-size math, and the
+  // exit-button opacity timer) to keep the app at its minimal footprint.
 }
