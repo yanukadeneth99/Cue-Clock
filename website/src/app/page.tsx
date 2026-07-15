@@ -204,6 +204,7 @@ export default function Home() {
           <div className="hidden md:flex items-center gap-8">
             <NavLink href="#features">Features</NavLink>
             <NavLink href="#why-its-free">Why it&apos;s free</NavLink>
+            <NavLink href="#faq">FAQ</NavLink>
             <NavLink href="#download">Download</NavLink>
           </div>
 
@@ -249,6 +250,9 @@ export default function Home() {
           <MobileLink onClick={() => setMobileMenuOpen(false)} href="#why-its-free">
             Why it&apos;s free
           </MobileLink>
+          <MobileLink onClick={() => setMobileMenuOpen(false)} href="#faq">
+            FAQ
+          </MobileLink>
           <MobileLink onClick={() => setMobileMenuOpen(false)} href="#download">
             Download
           </MobileLink>
@@ -277,14 +281,14 @@ export default function Home() {
                 </span>
               </div>
               <h1 className="font-sans text-[32px] sm:text-5xl md:text-6xl font-semibold leading-[1.05] tracking-[-0.02em] mb-6 text-fg break-words">
-                Simple Timer
+                A free stage timer
                 <br />
-                <span className="text-accent">for Live Broadcasts</span>
+                <span className="text-accent">and countdown clock for live shows</span>
               </h1>
               <p className="text-fg-muted text-base md:text-lg max-w-lg mb-10 leading-relaxed mx-auto lg:mx-0">
-                A minimal, distraction-free clock app built specifically for broadcast
-                professionals who need to monitor multiple timezones and track countdown
-                timers simultaneously.
+                Cue Clock is a free stage timer for anyone who runs a show on a clock: live
+                broadcast, church services, conferences, streams. Unlimited cues, two
+                timezones, no subscription.
               </p>
               <div className="flex flex-wrap justify-center lg:justify-start gap-3">
                 <button
@@ -435,11 +439,11 @@ export default function Home() {
               <div className="inline-flex items-center gap-2 mb-4">
                 <span className="w-2 h-2 rounded-full bg-accent" />
                 <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
-                  See it in action
+                  Demo
                 </span>
               </div>
               <h2 className="font-sans text-3xl md:text-5xl font-semibold tracking-[-0.02em] text-fg">
-                Demo
+                See the stage timer in action
               </h2>
             </div>
             {/* YouTube embed - aspect-video keeps 16:9 at every breakpoint;
@@ -467,11 +471,11 @@ export default function Home() {
                 <div className="inline-flex items-center gap-2 mb-4">
                   <span className="w-2 h-2 rounded-full bg-accent" />
                   <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
-                    Engineered for the gallery
+                    Engineered for the stage
                   </span>
                 </div>
                 <h2 className="font-sans text-3xl md:text-5xl font-semibold tracking-[-0.02em] text-fg">
-                  Reduce cognitive load.
+                  A countdown timer built to reduce cognitive load
                 </h2>
               </div>
               <p className="text-fg-muted max-w-sm text-base md:text-lg">
@@ -502,7 +506,7 @@ export default function Home() {
                   </span>
                 </div>
                 <h2 className="font-sans text-3xl md:text-4xl font-semibold tracking-[-0.02em] text-fg mb-6">
-                  Why free?
+                  Why it&apos;s free, forever
                 </h2>
                 <div className="space-y-5 text-fg-muted text-base md:text-lg leading-relaxed">
                   <p>
@@ -544,7 +548,7 @@ export default function Home() {
               </span>
             </div>
             <h2 className="font-sans text-3xl md:text-5xl font-semibold tracking-[-0.02em] text-fg mb-10">
-              Get Cue Clock
+              Download the free stage timer
             </h2>
             <div className="inline-flex flex-col lg:flex-row items-stretch lg:items-center gap-4 lg:gap-6 p-4 bg-card rounded-[20px] border border-card-border w-full lg:w-auto">
               <div className="flex justify-around items-center gap-6 lg:gap-12 px-2 lg:px-6 py-3 lg:py-4">
@@ -689,7 +693,7 @@ export default function Home() {
                   View source code
                   <span className="material-symbols-outlined text-[18px]">open_in_new</span>
                 </a>
-                {/* mailto with a prefilled subject so reports land pre-labelled —
+                {/* mailto with a prefilled subject so reports land pre-labelled:
                     a startup-crash user who can't open the app still has a path
                     to report from any browser. */}
                 <a
@@ -792,6 +796,31 @@ export default function Home() {
                   ) : null}
                 </div>
               ) : null}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── FAQ ───────────────────────────────────────────────── */}
+        {/* Native <details> gives accessible, no-JS accordion behaviour; the
+            same Q&As are mirrored into the FAQPage JSON-LD in layout.tsx so
+            search and AI answer engines can extract them verbatim. */}
+        <section id="faq" className="py-20 md:py-28 px-4 md:px-6 border-t border-card-border">
+          <div className="max-w-3xl mx-auto">
+            <div className="mb-12 text-center">
+              <div className="inline-flex items-center gap-2 mb-4">
+                <span className="w-2 h-2 rounded-full bg-accent" />
+                <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+                  Questions
+                </span>
+              </div>
+              <h2 className="font-sans text-3xl md:text-5xl font-semibold tracking-[-0.02em] text-fg">
+                Frequently asked
+              </h2>
+            </div>
+            <div className="space-y-3">
+              {FAQS.map((f, i) => (
+                <FaqItem key={i} {...f} />
+              ))}
             </div>
           </div>
         </section>
@@ -1015,7 +1044,7 @@ function BannerItem({ icon, label }: { icon: string; label: string }) {
 
 const FEATURES: { title: string; icon: string; description: string; tone: "accent" | "zone1" | "zone2" | "countdown" }[] = [
   {
-    title: "Dual live clocks",
+    title: "Dual timezone clocks",
     icon: "schedule",
     description: "Two side-by-side clocks across 23 broadcast timezones for international productions.",
     tone: "zone1",
@@ -1027,15 +1056,15 @@ const FEATURES: { title: string; icon: string; description: string; tone: "accen
     tone: "accent",
   },
   {
-    title: "Buffer offsets",
+    title: "Pre-show buffer offsets",
     icon: "exposure_neg_1",
     description: "Subtract a pre-show buffer from the countdown so you're ready before the actual cue lands.",
     tone: "countdown",
   },
   {
-    title: "On-Air mode",
+    title: "Full-screen on-air countdown",
     icon: "fullscreen",
-    description: "Strip the UI to a giant countdown readable from across the gallery.",
+    description: "Strip the UI to a giant countdown readable from across the room.",
     tone: "zone2",
   },
   {
@@ -1051,6 +1080,55 @@ const FEATURES: { title: string; icon: string; description: string; tone: "accen
     tone: "countdown",
   },
 ];
+
+/* Answers here are the single source of truth for the visible FAQ; the same
+   copy is mirrored into the FAQPage JSON-LD graph in layout.tsx. Keep the two
+   in sync when editing. The Stagetimer comparison stays honest (paid, cloud
+   vs. free, local) and the sync answer is deliberately "not yet". */
+const FAQS: { question: string; answer: React.ReactNode }[] = [
+  {
+    question: "Is Cue Clock really free?",
+    answer:
+      "Yes, genuinely. Cue Clock is completely free, no ads, no subscriptions, and no in-app purchases, and it always will be. It's open-source under the AGPL-3.0 license, so you can read every line, fork it, or self-host it. Commercial licensing is available if you need it; just email hello@yashura.io.",
+  },
+  {
+    question: "Can I use Cue Clock as a church countdown timer?",
+    answer:
+      "Absolutely. Cue Clock works for any show that runs on a clock: church services, worship sets, conferences, and live streams included. Count down to your service start, subtract a pre-show buffer, and switch to full-screen on-air mode so the countdown is readable from the stage or the back of the room.",
+  },
+  {
+    question: "Does Cue Clock sync across devices?",
+    answer:
+      "Not yet. Every timer and setting is stored locally on the device it was created on, so cues don't currently sync between your phone, tablet, and the web app. Cross-device sync isn't available today; for now, set up your cues on the device you'll actually use during the show.",
+  },
+  {
+    question: "How is Cue Clock different from Stagetimer?",
+    answer:
+      "Cue Clock is free and open-source, runs fully offline, and stores everything locally with no account required. Stagetimer is a paid, cloud-based service focused on operator-to-presenter remote control. If you need multi-user cloud sync and remote control, tools like Stagetimer fit better; if you want a free, private, no-login stage timer with dual timezones and full-screen alarms, that's what Cue Clock is built for.",
+  },
+  {
+    question: "Can I self-host Cue Clock?",
+    answer:
+      "Yes. Cue Clock is open-source under AGPL-3.0 and the web app is a static export, so you can clone the repository from GitHub and host it anywhere that serves static files. The full source, including build instructions, is public at github.com/yanukadeneth99/Cue-Clock.",
+  },
+];
+
+function FaqItem({ question, answer }: (typeof FAQS)[number]) {
+  return (
+    <details className="group surface-card px-6 py-1 [&_summary::-webkit-details-marker]:hidden">
+      <summary className="flex items-center justify-between gap-4 py-5 cursor-pointer list-none">
+        <span className="font-sans text-base md:text-lg font-semibold tracking-[-0.01em] text-fg">
+          {question}
+        </span>
+        {/* Rotates 180° when the <details> is open via the group-open variant */}
+        <span className="material-symbols-outlined text-fg-muted transition-transform group-open:rotate-180 shrink-0">
+          expand_more
+        </span>
+      </summary>
+      <p className="text-fg-muted text-[15px] leading-relaxed pb-6 pr-8">{answer}</p>
+    </details>
+  );
+}
 
 function FeatureCard({
   title,

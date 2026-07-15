@@ -21,7 +21,7 @@ const jsonLd = {
       "applicationSubCategory": "Broadcast Studio Clock",
       "operatingSystem": "Web, Android, iOS",
       "browserRequirements": "Requires JavaScript. Modern evergreen browser.",
-      "description": "A minimal, distraction-free clock app built specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously. Completely free and open-source.",
+      "description": "A free, open-source stage timer and countdown clock. Run unlimited cues across two timezones with alarms and a full-screen on-air view. No ads, no login. Built for anyone who runs a show on a clock: live broadcast, church services, conferences, and streams.",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "availability": "https://schema.org/InStock" },
       "author": { "@id": "https://yashura.io/#org" },
       "publisher": { "@id": "https://yashura.io/#org" },
@@ -45,7 +45,7 @@ const jsonLd = {
         "Works offline, no account required",
         "Open-source under AGPL-3.0",
       ],
-      "keywords": "broadcast clock, studio clock, countdown timer, gallery clock, on-air timer, production timer, master clock, multi-timezone clock",
+      "keywords": "stage timer, countdown clock, church countdown timer, conference timer, broadcast clock, studio clock, countdown timer, on-air timer, production timer, master clock, multi-timezone clock",
       "audience": { "@type": "Audience", "audienceType": "Broadcast Professionals, Live Production Crews, Studio Operators, Radio Hosts" },
       "sameAs": [
         "https://github.com/yanukadeneth99/Cue-Clock",
@@ -96,7 +96,7 @@ const jsonLd = {
           "name": "Who is Cue Clock for?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Cue Clock is built for broadcast professionals - TV and radio gallery operators, vision mixers, producers, live-stream directors, podcast hosts, and studio crews who need a reliable, no-frills timing tool during live production.",
+            "text": "Cue Clock is built for anyone who runs a show on a clock - TV and radio control room operators, vision mixers, producers, live-stream directors, podcast hosts, church and worship teams, and conference crews who need a reliable, no-frills timing tool during a live show.",
           },
         },
         {
@@ -147,6 +147,46 @@ const jsonLd = {
             "text": "Unlimited. You can create, name, and configure as many countdown timers as you need, each tied to its own timezone and optional minutes-before alert.",
           },
         },
+        {
+          "@type": "Question",
+          "name": "Is Cue Clock really free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, genuinely. Cue Clock is completely free with no ads, no subscriptions, and no in-app purchases, and it always will be. It is open-source under the AGPL-3.0 license, so you can read every line, fork it, or self-host it. Commercial licensing is available if you need it - just email hello@yashura.io.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use Cue Clock as a church countdown timer?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Absolutely. Cue Clock works for any show that runs on a clock - church services, worship sets, conferences, and live streams included. Create a countdown to your service start, subtract a pre-show buffer, and switch to full-screen on-air mode so the countdown is readable from the stage or the back of the room.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "Does Cue Clock sync across devices?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not yet. Every timer and setting is stored locally on the device it was created on, so cues do not currently sync between your phone, tablet, and the web app. Cross-device sync is not available today - for now, set up your cues on the device you will actually use during the show.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "How is Cue Clock different from Stagetimer?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Cue Clock is free and open-source, runs fully offline, and stores everything locally with no account required. Stagetimer is a paid, cloud-based service focused on operator-to-presenter remote control. If you need multi-user cloud sync and remote control, tools like Stagetimer fit better; if you want a free, private, no-login stage timer with dual timezones and full-screen alarms, that is what Cue Clock is built for.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "Can I self-host Cue Clock?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Cue Clock is open-source under AGPL-3.0 and the web app is a static export, so you can clone the repository from GitHub and host it anywhere that serves static files. The full source, including build instructions, is public at github.com/yanukadeneth99/Cue-Clock.",
+          },
+        },
       ],
     },
   ],
@@ -172,17 +212,18 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL("https://cueclock.app"),
   title: {
-    default: "Cue Clock | Simple Timer for Live Broadcasts",
+    default: "Free Stage Timer & Countdown Clock | Cue Clock",
     template: "%s | Cue Clock"
   },
-  description: "A minimal, distraction-free clock app built specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously. Completely free and open-source.",
+  description: "A free, open-source stage timer and countdown clock. Run unlimited cues across two timezones with alarms and a full-screen on-air view. No ads, no login.",
   applicationName: "Cue Clock",
   category: "productivity",
   keywords: [
-    "broadcast clock", "studio clock", "countdown timer", "gallery clock",
+    "stage timer", "countdown clock", "church countdown timer", "conference timer",
+    "broadcast clock", "studio clock", "countdown timer", "stage clock",
     "live broadcast tool", "production timer", "on-air timer", "master clock",
     "multi-timezone clock", "radio studio timer", "podcast countdown",
-    "TV gallery clock", "live show timer", "show prep timer", "pre-show buffer",
+    "TV studio clock", "live show timer", "show prep timer", "pre-show buffer",
     "broadcast professional", "free studio clock app", "open source studio clock",
     "react native clock app", "expo clock app",
   ],
@@ -196,8 +237,8 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
-    title: "Cue Clock | Simple Timer for Live Broadcasts",
-    description: "Minimal, distraction-free clock app for broadcast professionals. Monitor multiple timezones and track countdowns simultaneously.",
+    title: "Free Stage Timer & Countdown Clock | Cue Clock",
+    description: "A free, open-source stage timer and countdown clock. Run unlimited cues across two timezones with alarms and a full-screen on-air view. No ads, no login.",
     url: "https://cueclock.app",
     siteName: "Cue Clock",
     images: [
@@ -205,7 +246,7 @@ export const metadata: Metadata = {
         url: "/logo_cropped.png",
         width: 512,
         height: 512,
-        alt: "Cue Clock - Simple Timer for Live Broadcasts",
+        alt: "Cue Clock - Free Stage Timer & Countdown Clock",
       },
     ],
     locale: "en_US",
@@ -213,8 +254,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cue Clock | Simple Timer for Live Broadcasts",
-    description: "Minimal, distraction-free clock app for broadcast professionals. Monitor multiple timezones and track countdowns simultaneously.",
+    title: "Free Stage Timer & Countdown Clock | Cue Clock",
+    description: "A free, open-source stage timer and countdown clock. Run unlimited cues across two timezones with alarms and a full-screen on-air view. No ads, no login.",
     creator: "@yanukadeneth99",
     images: ["/logo_cropped.png"],
   },
@@ -266,7 +307,7 @@ export default function RootLayout({
           Material Symbols is a ligature icon font: glyphs are resolved from
           text like "settings", "help", "fullscreen". With `display=swap`, the
           fallback font renders the ligature *source text* until the icon font
-          loads — so users briefly see the literal words "settings help
+          loads, so users briefly see the literal words "settings help
           fullscreen" before the glyphs appear. `display=block` hides those
           spots (for up to ~3s) instead of showing wrong text, which is the
           right trade-off for an icon font even though Next.js flags it.

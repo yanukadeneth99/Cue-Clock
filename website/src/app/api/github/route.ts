@@ -47,7 +47,7 @@ export async function GET() {
       ghFetch(`/repos/${REPO}/actions/runs?per_page=1&status=completed`),
       ghFetch(`/repos/${REPO}/releases/latest`),
       // List recent releases (incl. pre-releases) so we can find the latest beta.
-      // 10 is a comfortable window — even at a busy beta cadence the most
+      // 10 is a comfortable window; even at a busy beta cadence the most
       // recent pre-release will be in here.
       ghFetch(`/repos/${REPO}/releases?per_page=10`),
       ghFetch(`/repos/${REPO}/contributors`),
@@ -88,7 +88,7 @@ export async function GET() {
   }
 
   // The /releases list is ordered newest-first by created_at. Find the first
-  // entry flagged as a pre-release — that's the latest beta. We do NOT trust
+  // entry flagged as a pre-release; that's the latest beta. We do NOT trust
   // the latest entry to be beta (it could be a full release published after
   // a beta cycle), nor do we re-sort: GitHub's order is correct for our use.
   let latestBetaTag: string | null = null;
