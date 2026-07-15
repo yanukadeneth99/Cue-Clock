@@ -1,10 +1,18 @@
-# Cue Clock - Developer Reference
+# Cue Clock - Project Rules and Guide
 
 > ⚠ **Public repo.** No secrets, internal URLs, unreleased names, or partner info in commits.
 
-**Cue Clock** is a minimal, distraction-free clock app for broadcast professionals monitoring multiple timezones and countdown timers simultaneously. It MUST stay minimal, fast, and intuitive; the timers (including zone time) must be perfect.
+**Cue Clock** is a minimal, distraction-free clock app for broadcast professionals monitoring multiple timezones and countdown timers simultaneously.
 
-You can use the Expo Skills/Plugin as needed to fetch Expo related details and perform operations.
+## Non-negotiables
+
+- Single-device by design. Do NOT add cross-device sync, user accounts (login), or a backend that stores user timers.
+- License is AGPL-3.0. Keep license headers intact. Do not add dependencies with incompatible licenses.
+- Offline-first: the application must work with no network connection.
+- The application MUST stay minimal, fast and intuitive.
+- The time syncs must be near perfect with least latency (since the time is critical).
+- Timers must be the most visible item in the application. Expect the user to view this application screen from a distance.
+- 3 Second Sounds must sync perfectly with the countdown at all times.
 
 ---
 
