@@ -1,0 +1,32 @@
+name: Auto Assign Owner
+
+# WHY: Keep every issue and PR assigned to the maintainer so nothing falls through
+# the cracks in triage, regardless of who opened it (self, contributors, or bots).
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+# WHY: Least privilege. We only need to edit the issue/PR to set an assignee.
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign maintainer
+        # WHY: gh CLI is preinstalled on GitHub runners; --add-assignee is idempotent
+        # so re-runs are harmless. GITHUB_TOKEN is scoped to this repo by the perms above.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # WHY: gh edit takes a URL, provided by the event payload for both types.
+          ITEM_URL: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            gh issue edit "$ITEM_URL" --add-assignee yanukadeneth99
+          else
+            gh pr edit "$ITEM_URL" --add-assignee yanukadeneth99
+          fi
