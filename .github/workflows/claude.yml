@@ -26,6 +26,7 @@ jobs:
       issues: write
       id-token: write
       actions: read
+      security-events: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
