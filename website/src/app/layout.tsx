@@ -289,6 +289,26 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head>
         {/*
+          Runs before the body paints (synchronous, first in <head>). Two jobs:
+          (1) mark `html.js` so the GSAP intro FOUC guard in globals.css can hold
+          the hero mock / feature cards hidden until GSAP animates them in —
+          without JS the guard never applies, so content stays visible;
+          (2) mark `html.fonts-ready` once the Material Symbols icon font has
+          settled (`document.fonts.ready`), which fades the real glyphs in and
+          keeps the ligature source text ("menu", "close", …) from ever peeking
+          through the icon box. A 5s timeout fallback reveals icons even where
+          the Font Loading API is unavailable, so they can never stay blank.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "document.documentElement.classList.add('js');" +
+              "(function(){var r=function(){document.documentElement.classList.add('fonts-ready');};" +
+              "if(document.fonts&&document.fonts.ready){document.fonts.ready.then(r);}" +
+              "setTimeout(r,5000);})();",
+          }}
+        />
+        {/*
           Dev-only CSP that permits `unsafe-eval`. React 19's dev bundle calls
           eval() once on startup to reconstruct async stack traces for DevTools;
           if the environment blocks it (browser extension CSP, strict sandbox)

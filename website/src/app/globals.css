@@ -141,7 +141,16 @@
    keeps that text invisible during the load window; this only reserves its
    box. A loaded Material Symbols glyph already fills exactly a 1em square, so
    this changes nothing about the final rendering — only the loading state.
-   Left unlayered (like the remote class) so the size lock always applies. */
+   Left unlayered (like the remote class) so the size lock always applies.
+
+   The box lock alone still leaks the *left edge* of the source word (the "m"
+   of "menu", the "c" of "close") through the 1em window before the font
+   arrives. So we also hold every icon at `opacity: 0` and fade the real
+   glyphs in only once the icon font has settled — `html.fonts-ready` is added
+   by the small inline script in layout.tsx (`document.fonts.ready`, with a
+   timeout fallback so icons always reveal even where the Font Loading API is
+   missing). Net result: a stable empty box during load, never a stray letter,
+   then a soft fade to the glyph. */
 .material-symbols-outlined {
   display: inline-block;
   width: 1em;
@@ -149,6 +158,25 @@
   line-height: 1;
   overflow: hidden;
   text-align: center;
+  opacity: 0;
+}
+html.fonts-ready .material-symbols-outlined {
+  opacity: 1;
+  transition: opacity 240ms ease-out;
+}
+
+/* ─── GSAP intro FOUC guard ───────────────────────────────────────────
+   The landing page's server-rendered HTML paints the hero mock and feature
+   cards in their FINAL position, then—after hydration—`useGSAP` runs
+   `gsap.set(..., { opacity: 0 })` and animates them back in. That produced a
+   visible "load once, then jump and animate" flash. Holding these elements
+   hidden until GSAP takes over (GSAP writes an inline opacity that wins over
+   this rule) removes the flash. Gated on `html.js` (added by the same inline
+   script) so visitors without JavaScript still see the content rather than a
+   permanently blank hero. */
+html.js .hero-mockup,
+html.js .feature-card {
+  opacity: 0;
 }
 
 /* ─── Motion tokens - match the in-app animation spec ─────────────── */
