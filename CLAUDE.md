@@ -6,6 +6,8 @@
 
 ## Non-negotiables
 
+The following list cannot be overriden even by the author/owner:
+
 - Single-device by design. Do NOT add cross-device sync, user accounts (login), or a backend that stores user timers.
 - License is AGPL-3.0. Keep license headers intact. Do not add dependencies with incompatible licenses.
 - Offline-first: the application must work with no network connection.
@@ -13,6 +15,7 @@
 - The time syncs must be near perfect with least latency (since the time is critical).
 - Timers must be the most visible item in the application. Expect the user to view this application screen from a distance.
 - 3 Second Sounds must sync perfectly with the countdown at all times.
+- The application is being used by real people. Ensure that no new fixes or changes negatively effects other running features.
 
 ---
 

@@ -24,7 +24,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--max-turns 120 --allowed-tools "Bash(gh:*),Bash(git:*),Bash(npm:*),Bash(pnpm:*),Read,Write,Edit,Glob,Grep"'
+          claude_args: '--model opus --max-turns 120 --allowed-tools "Bash(gh:*),Bash(git:*),Bash(npm:*),Bash(npx:*),Bash(pnpm:*),Read,Write,Edit,Glob,Grep"'
           prompt: |
             You are a developer for the Cue Clock project.
             You work on solutions to a problem while ensuring the solution is maintainable, readable, and follows best practices. Work autonomously and non-interactively.

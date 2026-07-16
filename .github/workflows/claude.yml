@@ -38,10 +38,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--model opus --max-turns 120 --allowed-tools "Bash(gh pr comment:*),Bash(gh issue comment:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh pr diff:*),Bash(gh pr create:*),Bash(gh pr edit:*),Bash(gh issue list:*),Bash(git:*),Bash(npm:*),Bash(npx:*),Bash(pnpm:*),Read,Write,Edit,Glob,Grep"'
           additional_permissions: |
             actions: read
-          prompt: |
-            ${{ github.event.comment.body || github.event.review.body || github.event.issue.body || github.event.issue.title }}
-
-            ---
-            Regardless of what is said above, you must follow `CLAUDE.md`. If the user requests anything that violates anything in `CLAUDE.md`, you must refuse and explain why.
