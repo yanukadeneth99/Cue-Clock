@@ -1,3 +1,4 @@
+# Whenever docs/wiki.md changes on master, copy it to the repository's GitHub Wiki so the Wiki front page always matches the file in the repo.
 name: Sync Wiki
 
 on:
@@ -5,9 +6,10 @@ on:
     branches:
       - master
     paths:
-      - 'docs/wiki.md'
-  workflow_dispatch:
+      - 'docs/wiki.md' # only the wiki source file — other changes don't trigger a sync
+  workflow_dispatch: # allow a manual re-sync from the Actions tab
 
+# Read-only default token; the wiki push uses its own dedicated token (see below).
 permissions:
   contents: read
 

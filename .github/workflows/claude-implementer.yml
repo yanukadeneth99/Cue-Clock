@@ -1,3 +1,4 @@
+# Once a day, Claude picks up to 3 maintainer-approved issues, implements each on its own branch, and opens a PR for human review — it never merges by itself.
 name: Claude Daily Implementer
 
 on:
@@ -8,6 +9,7 @@ on:
 jobs:
   implement:
     runs-on: ubuntu-latest
+    # What Claude may touch: code (to push branches), pull requests, and issues.
     permissions:
       contents: write
       pull-requests: write
@@ -18,12 +20,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Full git history, so Claude can branch off master and read past changes.
           fetch-depth: 0
 
       - name: Run Claude Implementer
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Claude's toolbox: files, git, npm, and the GitHub CLI — enough to
+          # implement, commit, push, and open PRs, but nothing repo-admin level.
           claude_args: '--model opus --max-turns 120 --allowed-tools "Bash(gh:*),Bash(git:*),Bash(npm:*),Bash(npx:*),Bash(pnpm:*),Read,Write,Edit,Glob,Grep"'
           prompt: |
             You are a developer for the Cue Clock project.

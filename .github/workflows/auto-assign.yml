@@ -1,3 +1,4 @@
+# Automatically assigns the maintainer to every new issue and PR the moment it's opened.
 name: Auto Assign Owner
 
 # WHY: Keep every issue and PR assigned to the maintainer so nothing falls through
@@ -5,6 +6,8 @@ name: Auto Assign Owner
 on:
   issues:
     types: [opened]
+  # pull_request_target (not plain pull_request) so PRs opened from forks are
+  # covered too. Safe here because we never check out or run the PR's code.
   pull_request_target:
     types: [opened]
 

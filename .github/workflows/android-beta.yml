@@ -1,24 +1,25 @@
 # =============================================================================
 # Android Beta (Open Testing)
 # -----------------------------------------------------------------------------
-# Purpose:    Build a signed Android App Bundle from a pre-release tag and
-#             ship it to Google Play's Open Testing track. Beta testers get
-#             it via the public opt-in link.
+# Builds the Android app from a beta tag and sends it to Google Play "Open
+# Testing" — the public beta track anyone can join via the opt-in link.
 #
-# Trigger:    Publishing a GitHub Release marked as pre-release. The tag
-#             MUST match `vX.Y.Z-beta.N` (e.g. v0.1.0-beta.1).
+# Runs on:  publishing a GitHub Release marked "pre-release". The tag MUST
+#           look like vX.Y.Z-beta.N (e.g. v0.1.0-beta.1).
 #
-# Inputs:     The tag drives `versionName` (suffix included so testers can
-#             see which beta they're on). `versionCode` = unix timestamp at
-#             build time. Release body becomes the Play "What's new" text.
+# Version:  the tag becomes the app's version name (the -beta.N suffix is kept
+#           so testers can see exactly which beta they're on), and the build
+#           timestamp becomes Google Play's required always-increasing version
+#           code. The release description becomes the "What's new" text on Play.
 #
-# Output:     Signed AAB on the `beta` track with release name
-#             `cue-clock-<version>`. The same AAB is later promoted to
-#             production unchanged by `android-promote.yml`.
+# Output:   a signed app package (AAB) on the beta track, named
+#           cue-clock-<version>. This EXACT file — unchanged — is what
+#           android-promote.yml later moves to production, so what testers
+#           validated is what users get.
 #
-# Related:    `android-internal.yml` ships every master push to the Internal
-#             track. `android-promote.yml` promotes beta builds to Production
-#             when their tag is flipped from pre-release to full release.
+# Related:  android-internal.yml (private builds on every master push),
+#           android-promote.yml (moves this beta build to Production when the
+#           release is flipped from pre-release to full release).
 # =============================================================================
 name: Android Beta (Open Testing)
 
@@ -44,6 +45,8 @@ jobs:
     if: github.event.release.prerelease == true
 
     steps:
+      # Safety gate: refuse to build if the tag isn't a proper beta tag —
+      # catches typos like v0.1.0 (a production tag) published as pre-release.
       - name: Validate beta tag shape
         env:
           VERSION_TAG: ${{ github.event.release.tag_name }}
@@ -53,6 +56,7 @@ jobs:
             exit 1
           fi
 
+      # Strip the leading "v" from the tag — "v0.1.0-beta.1" → "0.1.0-beta.1".
       - name: Extract version from tag
         id: version
         env:
@@ -62,6 +66,8 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version string: $VERSION"
 
+      # Google Play needs a number that only ever goes up; the current time in
+      # seconds guarantees each build's code is higher than the last.
       - name: Generate version code
         id: version_code
         run: |
@@ -93,11 +99,14 @@ jobs:
         working-directory: app
         run: npm ci
 
+      # Health check: warns about mismatched library versions. Advisory only
+      # here (continue-on-error) — a warning must not block a beta release.
       - name: Run Expo Doctor
         working-directory: app
         run: npx expo-doctor
         continue-on-error: true
 
+      # Write the version name/code decided above into the app's config files.
       - name: Update version code and name for release
         working-directory: app
         env:
@@ -106,6 +115,8 @@ jobs:
         run: |
           node scripts/prepare-android-release.js
 
+      # Build-time settings the app needs, pulled from repository secrets so
+      # they never appear in the public repo.
       - name: Create .env with build-time secrets
         working-directory: app
         run: |
@@ -113,10 +124,14 @@ jobs:
           echo "EAS_PROJECT_ID=${{ secrets.EAS_PROJECT_ID }}" >> .env
           echo "EAS_OWNER=${{ secrets.EAS_OWNER }}" >> .env
 
+      # Recreate google-services.json (the Firebase config file, kept out of
+      # the public repo) from a repository secret.
       - name: Decode Firebase config
         working-directory: app
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode > google-services.json
 
+      # Generate the native Android project folder from the Expo config —
+      # this is what Gradle actually builds in the next steps.
       - name: Generate Android native project
         working-directory: app
         run: |
@@ -125,6 +140,8 @@ jobs:
           export EXPO_PUBLIC_CLARITY_KEY=${{ secrets.EXPO_PUBLIC_CLARITY_KEY }}
           npx expo prebuild --platform android --clean
 
+      # Prebuild regenerates the native project, wiping the version stamped
+      # earlier — so stamp it again directly into the native files.
       - name: Sync Android native version after prebuild
         working-directory: app
         env:
@@ -133,6 +150,8 @@ jobs:
         run: |
           node scripts/prepare-android-release.js --sync-native
 
+      # Recreate the app-signing key from a secret. Google Play only accepts
+      # updates signed with this exact key, so it must never be lost or leaked.
       - name: Decode keystore
         working-directory: app/android
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
@@ -155,6 +174,9 @@ jobs:
             -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      # Turn the GitHub release description into plain text for Google Play's
+      # "What's new" box: strip markdown formatting and keep it under Play's
+      # 500-character limit without cutting a word in half.
       - name: Generate Clean Release Notes
         working-directory: app
         env:
@@ -198,6 +220,7 @@ jobs:
           console.log('Generated whatsnew/whatsnew-en-US (Length: ' + notes.length + ')');
           "
 
+      # Send the finished build to Google Play's public beta (Open Testing) track.
       - name: Upload to Google Play (Open Testing - Beta track)
         uses: r0adkll/upload-google-play@v1
         with:

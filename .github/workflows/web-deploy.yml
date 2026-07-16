@@ -1,22 +1,21 @@
 # =============================================================================
 # Web App Deploy
 # -----------------------------------------------------------------------------
-# Purpose:    Make the Coolify-hosted web app (the Expo web export of `app/`)
-#             track production releases instead of every master push — and
-#             deploy the EXACT tagged commit, not whatever master happens to be.
+# Updates the live web version of Cue Clock (hosted on Coolify, our deploy
+# server) whenever a full release is published — so the website only changes
+# on real releases, not on every master push, and it always serves the EXACT
+# code that was tagged.
 #
-# Trigger:    `release: released` — fires when a release is published as a
-#             non-pre-release, or when an existing pre-release is flipped to a
-#             full release (the same moment `android-promote.yml` runs). Betas
-#             (`vX.Y.Z-beta.N`) do NOT fire this.
+# Runs on:  a GitHub Release published as (or flipped to) a full release —
+#           the same moment android-promote.yml ships to Play. Betas
+#           (vX.Y.Z-beta.N) do NOT trigger this.
 #
-# How:        Coolify can only auto-deploy a *branch*, not an arbitrary commit.
-#             So this workflow checks out the released tag and force-updates a
-#             dedicated `release` branch to point at that exact commit. Coolify
-#             is configured to track `release` (not `master`), so its existing
-#             GitHub webhook auto-deploys the tagged tree. `release` is a
-#             CI-owned mirror — it never carries hand-authored commits, so the
-#             force-push is safe and intentional.
+# How:      Coolify can only auto-deploy a *branch*, not a specific commit.
+#           So this workflow points a dedicated `release` branch at the tagged
+#           commit; Coolify watches that branch (not master) and auto-deploys
+#           whenever it moves. The `release` branch is owned by this workflow
+#           alone — no human ever commits to it — which is why force-pushing
+#           it is safe and intentional.
 #
 # Setup (one-time, in the Coolify dashboard — cannot be done in CI):
 #   1. On the web app resource, change the tracked branch `master` -> `release`.
@@ -32,6 +31,7 @@ on:
   release:
     types: [released]
 
+# Run deploys one at a time, in order — never cancel a deploy midway.
 concurrency:
   group: web-deploy
   cancel-in-progress: false

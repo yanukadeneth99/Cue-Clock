@@ -1,23 +1,21 @@
 # =============================================================================
 # Android Promote (Beta → Production)
 # -----------------------------------------------------------------------------
-# Purpose:    Move an existing beta AAB to the Production track on Google Play
-#             WITHOUT rebuilding. Production users get the byte-identical AAB
-#             that beta testers validated.
+# Ships a release to real users — but WITHOUT building anything. It tells
+# Google Play to move the already-tested beta build to the Production track,
+# so users get the exact same file (byte for byte) that beta testers validated.
 #
-# Trigger:    A GitHub Release is flipped from pre-release to full release
-#             (or published directly as a full release). Fires `released`.
+# Runs on:  a GitHub Release being published as (or flipped to) a full
+#           release. The tag MUST be plain vX.Y.Z — no -beta.N suffix.
 #
-# Inputs:     Tag MUST be bare semver `vX.Y.Z` (no `-beta.N` suffix).
-#             Reads release body for "What's new" notes.
+# What it does: finds the newest completed beta build whose version matches
+#           <X.Y.Z>-beta.* and promotes it to production, using the release
+#           description as the "What's new" text. Safe to re-run: if that
+#           build is already on production, it simply exits without changes.
 #
-# Output:     Promotes the highest-versionCode completed beta release whose
-#             name matches `<X.Y.Z>-beta.*` to the production track with
-#             release name `X.Y.Z`. Idempotent: if that versionCode is
-#             already on production, exits cleanly.
-#
-# Related:    `android-beta.yml` produces the AAB that this workflow promotes.
-#             `.github/scripts/promote-to-production.js` holds the API logic.
+# Related:  android-beta.yml builds the file this workflow promotes.
+#           .github/scripts/promote-to-production.js holds the Google Play
+#           API logic.
 # =============================================================================
 name: Android Promote (Beta → Production)
 
@@ -62,6 +60,7 @@ jobs:
             exit 1
           fi
 
+      # Strip the leading "v" from the tag — "v0.1.0" → "0.1.0".
       - name: Extract version from tag
         id: version
         env:
@@ -90,6 +89,9 @@ jobs:
         # don't want surprise behaviour from a floating major.
         run: npm install --no-save --ignore-scripts googleapis@144.0.0
 
+      # Turn the GitHub release description into plain text for Google Play's
+      # "What's new" box: strip markdown formatting and keep it under Play's
+      # 500-character limit without cutting a word in half.
       - name: Write release notes to file
         env:
           RELEASE_BODY: ${{ github.event.release.body }}
@@ -122,6 +124,8 @@ jobs:
           console.log(notes);
           "
 
+      # The actual promotion: asks Google Play to copy the tested beta build
+      # onto the Production track (see the script for the API details).
       - name: Promote beta AAB to production
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}

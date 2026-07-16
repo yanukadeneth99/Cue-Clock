@@ -1,28 +1,24 @@
 # =============================================================================
 # Android Internal Testing
 # -----------------------------------------------------------------------------
-# Purpose:    Build a signed AAB on every master push that touches `app/**`
-#             and ship it to Google Play's Internal Testing track. The
-#             smallest, fastest feedback loop for developers + close testers.
+# Every time app code lands on master, this builds the Android app and sends it
+# to Google Play "Internal Testing" — a private, invite-only track where the
+# developer and close testers try changes first. It's the fastest feedback loop.
 #
-# Trigger:    Push to `master` with changes under `app/**`. Skipped for
-#             website/docs-only changes.
+# Runs on:  a push to master that changes anything under app/. Website- or
+#           docs-only changes skip this build.
 #
-# Inputs:     `versionName` is auto-derived from git tags by
-#             `app/scripts/derive-internal-version.js`:
-#               - latest tag = vX.Y.Z       → internal versionName = X.Y.(Z+1)
-#               - latest tag = vX.Y.Z-beta.N → internal versionName = X.Y.Z
-#             `versionCode` = unix timestamp so each push gets a fresh code
-#             monotonically. No human ever bumps `app.json` by hand.
+# Version:  no human ever bumps version numbers by hand. A script
+#           (app/scripts/derive-internal-version.js) reads the latest git tag
+#           to pick the version name (tag vX.Y.Z → X.Y.(Z+1); tag
+#           vX.Y.Z-beta.N → X.Y.Z), and the build timestamp becomes Google
+#           Play's required always-increasing version code.
 #
-# Output:     Signed AAB on the `internal` track with release name
-#             `cue-clock-<run_number>`. Internal track is invite-only.
+# Note:     EXPO_PUBLIC_DEBUG_LOGS=1 is set ONLY here — it unlocks the in-app
+#           debug log viewer. Beta and production builds must never get it.
 #
-# Notes:      `EXPO_PUBLIC_DEBUG_LOGS=1` is set ONLY here — gates the in-app
-#             debug log viewer. Production builds must never see this flag.
-#
-# Related:    `android-beta.yml` (Open Testing on pre-release tags).
-#             `android-promote.yml` (production promotion on full release).
+# Related:  android-beta.yml (public beta on pre-release tags),
+#           android-promote.yml (moves a beta build to production).
 # =============================================================================
 name: Android Internal Testing
 
@@ -33,6 +29,8 @@ on:
     paths:
       - "app/**"
 
+# If a new push arrives while a build is still running, cancel the old build —
+# only the newest code matters for internal testing.
 concurrency:
   group: android-internal
   cancel-in-progress: true
@@ -70,6 +68,8 @@ jobs:
         working-directory: app
         run: npm ci
 
+      # Health check: fails the build early if any library versions don't
+      # match what this Expo SDK expects.
       - name: Run Expo Doctor
         working-directory: app
         run: npx expo-doctor
@@ -94,10 +94,14 @@ jobs:
           # ship with logging inert.
           echo "EXPO_PUBLIC_DEBUG_LOGS=1" >> .env
 
+      # Recreate google-services.json (the Firebase config file, kept out of
+      # the public repo) from a repository secret.
       - name: Decode Firebase config
         working-directory: app
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode > google-services.json
 
+      # Generate the native Android project folder from the Expo config —
+      # this is what Gradle actually builds in the next steps.
       - name: Generate Android native project
         working-directory: app
         run: |
@@ -106,6 +110,8 @@ jobs:
           export EXPO_PUBLIC_CLARITY_KEY=${{ secrets.EXPO_PUBLIC_CLARITY_KEY }}
           npx expo prebuild --platform android --clean
 
+      # Recreate the app-signing key from a secret. Google Play only accepts
+      # updates signed with this exact key, so it must never be lost or leaked.
       - name: Decode keystore
         working-directory: app/android
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
@@ -128,6 +134,7 @@ jobs:
             -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      # Send the finished build to Google Play's invite-only Internal track.
       - name: Upload to Google Play (Internal Testing track)
         uses: r0adkll/upload-google-play@v1
         with:

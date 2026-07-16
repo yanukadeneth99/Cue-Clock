@@ -1,25 +1,22 @@
 # =============================================================================
 # Android Release Verify (PR dry-run)
 # -----------------------------------------------------------------------------
-# Purpose:    Catch release-build regressions BEFORE they hit master or a
-#             release tag. Mirrors the release build pipeline end-to-end
-#             using throwaway credentials, so a Gradle break, missing
-#             dependency, or broken plugin surfaces on the PR — not at 2am
-#             when someone tags v0.1.0.
+# A practice run of the release build on every pull request, so a broken build
+# is caught while the PR is still open — not at 2am when someone tags a real
+# release. It builds the app exactly like a release would, then throws the
+# result away.
 #
-# Trigger:    Pull requests that touch `app/**` or any release workflow.
+# Runs on:  pull requests that touch app/ or any of the release workflows.
 #
-# Inputs:     None from secrets. Uses a hardcoded dummy version (0.0.24),
-#             a stub `google-services.json`, and a freshly-generated
-#             throwaway keystore. The output AAB is NEVER uploaded to Play.
+# Uses:     NO real secrets. A dummy version number (0.0.24), a fake Firebase
+#           config, and a signing key generated on the spot and discarded.
+#           Nothing is ever uploaded to Google Play — pass/fail is the point.
 #
-# Output:     A signed-but-disposable AAB. Job pass/fail is the value;
-#             the artifact itself is discarded.
-#
-# Why both `android-beta.yml` and `android-promote.yml` are in the path
-# filter: edits to either workflow should be sanity-checked before merge,
-# even though this dry-run only exercises the build path (promotion doesn't
-# build, so its changes get caught by review + a real promotion run).
+# Why android-beta.yml and android-promote.yml are in the trigger list:
+#           edits to either release workflow should get this sanity check
+#           before merge, even though this dry-run only exercises the build
+#           path (promotion doesn't build, so its changes get caught by
+#           review + a real promotion run).
 # =============================================================================
 name: Android Release Verify
 
@@ -31,6 +28,8 @@ on:
       - '.github/workflows/android-release-verify.yml'
       - 'app/**'
 
+# If new commits land on the same PR while a check is running, cancel the old
+# check — only the newest code needs verifying.
 concurrency:
   group: android-release-verify-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -77,10 +76,14 @@ jobs:
         working-directory: app
         run: npm ci
 
+      # Health check: fails early if any library versions don't match what
+      # this Expo SDK expects.
       - name: Run Expo Doctor
         working-directory: app
         run: npx expo-doctor
 
+      # Stamp a fixed dummy version — the number is meaningless because this
+      # build is never shipped anywhere.
       - name: Update version for dry-run
         working-directory: app
         env:
@@ -88,6 +91,8 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
         run: node scripts/prepare-android-release.js
 
+      # Placeholder settings instead of real secrets — a PR from a fork must
+      # be buildable without access to any of them.
       - name: Create stub .env
         working-directory: app
         run: |
@@ -95,6 +100,8 @@ jobs:
           echo "EAS_OWNER=open-source-contributor" >> .env
           echo "EXPO_PUBLIC_CLARITY_KEY=" >> .env
 
+      # A fake Firebase config with the right shape — enough to make the
+      # build succeed without touching any real Firebase project.
       - name: Create stub google-services.json
         working-directory: app
         run: |
@@ -120,10 +127,14 @@ jobs:
           }
           EOF
 
+      # Generate the native Android project folder from the Expo config —
+      # this is what Gradle actually builds below.
       - name: Generate Android native project
         working-directory: app
         run: npx expo prebuild --platform android --clean
 
+      # Prebuild regenerates the native project, wiping the version stamped
+      # earlier — so stamp it again directly into the native files.
       - name: Sync Android native version after prebuild
         working-directory: app
         env:
@@ -131,6 +142,8 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
         run: node scripts/prepare-android-release.js --sync-native
 
+      # Make a brand-new signing key just for this run (real releases use the
+      # secret production key; this one is discarded with the runner).
       - name: Generate throwaway signing keystore
         working-directory: app/android
         run: |

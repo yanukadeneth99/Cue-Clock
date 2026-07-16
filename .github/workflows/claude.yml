@@ -1,5 +1,7 @@
+# Lets the maintainer summon Claude by writing "@claude" in an issue or PR; Claude reads the request and replies or makes the change.
 name: Claude Code GitHub Comments
 
+# Watch every place a "@claude" mention could appear: comments, reviews, and new issues.
 on:
   issue_comment:
     types: [created]
@@ -12,6 +14,9 @@ on:
 
 jobs:
   claude:
+    # Only the repo owner can summon Claude. The check uses their permanent numeric
+    # GitHub ID (not the username, which someone else could adopt after a rename),
+    # and the text must actually contain "@claude" — strangers can't trigger this.
     if: |
       github.actor_id == '61384503' && (
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
@@ -20,6 +25,7 @@ jobs:
         (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
       )
     runs-on: ubuntu-latest
+    # What Claude may touch in this repo: code, pull requests, and issues.
     permissions:
       contents: write
       pull-requests: write
@@ -31,6 +37,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Download the full git history (not just the latest snapshot) so
+          # Claude can look at past changes when answering.
           fetch-depth: 0
 
       - name: Run Claude Code
@@ -38,6 +46,11 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Limit Claude to a curated toolbox: reading/editing files, git, npm,
+          # and a short list of safe "gh" commands (view/comment/create/edit).
+          # Deliberately excluded: merging, deleting, releases, secrets, and
+          # anything that changes repo settings.
           claude_args: '--model opus --max-turns 120 --allowed-tools "Bash(gh pr comment:*),Bash(gh issue comment:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh pr diff:*),Bash(gh pr create:*),Bash(gh pr edit:*),Bash(gh issue list:*),Bash(git:*),Bash(npm:*),Bash(npx:*),Bash(pnpm:*),Read,Write,Edit,Glob,Grep"'
+          # Lets Claude read CI logs of other workflow runs when diagnosing failures.
           additional_permissions: |
             actions: read
