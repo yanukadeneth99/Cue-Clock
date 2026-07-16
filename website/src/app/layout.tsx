@@ -291,21 +291,34 @@ export default function RootLayout({
         {/*
           Runs before the body paints (synchronous, first in <head>). Two jobs:
           (1) mark `html.js` so the GSAP intro FOUC guard in globals.css can hold
-          the hero mock / feature cards hidden until GSAP animates them in —
-          without JS the guard never applies, so content stays visible;
-          (2) mark `html.fonts-ready` once the Material Symbols icon font has
-          settled (`document.fonts.ready`), which fades the real glyphs in and
-          keeps the ligature source text ("menu", "close", …) from ever peeking
-          through the icon box. A 5s timeout fallback reveals icons even where
-          the Font Loading API is unavailable, so they can never stay blank.
+          the hero content / mock / feature cards hidden until GSAP animates them
+          in — without JS the guard never applies, so content stays visible;
+          (2) mark `html.fonts-ready` only once the Material Symbols icon font is
+          ACTUALLY loaded, which fades the real glyphs in and keeps the ligature
+          source text ("menu", "close", …) from ever peeking through the box.
+
+          We poll `document.fonts.load()` + `.check()` for the SPECIFIC font
+          family — NOT `document.fonts.ready`. `.ready` resolves as soon as
+          whatever fonts are pending at that instant settle, and when this script
+          runs the Material Symbols @font-face isn't registered yet (its remote
+          stylesheet hasn't downloaded), so `.ready` fires early against an empty
+          set and reveals icons while they're still fallback text. `.check()`
+          returns true only when the real glyph font is available, so on slow
+          connections the box stays empty until the font truly lands (~30s on
+          Slow 4G) instead of flashing the source words. A 60s cap guarantees
+          icons can never stay blank forever if the font genuinely fails; the
+          no-Font-Loading-API branch reveals after the `display=block` window.
         */}
         <script
           dangerouslySetInnerHTML={{
             __html:
               "document.documentElement.classList.add('js');" +
-              "(function(){var r=function(){document.documentElement.classList.add('fonts-ready');};" +
-              "if(document.fonts&&document.fonts.ready){document.fonts.ready.then(r);}" +
-              "setTimeout(r,5000);})();",
+              "(function(){var el=document.documentElement,r=function(){el.classList.add('fonts-ready');};" +
+              "if(!(document.fonts&&document.fonts.load)){setTimeout(r,3000);return;}" +
+              "var F='24px \"Material Symbols Outlined\"',t=Date.now(),g=function(){" +
+              "if(Date.now()-t<60000)setTimeout(k,200);else r();}," +
+              "k=function(){document.fonts.load(F).then(function(){" +
+              "document.fonts.check(F)?r():g();},g);};k();})();",
           }}
         />
         {/*
