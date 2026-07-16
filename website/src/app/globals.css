@@ -129,6 +129,28 @@
   }
 }
 
+/* ─── Icon font ───────────────────────────────────────────────────────
+   Material Symbols is a remote *ligature* icon font (loaded via the Google
+   Fonts <link> in layout.tsx). Until the font file downloads, the browser
+   lays out each icon using the fallback metrics of its ligature *source text*
+   ("language", "phone_android", …) — a wide box that snaps down to a single
+   1em glyph once the font arrives, resizing the surrounding buttons. Pinning
+   every icon to a 1em square (which scales with the `text-*` font-size on the
+   span) keeps the layout stable through the load and clips the source text so
+   it can never flash as words. `font-display: block` on the Google Fonts URL
+   keeps that text invisible during the load window; this only reserves its
+   box. A loaded Material Symbols glyph already fills exactly a 1em square, so
+   this changes nothing about the final rendering — only the loading state.
+   Left unlayered (like the remote class) so the size lock always applies. */
+.material-symbols-outlined {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  overflow: hidden;
+  text-align: center;
+}
+
 /* ─── Motion tokens - match the in-app animation spec ─────────────── */
 @layer base {
   @keyframes cue-pulse {
