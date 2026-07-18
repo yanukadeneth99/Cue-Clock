@@ -6,24 +6,35 @@
 name: Claude PR AI Decider
 
 on:
-  # Runs after the release "dry run" check finishes, so we know for certain whether CI passed or failed before even considering a merge.
+  # Path 1 (app changes): runs after the release "dry run" check finishes, so we know for certain whether CI passed or failed before even considering a merge.
   workflow_run:
     workflows: ["Android Release Verify"]
     types: [completed]
+  # Path 2 (everything else): Android Release Verify only runs for app/** changes, so a website- or docs-only PR would never reach path 1 and would sit unreviewed forever. This covers those.
+  # A label set as the PR is opened raises this event just the same as one added later by hand (verified against Dependabot's PRs), so the implementer's `gh pr create --label` is enough to start a review.
+  pull_request_target:
+    types: [labeled]
 
-# Only one review/merge per PR at a time; a newer CI run cancels an older one in progress.
+# Only one review/merge per PR at a time; a newer trigger cancels an older one in progress. The PR comes from whichever path fired.
 concurrency:
-  group: claude-pr-decider-${{ github.event.workflow_run.pull_requests[0].number }}
+  group: claude-pr-decider-${{ github.event.workflow_run.pull_requests[0].number || github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   review-merge:
-    # Only proceeds if CI passed and the PR came from this repo, not a fork.
-    # head_repository is the fork check: the branch must live in THIS repo. pull_requests[0] is how we read the PR number further down.
+    # Only proceeds if the PR came from this repo, not a fork. Both paths check that the same way: the branch must live in THIS repo.
+    # Path 1 also waits for CI to have passed. Path 2 starts ONLY on the two labels that mean "a bot opened this, please review it" — never ai-merge-approved or human-review, which Claude and this workflow add themselves. Listing only those two entry labels is what stops a review from re-triggering itself forever.
     if: |
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_repository.full_name == github.repository &&
-      github.event.workflow_run.pull_requests[0] != null
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.pull_requests[0] != null
+      ) || (
+        github.event_name == 'pull_request_target' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        contains(fromJSON('["ai-implemented","dependencies"]'), github.event.label.name)
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -32,7 +43,7 @@ jobs:
       issues: write # add human-review label (issues + PRs share the label API)
       id-token: write # the Claude action needs this to get its access token; without it the run dies instantly
     steps:
-      # Pull the trusted master tree into the workspace so Claude can actually read CLAUDE.md and the surrounding code. The action does NOT check out the repo on its own. On a workflow_run trigger this defaults to the default branch (master), which is exactly the trusted base we want to review the PR against.
+      # Pull the trusted master tree into the workspace so Claude can actually read CLAUDE.md and the surrounding code. The action does NOT check out the repo on its own. Both triggers default to the base branch (master) rather than the PR's own code, which is exactly the trusted base we want to review the PR against — do NOT change this to check out the PR branch.
       - name: Checkout master (trusted base to review against)
         uses: actions/checkout@v4
         with:
@@ -45,8 +56,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+          # The PR number arrives in a different place depending on which trigger fired. Both come in as variables, never typed into a command, so nothing in the PR can run as a command.
+          WR_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+          EVENT_PR: ${{ github.event.pull_request.number }}
         run: |
+          PR="${WR_PR:-$EVENT_PR}"
+          # Only ever trust a plain number.
+          case "$PR" in ''|*[!0-9]*) echo "PR '$PR' is not numeric — refusing."; exit 1;; esac
+          echo "pr=${PR}" >> "$GITHUB_OUTPUT"
+
           data=$(gh pr view "${PR}" --repo "${REPO}" \
             --json headRefName,state,labels)
           head_ref=$(echo "$data" | jq -r '.headRefName')
@@ -54,7 +72,7 @@ jobs:
           # Grab every label name, one per line, so we can look for the trigger labels.
           labels=$(echo "$data" | jq -r '.labels[].name')
 
-          # Only bot PRs are auto-reviewed: Claude's own (ai-implemented) or Dependabot's (dependencies). Human PRs are left alone. Forks can't reach here at all — the job-level `pull_requests[0] != null` gate already drops them, since GitHub leaves that array empty for fork PRs.
+          # Only bot PRs are auto-reviewed: Claude's own (ai-implemented) or Dependabot's (dependencies). Human PRs are left alone. Forks can't reach here at all: the job-level gate drops them on both paths — `pull_requests[0] != null` is empty for fork PRs on the CI path, and the head-repo check does the same on the label path.
           if ! echo "$labels" | grep -qxE 'ai-implemented|dependencies'; then
             echo "PR #${PR} has neither ai-implemented nor dependencies — skipping."
             echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
@@ -69,9 +87,9 @@ jobs:
             echo "PR #${PR} is ${state}, not OPEN — skipping."
             echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          # All checks must be passing. `gh pr checks` exits 0 iff every check succeeded.
-          if ! gh pr checks "${PR}" --repo "${REPO}"; then
-            echo "PR #${PR} has non-passing or pending checks — not merging."
+          # All checks must be passing. --watch waits for still-running checks to finish, which matters on the label path: the label lands the moment the PR is opened, when CI has barely started. Without waiting we would read "pending", skip, and never come back. --fail-fast stops as soon as one check fails. `gh pr checks` exits 0 iff every check succeeded, and the job timeout caps the wait.
+          if ! gh pr checks "${PR}" --repo "${REPO}" --watch --fail-fast --interval 30; then
+            echo "PR #${PR} has non-passing checks — not merging."
             echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "PR #${PR} (branch ${head_ref}) is same-repo, open, and green — reviewing."
@@ -83,6 +101,7 @@ jobs:
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1.0.175
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "claude,github-actions"
           # Claude can read the PR, comment on it, and add a label — but it is explicitly forbidden from merging or closing the PR; only the next, non-AI step in this workflow is allowed to actually merge.
           claude_args: >-
             --model opus
@@ -94,7 +113,7 @@ jobs:
             You are an ADVERSARIAL reviewer for the Cue Clock project. Your job is to
             find reasons this pull request should NOT merge. Your only outputs are one label and one comment.
 
-            TARGET: pull request #${{ github.event.workflow_run.pull_requests[0].number }}
+            TARGET: pull request #${{ steps.gate.outputs.pr }}
 
             STEP 1 - Read the rules.
             Read CLAUDE.md at the repository root. The checked-out tree is trusted master.
@@ -130,7 +149,7 @@ jobs:
           # A personal access token (not the default one) so the merge push to master triggers the next build, AND so the fixer dispatch actually starts a run — dispatches made with the default GITHUB_TOKEN do not.
           GH_TOKEN: ${{ secrets.MERGE_PAT }}
           REPO: ${{ github.repository }}
-          PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+          PR: ${{ steps.gate.outputs.pr }}
         run: |
           labels=$(gh pr view "${PR}" --repo "${REPO}" --json labels --jq '.labels[].name')
           if echo "$labels" | grep -qx 'ai-merge-approved'; then
