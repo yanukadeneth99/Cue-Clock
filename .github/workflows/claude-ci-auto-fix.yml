@@ -155,8 +155,7 @@ jobs:
             2. Follow the repo's CLAUDE.md rules (Compulsory).
             3. Commit and push the fix to `${{ steps.ctx.outputs.branch }}` with a clear
                message (NO Claude/Anthropic co-author trailer).
-            4. Post ONE concise PR comment on #${{ steps.ctx.outputs.pr }} explaining what
-               was wrong, the fix, and anything the maintainer should verify.
+            4. Post ONE concise PR comment on #${{ steps.ctx.outputs.pr }}. Open it with an @mention of the PR author (take their username from `gh pr view`) so they get notified, then explain what was wrong, the fix, and anything the maintainer should verify.
 
             If it is not fixable from source (environmental/flaky, a change that would
             violate CLAUDE.md, a missing secret, or a review objection that genuinely needs

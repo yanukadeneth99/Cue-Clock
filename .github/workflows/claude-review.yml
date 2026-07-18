@@ -48,6 +48,7 @@ jobs:
             is a single comment.
 
             TARGET: ${{ github.event_name == 'issues' && 'issue' || 'pull request' }} #${{ github.event.issue.number || github.event.pull_request.number }}
+            AUTHOR: @${{ github.event.issue.user.login || github.event.pull_request.user.login }}
 
             STEP 1 - Read the rules.
             Read CLAUDE.md at the repository root (non-negotiable) and follow it for everything.
@@ -77,6 +78,7 @@ jobs:
 
             STEP 4 - Post exactly ONE comment and stop.
             gh issue comment <number> --body "..."   or   gh pr comment <number> --body "..."
+            Open the comment body by addressing the AUTHOR above by their @mention, so they get notified.
             Structure it as: **Verdict** (one line: e.g. looks legitimate / needs
             clarification / conflicts with project rules / suspicious content), then
             **Summary**, then **Details/Concerns**, then **Suggested next step** for
