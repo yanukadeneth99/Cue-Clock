@@ -18,9 +18,11 @@ concurrency:
 
 jobs:
   review-merge:
-    # Only proceeds if CI passed and the PR came from this repo (not a fork).
+    # Only proceeds if CI passed and the PR came from this repo, not a fork.
+    # head_repository is the fork check: the branch must live in THIS repo. pull_requests[0] is how we read the PR number further down.
     if: |
       github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
       github.event.workflow_run.pull_requests[0] != null
     runs-on: ubuntu-latest
     timeout-minutes: 30
