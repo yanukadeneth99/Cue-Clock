@@ -25,7 +25,7 @@ jobs:
           github.event.issue.user.id == 61384503
         ) || (
           github.event.action == 'labeled' && (
-            contains(fromJSON('["dependencies"]'), github.event.label.name) ||
+            contains(fromJSON('["dependencies", "claude-bugs", "claude-minimize", "claude-optimize"]'), github.event.label.name) ||
             github.event.label.name == 'ai-review'
           )
         )
