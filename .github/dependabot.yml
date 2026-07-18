@@ -1,0 +1,97 @@
+# =============================================================================
+# Dependabot - automatic dependency update pull requests
+# -----------------------------------------------------------------------------
+# Every Monday, Dependabot checks whether the libraries this project depends on
+# have newer versions, and opens a pull request when they do.
+#
+# It does NOT merge anything. Each PR it opens is built and reviewed first:
+#   - app/     -> android-release-verify.yml builds a real release AAB
+#   - website/ -> website-verify.yml runs the linter and a production build
+# and then claude-pr-decider.yml reviews it. That decider only auto-reviews PRs
+# carrying the "dependencies" label, which is why every entry below sets it.
+#
+# Only app/ and website/ are watched. The test harness (tests/ai) and the
+# GitHub Actions workflows are updated by hand.
+# =============================================================================
+version: 2
+
+updates:
+  # ---------------------------------------------------------------------------
+  # The Cue Clock app (Expo / React Native)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # At most 3 open PRs at a time, so a quiet week never turns into a flood.
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+    groups:
+      # Small, low-risk updates are bundled into ONE pull request instead of one
+      # per library. Big (major) updates are deliberately left out of the group
+      # so each gets its own PR and can be judged on its own.
+      app-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+    ignore:
+      # Expo pins these packages to the exact versions that Expo SDK 55 expects.
+      # Bumping one of them on its own breaks that matched set, and the
+      # "expo-doctor" check inside android-release-verify.yml then fails - so
+      # such a PR could never pass anyway.
+      #
+      # The correct way to move to a newer SDK is to run `npx expo install --fix`
+      # by hand, which updates the whole set together. So we only block the big
+      # (major) jumps here; small patch and minor fixes still come through.
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@expo-google-fonts/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major"]
+      # Covers react-native-web, react-native-screens, react-native-gesture-handler,
+      # react-native-safe-area-context - all part of the same pinned Expo set.
+      - dependency-name: "react-native-*"
+        update-types: ["version-update:semver-major"]
+
+  # ---------------------------------------------------------------------------
+  # The marketing website (Next.js)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/website"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+    groups:
+      website-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # No ignores here: the website has no version-pinned set of packages the way
+    # the Expo app does, so a failed build is a real signal worth seeing.

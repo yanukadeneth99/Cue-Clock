@@ -6,11 +6,12 @@
 name: Claude PR AI Decider
 
 on:
-  # Path 1 (app changes): runs after the release "dry run" check finishes, so we know for certain whether CI passed or failed before even considering a merge.
+  # Path 1 (app or website changes): runs after that folder's build check finishes, so we know for certain whether CI passed or failed before even considering a merge. Each folder has its own build: app/ -> Android Release Verify, website/ -> Website Verify.
+  # A build MUST be listed here, not left to path 2 alone. Path 2 starts the moment a label is added, which can be before GitHub has even registered the build as a check on the PR — and a PR with no checks yet reads as "all green" (see .github/scripts/pr-checks.sh). Path 1 is the guarantee that a review only happens once a real build has finished.
   workflow_run:
-    workflows: ["Android Release Verify"]
+    workflows: ["Android Release Verify", "Website Verify"]
     types: [completed]
-  # Path 2 (everything else): Android Release Verify only runs for app/** changes, so a website- or docs-only PR would never reach path 1 and would sit unreviewed forever. This covers those.
+  # Path 2 (everything else): the build checks above are limited to app/** and website/**, so a docs-only PR would never reach path 1 and would sit unreviewed forever. This covers those.
   # A label set as the PR is opened raises this event just the same as one added later by hand (verified against Dependabot's PRs), so the implementer's `gh pr create --label` is enough to start a review.
   pull_request_target:
     types: [labeled]

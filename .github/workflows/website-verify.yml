@@ -1,0 +1,70 @@
+# =============================================================================
+# Website Verify (PR build check)
+# -----------------------------------------------------------------------------
+# Builds the marketing website on every pull request that touches it, so a
+# broken site is caught while the PR is still open - not after a release tag
+# has already pushed it live via web-deploy.yml.
+#
+# This matters most for Dependabot: it opens PRs that bump Next.js, React,
+# Tailwind and GSAP, and without an actual build there would be nothing proving
+# those bumps are safe. It is also what claude-pr-decider.yml waits on before
+# reviewing a website PR - that decider refuses to act until every check is
+# green, so a website PR with no checks at all would sit unreviewed.
+#
+# Runs on:  pull requests changing anything under website/, or this file itself
+#           (so edits here are verified too). App- or docs-only PRs skip it.
+# Uses:     No secrets - the build completes without any.
+# =============================================================================
+name: Website Verify
+
+on:
+  pull_request:
+    paths:
+      - "website/**"
+      - ".github/workflows/website-verify.yml"
+
+# If new commits land on the same PR while a check is running, cancel the old
+# check - only the newest code needs verifying.
+concurrency:
+  group: website-verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-website-build:
+    name: Verify Website Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Node 22 and checkout v4 to match android-release-verify.yml - one Node
+      # version and one checkout version across the whole repo.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: website/package-lock.json
+
+      # `npm ci` installs the exact versions in the lockfile and fails outright
+      # if the lockfile and package.json disagree - which is itself a useful
+      # check on a dependency-bump PR.
+      - name: Install dependencies
+        working-directory: website
+        run: npm ci
+
+      # A lint error fails the check. A dependency update that leaves the code
+      # violating its own rules is not safe to merge unreviewed.
+      - name: Lint
+        working-directory: website
+        run: npm run lint
+
+      # The real test: a full production build, the same command web-deploy.yml
+      # ends up running when a release goes out.
+      - name: Build
+        working-directory: website
+        run: npm run build
