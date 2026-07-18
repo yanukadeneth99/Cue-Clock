@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -209,6 +210,7 @@ export default function Home() {
           </div>
 
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden text-fg-muted hover:text-fg transition-colors p-1"
             aria-label="Menu"
@@ -236,6 +238,7 @@ export default function Home() {
             </span>
           </div>
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(false)}
             className="text-fg-muted p-1"
             aria-label="Close menu"
@@ -257,6 +260,7 @@ export default function Home() {
             Download
           </MobileLink>
           <button
+            type="button"
             onClick={() => {
               setMobileMenuOpen(false);
               window.open("https://live.cueclock.app", "_blank");
@@ -292,6 +296,7 @@ export default function Home() {
               </p>
               <div className="flex flex-wrap justify-center lg:justify-start gap-3">
                 <button
+                  type="button"
                   onClick={() =>
                     document
                       .getElementById("download")
@@ -303,6 +308,7 @@ export default function Home() {
                   <span className="material-symbols-outlined text-base">arrow_downward</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => window.open("https://live.cueclock.app", "_blank")}
                   className="px-7 py-4 text-sm font-semibold tracking-[-0.005em] rounded-[14px] border border-card-border text-fg hover:bg-card transition-colors cursor-pointer w-full sm:w-auto text-center"
                 >
@@ -484,8 +490,8 @@ export default function Home() {
               </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {FEATURES.map((f, i) => (
-                <FeatureCard key={i} {...f} />
+              {FEATURES.map((f) => (
+                <FeatureCard key={f.title} {...f} />
               ))}
             </div>
           </div>
@@ -555,6 +561,7 @@ export default function Home() {
                 {(Object.keys(platforms) as Array<keyof typeof platforms>).map((p) => (
                   <button
                     key={p}
+                    type="button"
                     onClick={() => setSelectedPlatform(p)}
                     className={`flex flex-col items-center gap-2 transition-all cursor-pointer ${
                       selectedPlatform === p
@@ -582,6 +589,7 @@ export default function Home() {
               <div className="h-px lg:h-16 w-full lg:w-px bg-card-border" />
               <div className="flex justify-center px-2 lg:px-6 py-3 lg:py-4">
                 <button
+                  type="button"
                   onClick={platforms[selectedPlatform].action}
                   className={`download-btn relative overflow-hidden font-sans font-semibold text-sm tracking-[-0.005em] px-7 py-4 rounded-[14px] flex items-center gap-3 transition-all w-full lg:w-auto justify-center ${
                     platforms[selectedPlatform].buttonText === "Coming Soon"
@@ -818,8 +826,8 @@ export default function Home() {
               </h2>
             </div>
             <div className="space-y-3">
-              {FAQS.map((f, i) => (
-                <FaqItem key={i} {...f} />
+              {FAQS.map((f) => (
+                <FaqItem key={f.question} {...f} />
               ))}
             </div>
           </div>
@@ -870,12 +878,12 @@ export default function Home() {
               </a>
             </div>
           </div>
-          <a
+          <Link
             href="/privacy"
             className="text-[12px] tracking-wide uppercase font-medium text-fg-muted hover:text-accent transition-colors"
           >
             Privacy policy
-          </a>
+          </Link>
         </div>
       </footer>
     </div>
