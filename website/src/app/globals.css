@@ -129,30 +129,10 @@
   }
 }
 
-/* ─── Icon font ───────────────────────────────────────────────────────
-   Material Symbols is a remote *ligature* icon font (loaded via the Google
-   Fonts <link> in layout.tsx). Until the font file downloads, the browser
-   lays out each icon using the fallback metrics of its ligature *source text*
-   ("language", "phone_android", …) — a wide box that snaps down to a single
-   1em glyph once the font arrives, resizing the surrounding buttons. Pinning
-   every icon to a 1em square (which scales with the `text-*` font-size on the
-   span) keeps the layout stable through the load and clips the source text so
-   it can never flash as words. `font-display: block` on the Google Fonts URL
-   keeps that text invisible during the load window; this only reserves its
-   box. A loaded Material Symbols glyph already fills exactly a 1em square, so
-   this changes nothing about the final rendering — only the loading state.
-   Left unlayered (like the remote class) so the size lock always applies.
-
-   The box lock alone still leaks the *left edge* of the source word (the "m"
-   of "menu", the "c" of "close") through the 1em window before the font
-   arrives. So we also hold every icon at `opacity: 0` and fade the real
-   glyphs in only once the icon font is ACTUALLY loaded — `html.fonts-ready`
-   is added by the small inline script in layout.tsx, which polls
-   `document.fonts.check()` for the specific Material Symbols family (NOT the
-   coarse `document.fonts.ready`, which resolves before the icon font's
-   @font-face is even registered and would reveal fallback text on slow
-   connections). Net result: a stable empty box during the whole load — even a
-   30s Slow-4G load — never a stray letter, then a soft fade to the glyph. */
+/* ─── Icon font (Material Symbols) ─────────────────────────────────────
+   The icons come from a remote font. Until it loads, pin every icon to a
+   1em box so buttons don't resize, and clip any stray source text ("menu",
+   "close") that would otherwise show. This box-lock always applies. */
 .material-symbols-outlined {
   display: inline-block;
   width: 1em;
@@ -160,6 +140,11 @@
   line-height: 1;
   overflow: hidden;
   text-align: center;
+}
+/* With JavaScript on, keep icons hidden until the font is truly ready, then
+   fade them in — so a slow load never flashes the source words. Without
+   JavaScript the box-lock still holds and icons appear once the font loads. */
+html.js .material-symbols-outlined {
   opacity: 0;
 }
 html.fonts-ready .material-symbols-outlined {
@@ -167,21 +152,14 @@ html.fonts-ready .material-symbols-outlined {
   transition: opacity 240ms ease-out;
 }
 
-/* ─── GSAP intro FOUC guard ───────────────────────────────────────────
-   The landing page's server-rendered HTML paints the hero content, hero mock,
-   and feature cards in their FINAL position, then—after hydration—`useGSAP`
-   runs `gsap.set(..., { opacity: 0 })` / `introTl.from(..., { opacity: 0 })`
-   and animates them back in. That produced a visible "load once, then jump and
-   animate" flash. The hero *text* (`.hero-content > *`) is animated by the
-   intro timeline's `.from()` too, so it MUST be listed here — otherwise it
-   paints visible, then snaps to 0 and re-animates once JS loads (the "text
-   hides and comes back" flash). Holding all three hidden until GSAP takes over
-   (GSAP writes an inline opacity that wins over this rule) removes the flash.
-   Gated on `html.js` (added by the same inline script) so visitors without
-   JavaScript still see the content rather than a permanently blank hero. */
-html.js .hero-content > *,
-html.js .hero-mockup,
-html.js .feature-card {
+/* ─── Hero load flash guard ────────────────────────────────────────────
+   The page paints the hero in place, then GSAP animates it in from hidden,
+   which looked like a flash. Hold the hero hidden until GSAP takes over.
+   `gsap-safety` (a timer in layout.tsx) reveals it if GSAP never runs, and
+   the whole rule is off without JavaScript so no-JS visitors still see it. */
+html.js:not(.gsap-safety) .hero-content > *,
+html.js:not(.gsap-safety) .hero-mockup,
+html.js:not(.gsap-safety) .feature-card {
   opacity: 0;
 }
 
