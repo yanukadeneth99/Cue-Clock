@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Self-hosted Material Symbols icon font (see material-symbols npm package).
+   Serving the icon font and its CSS from our own origin means the
+   `.material-symbols-outlined` class ships in this render-blocking stylesheet
+   instead of arriving later over a separate Google Fonts request. That removes
+   the brief flash where icons showed as their raw ligature words (e.g.
+   "settings help") and the buttons resized once the glyphs swapped in. The
+   package CSS declares `font-display: block`, so glyphs stay blank (never the
+   words) until the font loads. */
+@import "material-symbols/outlined.css";
+
 /* ─── Canonical design tokens ───────────────────────────────────────
    Mirror of app/constants/colors.ts + typography.ts. Surface stack runs
    page → background → surface; single blue accent for CTA/brand; amber

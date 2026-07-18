@@ -18,10 +18,10 @@ const securityHeaders = [
       "default-src 'self'",
       // Next.js injects inline scripts for hydration; unsafe-inline is required
       "script-src 'self' 'unsafe-inline'",
-      // Tailwind uses inline styles; Google Fonts stylesheet is cross-origin
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      // Google Fonts font files
-      "font-src 'self' https://fonts.gstatic.com",
+      // Tailwind uses inline styles
+      "style-src 'self' 'unsafe-inline'",
+      // Fonts are self-hosted (next/font + self-hosted Material Symbols)
+      "font-src 'self'",
       // Local images and GitHub contributor avatars
       "img-src 'self' data: blob: https://avatars.githubusercontent.com",
       // GitHub API calls for contributors and repo stats
