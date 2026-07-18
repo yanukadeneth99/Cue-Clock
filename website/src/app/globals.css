@@ -129,29 +129,6 @@
   }
 }
 
-/* ─── Icons ─────────────────────────────────────────────────────────────
-   The icons load from the internet. Until they arrive, keep every icon in a
-   fixed square so buttons don't resize, and hide any stray letters. This
-   always applies. */
-.material-symbols-outlined {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  line-height: 1;
-  overflow: hidden;
-  text-align: center;
-}
-/* With JavaScript on, keep icons hidden until they finish loading, then fade
-   them in — so a slow connection never shows stray letters. Without
-   JavaScript the square still holds and icons appear once loaded. */
-html.js .material-symbols-outlined {
-  opacity: 0;
-}
-html.fonts-ready .material-symbols-outlined {
-  opacity: 1;
-  transition: opacity 240ms ease-out;
-}
-
 /* ─── Hero flash guard ──────────────────────────────────────────────────
    The hero is drawn in place first, then its intro animation replays it from
    hidden, which looked like a flash. Hide it until the animation takes over.

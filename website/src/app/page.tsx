@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Icon } from "./icons";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -215,9 +216,7 @@ export default function Home() {
             className="md:hidden text-fg-muted hover:text-fg transition-colors p-1"
             aria-label="Menu"
           >
-            <span className="material-symbols-outlined text-2xl">
-              {mobileMenuOpen ? "close" : "menu"}
-            </span>
+            <Icon name={mobileMenuOpen ? "close" : "menu"} className="text-2xl" />
           </button>
         </div>
       </nav>
@@ -243,7 +242,7 @@ export default function Home() {
             className="text-fg-muted p-1"
             aria-label="Close menu"
           >
-            <span className="material-symbols-outlined text-2xl">close</span>
+            <Icon name="close" className="text-2xl" />
           </button>
         </div>
         <div className="flex flex-col items-center justify-center flex-1 gap-10 px-6 text-center">
@@ -305,7 +304,7 @@ export default function Home() {
                   className="cta-primary px-7 py-4 text-sm inline-flex items-center justify-center gap-2.5 cursor-pointer transition-all hover:brightness-110 active:scale-[0.98] w-full sm:w-auto"
                 >
                   Download free
-                  <span className="material-symbols-outlined text-base">arrow_downward</span>
+                  <Icon name="arrow_downward" className="text-base" />
                 </button>
                 <button
                   type="button"
@@ -333,9 +332,9 @@ export default function Home() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2.5 text-fg-muted">
-                      <span className="material-symbols-outlined text-[18px]">help</span>
-                      <span className="material-symbols-outlined text-[18px]">settings</span>
-                      <span className="material-symbols-outlined text-[20px]">fullscreen</span>
+                      <Icon name="help" className="text-[18px]" />
+                      <Icon name="settings" className="text-[18px]" />
+                      <Icon name="fullscreen" className="text-[20px]" />
                     </div>
                   </div>
 
@@ -373,9 +372,7 @@ export default function Home() {
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-countdown/10">
-                        <span className="material-symbols-outlined text-[12px] text-countdown">
-                          notifications
-                        </span>
+                        <Icon name="notifications" className="text-[12px] text-countdown" />
                         <span className="text-[11px] font-semibold text-countdown">2m</span>
                       </div>
                     </div>
@@ -418,7 +415,7 @@ export default function Home() {
                   {/* Add CTA */}
                   <div className="px-5 pb-4 pt-1">
                     <div className="cta-primary py-3.5 text-center text-[15px] inline-flex items-center justify-center gap-2 w-full">
-                      <span className="material-symbols-outlined text-[18px]">add</span>
+                      <Icon name="add" className="text-[18px]" />
                       Add a cue
                     </div>
                   </div>
@@ -569,13 +566,12 @@ export default function Home() {
                         : "opacity-55 hover:opacity-90"
                     }`}
                   >
-                    <span
-                      className={`material-symbols-outlined text-3xl md:text-4xl ${
+                    <Icon
+                      name={platforms[p].icon}
+                      className={`text-3xl md:text-4xl ${
                         selectedPlatform === p ? "text-accent" : "text-fg-muted"
                       }`}
-                    >
-                      {platforms[p].icon}
-                    </span>
+                    />
                     <span
                       className={`font-sans text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.18em] ${
                         selectedPlatform === p ? "text-fg" : "text-fg-muted"
@@ -598,9 +594,10 @@ export default function Home() {
                   }`}
                 >
                   {platforms[selectedPlatform].buttonText}
-                  <span className="material-symbols-outlined text-[18px]">
-                    {platforms[selectedPlatform].buttonText === "Coming Soon" ? "schedule" : "arrow_forward"}
-                  </span>
+                  <Icon
+                    name={platforms[selectedPlatform].buttonText === "Coming Soon" ? "schedule" : "arrow_forward"}
+                    className="text-[18px]"
+                  />
                 </button>
               </div>
             </div>
@@ -699,7 +696,7 @@ export default function Home() {
                   className="cta-primary inline-flex items-center gap-2.5 px-7 py-4 text-sm transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
                 >
                   View source code
-                  <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                  <Icon name="open_in_new" className="text-[18px]" />
                 </a>
                 {/* mailto with a prefilled subject so reports land pre-labelled:
                     a startup-crash user who can't open the app still has a path
@@ -709,7 +706,7 @@ export default function Home() {
                   className="inline-flex items-center gap-2.5 px-7 py-4 text-sm font-semibold rounded-[14px] bg-card border border-card-border text-fg hover:border-accent transition-colors cursor-pointer"
                 >
                   Email the developer
-                  <span className="material-symbols-outlined text-[18px]">mail</span>
+                  <Icon name="mail" className="text-[18px]" />
                 </a>
               </div>
             </div>
@@ -759,9 +756,7 @@ export default function Home() {
                       className="inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-accent/60 transition-colors group text-left"
                       aria-label={`Latest stable release ${repoStats.latestReleaseTag} - view on GitHub`}
                     >
-                      <span className="material-symbols-outlined text-accent text-[20px]">
-                        new_releases
-                      </span>
+                      <Icon name="new_releases" className="text-accent text-[20px]" />
                       <div className="flex flex-col leading-tight">
                         <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
                           Latest stable
@@ -770,9 +765,7 @@ export default function Home() {
                           {repoStats.latestReleaseTag}
                         </span>
                       </div>
-                      <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-accent transition-colors">
-                        open_in_new
-                      </span>
+                      <Icon name="open_in_new" className="text-fg-muted text-[16px] group-hover:text-accent transition-colors" />
                     </a>
                   ) : null}
                   {repoStats?.latestBetaTag ? (
@@ -786,9 +779,7 @@ export default function Home() {
                       className="inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-countdown/60 transition-colors group text-left"
                       aria-label={`Latest beta pre-release ${repoStats.latestBetaTag} - view on GitHub`}
                     >
-                      <span className="material-symbols-outlined text-countdown text-[20px]">
-                        science
-                      </span>
+                      <Icon name="science" className="text-countdown text-[20px]" />
                       <div className="flex flex-col leading-tight">
                         <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
                           Latest beta
@@ -797,9 +788,7 @@ export default function Home() {
                           {repoStats.latestBetaTag}
                         </span>
                       </div>
-                      <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-countdown transition-colors">
-                        open_in_new
-                      </span>
+                      <Icon name="open_in_new" className="text-fg-muted text-[16px] group-hover:text-countdown transition-colors" />
                     </a>
                   ) : null}
                 </div>
@@ -1021,9 +1010,7 @@ function QueuedRow({
           {alert ? (
             <>
               <span className="w-[3px] h-[3px] rounded-full bg-fg-muted/50" />
-              <span className="material-symbols-outlined text-[11px] text-fg-muted">
-                notifications
-              </span>
+              <Icon name="notifications" className="text-[11px] text-fg-muted" />
               <span className="text-[11px] text-fg-muted">{alert}</span>
             </>
           ) : null}
@@ -1042,7 +1029,7 @@ function QueuedRow({
 function BannerItem({ icon, label }: { icon: string; label: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="material-symbols-outlined text-accent text-base">{icon}</span>
+      <Icon name={icon} className="text-accent text-base" />
       <span className="font-sans text-[11px] md:text-[12px] font-semibold uppercase tracking-[0.12em] text-fg">
         {label}
       </span>
@@ -1129,9 +1116,7 @@ function FaqItem({ question, answer }: (typeof FAQS)[number]) {
           {question}
         </span>
         {/* Rotates 180° when the <details> is open via the group-open variant */}
-        <span className="material-symbols-outlined text-fg-muted transition-transform group-open:rotate-180 shrink-0">
-          expand_more
-        </span>
+        <Icon name="expand_more" className="text-fg-muted transition-transform group-open:rotate-180 shrink-0" />
       </summary>
       <p className="text-fg-muted text-[15px] leading-relaxed pb-6 pr-8">{answer}</p>
     </details>
@@ -1159,9 +1144,7 @@ function FeatureCard({
         {title}
       </h3>
       <p className="text-fg-muted text-[13.5px] leading-relaxed mb-5">{description}</p>
-      <span className="material-symbols-outlined text-fg-muted/60 group-hover:text-accent transition-colors">
-        {icon}
-      </span>
+      <Icon name={icon} className="text-fg-muted/60 group-hover:text-accent transition-colors" />
     </div>
   );
 }
@@ -1197,7 +1180,7 @@ function Stat({
         {value}
       </div>
       <div className="font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-muted flex items-center gap-1">
-        <span className="material-symbols-outlined text-sm">{icon}</span>
+        <Icon name={icon} className="text-sm" />
         {label}
       </div>
     </div>

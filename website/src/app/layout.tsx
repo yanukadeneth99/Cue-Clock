@@ -291,38 +291,14 @@ export default function RootLayout({
         {/*
           Runs before the page is drawn. It turns on the hero flash guard plus
           a backup timer that shows the hero if the intro animation never runs.
-          It also waits for the real icon font to finish loading, then fades the
-          icons in so a slow connection never shows their stray letters. We only
-          reveal once the icon font is both known to the browser and finished
-          loading — an earlier "ready" check fired too soon and let letters flash
-          on slow loads. A 60s limit makes sure icons never stay hidden for good.
         */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
 document.documentElement.classList.add('js');
-(function () {
-  var el = document.documentElement;
-  setTimeout(function () { el.classList.add('gsap-safety'); }, 10000);
-  function reveal() { el.classList.add('fonts-ready'); }
-  if (!(document.fonts && document.fonts.load)) { setTimeout(reveal, 3000); return; }
-  var F = '24px "Material Symbols Outlined"';
-  var start = Date.now();
-  function ready() {
-    var has = false;
-    document.fonts.forEach(function (f) {
-      if (f.family.indexOf('Material Symbols') > -1) has = true;
-    });
-    return has && document.fonts.check(F);
-  }
-  function poll() {
-    if (ready()) { reveal(); return; }
-    if (Date.now() - start > 60000) { reveal(); return; }
-    document.fonts.load(F);
-    setTimeout(poll, 200);
-  }
-  poll();
-})();
+setTimeout(function () {
+  document.documentElement.classList.add('gsap-safety');
+}, 10000);
 `,
           }}
         />
@@ -339,17 +315,6 @@ document.documentElement.classList.add('js');
             content="script-src 'self' 'unsafe-eval' 'unsafe-inline'"
           />
         ) : null}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/*
-          The icon font turns words like "settings" and "help" into pictures.
-          `display=block` keeps those spots blank for a moment while it loads
-          instead of showing the raw words. Next.js flags loading a font this
-          way, but this font can't be loaded its preferred way, so we turn the
-          warning off below.
-        */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
         <link rel="icon" href="/logo_cropped.png" type="image/png" />
         <link rel="apple-touch-icon" href="/logo_cropped.png" />
         <script
