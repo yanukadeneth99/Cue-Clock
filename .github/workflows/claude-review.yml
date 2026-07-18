@@ -35,6 +35,8 @@ jobs:
         # Pinned to a specific, unchangeable version of the review tool (not a tag that could be silently swapped later) — upgrade this deliberately.
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1.0.175
         with:
+          # Same fix as claude-pr-decider.yml: give the action a GitHub token up front so it never tries the OIDC-to-App token swap, which fails with "401 Invalid OIDC token" whenever this workflow is started by a pull request. Side effect: comments come from github-actions[bot] instead of claude[bot]. Set for every trigger, not just pull requests, so there is only one code path to reason about.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Claude can only read the issue/PR and post one comment — it cannot edit code, labels, or titles, close/merge anything, or access the internet.
           claude_args: >-
