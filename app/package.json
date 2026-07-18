@@ -24,7 +24,7 @@
     "@react-native-community/datetimepicker": "8.6.0",
     "@react-native-firebase/analytics": "^23.8.8",
     "@react-native-firebase/app": "^23.8.8",
-    "@react-native-firebase/crashlytics": "^23.8.8",
+    "@react-native-firebase/crashlytics": "^25.1.0",
     "@react-native-firebase/perf": "^23.8.8",
     "@react-native-picker/picker": "2.11.4",
     "@react-navigation/native": "^7.1.6",
