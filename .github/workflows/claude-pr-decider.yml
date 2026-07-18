@@ -30,6 +30,7 @@ jobs:
       contents: read
       pull-requests: write # Claude comments; deterministic step labels/merges
       issues: write # add human-review label (issues + PRs share the label API)
+      id-token: write # the Claude action needs this to get its access token; without it the run dies instantly
     steps:
       # Pull the trusted master tree into the workspace so Claude can actually read CLAUDE.md and the surrounding code. The action does NOT check out the repo on its own. On a workflow_run trigger this defaults to the default branch (master), which is exactly the trusted base we want to review the PR against.
       - name: Checkout master (trusted base to review against)
@@ -109,6 +110,7 @@ jobs:
               - Correctness bugs, regressions to existing features (esp. the alarm,
                 countdown, and 3-second beep timing invariants), and edge cases.
               - Is it minimal and focused, or does it sprawl beyond the issue?
+              - Does the fix break any existing features or has the potential to (ex: Breaking changes package update)
             Read the surrounding code (Read/Glob/Grep) to judge regressions — do NOT
             build, install, or run anything.
 
@@ -120,8 +122,8 @@ jobs:
               gh pr edit <number> --remove-label ai-merge-approved
             Then: gh pr comment <number> --body "..." summarising your verdict and, on a reject, the concrete blocking problems with file/line references. Never merge or dispatch yourself.
 
-      # The ONLY step that can merge. On approve it re-checks green and merges. On reject it hands the PR to the auto-fixer (passing the number, since a failed run can't carry it) and fails the run so the rejection is visible.
-      - name: Merge if approved, otherwise hand the PR to the auto-fixer and fail
+      # The ONLY step that can merge. On approve it re-checks green and merges. On reject it hands the PR to the auto-fixer (passing the number, since a failed run can't carry it). A rejection is a normal outcome, so it notes the result on the run page instead of failing the run — if a rejection showed red, a genuinely broken run would look the same and get ignored.
+      - name: Merge if approved, otherwise hand the PR to the auto-fixer
         if: steps.gate.outputs.proceed == 'true'
         env:
           # A personal access token (not the default one) so the merge push to master triggers the next build, AND so the fixer dispatch actually starts a run — dispatches made with the default GITHUB_TOKEN do not.
@@ -146,9 +148,11 @@ jobs:
           if echo "$labels" | grep -qx 'ai-implemented'; then
             echo "PR #${PR} was not approved — dispatching the auto-fixer in review mode."
             gh workflow run claude-ci-auto-fix.yml --repo "${REPO}" --ref master -f pr_number="${PR}" -f reason=review
-            echo "Auto-fixer dispatched for PR #${PR}. Failing this run to reflect the rejected review."
+            echo "### Rejected, sent to the auto-fixer" >> "$GITHUB_STEP_SUMMARY"
+            echo "PR #${PR} was not approved. The auto-fixer is now working on it; Claude's comment on the PR says what is blocking." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "PR #${PR} (dependencies) was not approved — flagging for a human, not the fixer."
             gh pr edit "${PR}" --repo "${REPO}" --add-label human-review
+            echo "### Rejected, needs a human" >> "$GITHUB_STEP_SUMMARY"
+            echo "PR #${PR} is a dependency update the auto-fixer cannot touch. Claude's comment on the PR says what is blocking." >> "$GITHUB_STEP_SUMMARY"
           fi
-          exit 1

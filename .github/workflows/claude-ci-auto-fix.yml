@@ -49,6 +49,7 @@ jobs:
       issues: write # gh issue view for context, and add the human-review label when a fix isn't possible (labels use the issues API)
       actions: read # read failed run logs + the daily-cap count
       security-events: read # read security alerts for context on the linked issue
+      id-token: write # the Claude action needs this to get its access token; without it the run dies instantly
     steps:
       # Work out which PR + branch to fix, and in which mode, from whichever trigger fired. Build path: everything from the failed run. Review path: the PR number came in as a dispatch input, so look the branch up from it.
       - name: Resolve PR, branch, and mode
