@@ -129,10 +129,10 @@
   }
 }
 
-/* ─── Icon font (Material Symbols) ─────────────────────────────────────
-   The icons come from a remote font. Until it loads, pin every icon to a
-   1em box so buttons don't resize, and clip any stray source text ("menu",
-   "close") that would otherwise show. This box-lock always applies. */
+/* ─── Icons ─────────────────────────────────────────────────────────────
+   The icons load from the internet. Until they arrive, keep every icon in a
+   fixed square so buttons don't resize, and hide any stray letters. This
+   always applies. */
 .material-symbols-outlined {
   display: inline-block;
   width: 1em;
@@ -141,9 +141,9 @@
   overflow: hidden;
   text-align: center;
 }
-/* With JavaScript on, keep icons hidden until the font is truly ready, then
-   fade them in — so a slow load never flashes the source words. Without
-   JavaScript the box-lock still holds and icons appear once the font loads. */
+/* With JavaScript on, keep icons hidden until they finish loading, then fade
+   them in — so a slow connection never shows stray letters. Without
+   JavaScript the square still holds and icons appear once loaded. */
 html.js .material-symbols-outlined {
   opacity: 0;
 }
@@ -152,11 +152,11 @@ html.fonts-ready .material-symbols-outlined {
   transition: opacity 240ms ease-out;
 }
 
-/* ─── Hero load flash guard ────────────────────────────────────────────
-   The page paints the hero in place, then GSAP animates it in from hidden,
-   which looked like a flash. Hold the hero hidden until GSAP takes over.
-   `gsap-safety` (a timer in layout.tsx) reveals it if GSAP never runs, and
-   the whole rule is off without JavaScript so no-JS visitors still see it. */
+/* ─── Hero flash guard ──────────────────────────────────────────────────
+   The hero is drawn in place first, then its intro animation replays it from
+   hidden, which looked like a flash. Hide it until the animation takes over.
+   A backup timer (in layout.tsx) shows it if the animation never runs, and it
+   stays visible without JavaScript. */
 html.js:not(.gsap-safety) .hero-content > *,
 html.js:not(.gsap-safety) .hero-mockup,
 html.js:not(.gsap-safety) .feature-card {

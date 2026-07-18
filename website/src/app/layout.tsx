@@ -289,17 +289,13 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head>
         {/*
-          Runs before the page paints. It marks `js` so the hero flash guard in
-          globals.css can hold the hero hidden until GSAP animates it in, and a
-          safety timer reveals the hero if GSAP never runs. It also marks
-          `fonts-ready` once the Material Symbols icon font has actually loaded,
-          so the icons fade in without ever flashing their source words.
-
-          We wait for the icon font by BOTH checking it is registered (its
-          `@font-face` exists) and that it has loaded — not `document.fonts.ready`
-          or a bare `check()`, which report ready before the icon font's remote
-          stylesheet has even downloaded and would reveal the source words on a
-          slow load. A 60s cap makes sure icons can never stay hidden for good.
+          Runs before the page is drawn. It turns on the hero flash guard plus
+          a backup timer that shows the hero if the intro animation never runs.
+          It also waits for the real icon font to finish loading, then fades the
+          icons in so a slow connection never shows their stray letters. We only
+          reveal once the icon font is both known to the browser and finished
+          loading — an earlier "ready" check fired too soon and let letters flash
+          on slow loads. A 60s limit makes sure icons never stay hidden for good.
         */}
         <script
           dangerouslySetInnerHTML={{
@@ -346,15 +342,11 @@ document.documentElement.classList.add('js');
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/*
-          Material Symbols is a ligature icon font: glyphs are resolved from
-          text like "settings", "help", "fullscreen". With `display=swap`, the
-          fallback font renders the ligature *source text* until the icon font
-          loads, so users briefly see the literal words "settings help
-          fullscreen" before the glyphs appear. `display=block` hides those
-          spots (for up to ~3s) instead of showing wrong text, which is the
-          right trade-off for an icon font even though Next.js flags it.
-          The `no-page-custom-font` disable is for using <link> instead of
-          next/font (Material Symbols isn't supported by next/font/google).
+          The icon font turns words like "settings" and "help" into pictures.
+          `display=block` keeps those spots blank for a moment while it loads
+          instead of showing the raw words. Next.js flags loading a font this
+          way, but this font can't be loaded its preferred way, so we turn the
+          warning off below.
         */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
