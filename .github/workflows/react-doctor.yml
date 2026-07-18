@@ -1,0 +1,32 @@
+name: React Doctor
+
+# Pull requests only - website changes are reviewed before merging, so there is no need to scan again after the merge.
+# This workflow only scans the "website" folder, so it only runs when something in there changed. The rest of the repo (the app, the tests) is not scanned by it. The workflow file itself is listed too so edits to this file still trigger a run and can be verified.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "website/**"
+      - ".github/workflows/react-doctor.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+concurrency:
+  group: react-doctor-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  react-doctor:
+    runs-on: ubuntu-latest
+    steps:
+      # Kept on v4 to match every other workflow in this repo (one checkout version everywhere).
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: millionco/react-doctor@938008119a288f2fb47c66a69cd9279a21f31784 # v2
+        with:
+          scope: full
+          directory: website

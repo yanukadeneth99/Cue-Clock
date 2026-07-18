@@ -6,27 +6,22 @@
 # release. It builds the app exactly like a release would, then throws the
 # result away.
 #
-# Runs on:  pull requests that touch app/ or any of the release workflows.
+# Runs on:  pull requests that change anything under app/, or that edit the beta /
+#           promote release workflows (so a broken release path is caught before
+#           merge). Website- or docs-only PRs skip this build.
 #
 # Uses:     NO real secrets. A dummy version number (0.0.24), a fake Firebase
 #           config, and a signing key generated on the spot and discarded.
 #           Nothing is ever uploaded to Google Play — pass/fail is the point.
-#
-# Why android-beta.yml and android-promote.yml are in the trigger list:
-#           edits to either release workflow should get this sanity check
-#           before merge, even though this dry-run only exercises the build
-#           path (promotion doesn't build, so its changes get caught by
-#           review + a real promotion run).
 # =============================================================================
 name: Android Release Verify
 
 on:
   pull_request:
     paths:
+      - 'app/**'
       - '.github/workflows/android-beta.yml'
       - '.github/workflows/android-promote.yml'
-      - '.github/workflows/android-release-verify.yml'
-      - 'app/**'
 
 # If new commits land on the same PR while a check is running, cancel the old
 # check — only the newest code needs verifying.
