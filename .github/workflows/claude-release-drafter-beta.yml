@@ -81,7 +81,10 @@ jobs:
               "notes": "## What's changed\n- FIXED ...\n- NEW ...",
               "telegram": "Verdict: ...\n\nChanges:\n- ...\n\nCaution:\n- ..."
             }
-            Rules for notes: start with a "## What's changed" heading, then short bullets prefixed NEW, FIXED, UPDATE, or Optimized. Keep it tight; it becomes the Google Play "What's new" and the final text is capped at 500 characters. Keep YOUR written notes under about 380 characters, since a "Full Changelog" link (~95 characters) is appended automatically after you write, and the combined total must stay within the 500-character cap. Do not add a Full Changelog line yourself; it is appended automatically. The notes are user-facing only; never put CLAUDE.md concerns or testing notes in them.
+            Rules for notes: start with a "## What's changed" heading, then go straight into the bullets. Do NOT write a summary sentence; that is the production drafter's job, not this one. Every bullet must read "- LABEL: Description". LABEL is ALL CAPITALS and must be one of NEW, FIXED, UPDATE, or OPTIMIZED, followed by a colon. Description starts with a capital letter. Never write a label in mixed case such as "Optimized", and never leave the colon out. These notes are read by beta testers, who chose to test and want detail, so BE TECHNICAL AND SPECIFIC: name the screen, setting, component, or native module involved and say what actually changed and why it behaves differently now. Do not smooth it into marketing language, and do not hide the mechanism. Keep it tight; it becomes the Google Play "What's new" for Open Testing and the final text is capped at 500 characters. Keep YOUR written notes under about 380 characters, since a "Full Changelog" link (~95 characters) is appended automatically after you write, and the combined total must stay within the 500-character cap. Do not add a Full Changelog line yourself; it is appended automatically. Never put CLAUDE.md concerns or things to test in the notes; those belong in the telegram field.
+
+            Example of a good notes value:
+            "## What's changed\n- FIXED: The final 3 second beep no longer drops its first tick when the primary cue changes mid-countdown.\n- OPTIMIZED: Passed cues are now worked out fresh every second, so they still hide correctly after the app is suspended."
 
             Rules for telegram: this is a phone message to the maintainer, so it must be skimmable in a few seconds. Write it as ONE JSON string using \n for a line break, with exactly these three labels in this order: "Verdict:", "Changes:", and "Caution:". Put a BLANK LINE before "Changes:" and before "Caution:", written as \n\n, so the three sections read as separate blocks on a phone instead of one long paragraph. Verdict is a single plain sentence on the same line as its label, saying what this beta is and whether anything needs attention. Changes and Caution are each followed by "- " bullets on their own lines, one short point per bullet. Under Changes, say what actually changed in the code, but name the feature, screen, or behaviour rather than file paths, class names, or function names. Under Caution, list what to test on a real device plus any CLAUDE.md concern you found; if nothing stands out, say that in one bullet instead of leaving it empty. Plain everyday words only, no jargon and no abbreviations a non-developer would not know. Keep the whole message under about 900 characters.
 
@@ -139,7 +142,10 @@ jobs:
       - name: Create or refresh the draft
         if: steps.context.outputs.proceed == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          # This step uses RELEASE_PAT, not the built-in token, and it is the ONLY step here that does.
+          # Two reasons. First, the draft then shows the maintainer as its author, matching the production drafter. Second, it closes a real gap: this draft aims at whatever commit master was on when the job checked out, but the save happens about two minutes later, so a push landing in between leaves us aiming at a commit that is no longer the tip of master. GitHub refuses that with the built-in token whenever the commit also changes workflow files, and the run fails with "403 Resource not accessible by integration".
+          # RELEASE_PAT is limited to this repo and to two rights, Contents and Workflows. Claude's step runs earlier and never sees it.
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
           N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
           N8N_WEBHOOK_TOKEN: ${{ secrets.N8N_WEBHOOK_TOKEN }}
         run: node .github/scripts/create-beta-draft.js
