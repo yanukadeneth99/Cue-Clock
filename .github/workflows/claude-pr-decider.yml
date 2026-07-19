@@ -121,7 +121,8 @@ jobs:
           # Hand the action a ready-made GitHub token instead of letting it make its own. Left to itself it swaps a GitHub OIDC token for a Claude App token, and that swap always fails with "401 Invalid OIDC token" on pull_request_target runs (the same swap works fine on issue/comment runs, so it is the trigger type, not our credentials). Side effect: Claude's comments show up as github-actions[bot] rather than claude[bot], and sticky comments stop working. The job's own permissions block above is what limits this token.
           github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          allowed_bots: "claude,github-actions"
+          # dependabot is listed because this workflow reviews its pull requests. The gate is on the actor that TRIGGERED the run, and on a workflow_run that actor is inherited from the build that just passed — so a Dependabot pull request arrives here as actor "dependabot" and the action refuses it outright without this, which is why dependency pull requests were never actually getting reviewed. Named explicitly rather than "*": only these three bots may set Claude running, and the gate step above still independently proves the pull request is same-repo, labelled, and green.
+          allowed_bots: "claude,github-actions,dependabot"
           # Claude can read the PR, comment on it, and add a label — but it is explicitly forbidden from merging or closing the PR; only the next, non-AI step in this workflow is allowed to actually merge.
           claude_args: >-
             --model opus

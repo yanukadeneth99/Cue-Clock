@@ -228,7 +228,8 @@ jobs:
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          allowed_bots: "claude,github-actions"
+          # dependabot is listed because this workflow fixes its pull requests. The gate is on the actor that TRIGGERED the run, and on a workflow_run that actor is inherited from the build that failed — so a Dependabot pull request arrives here as actor "dependabot" and the action refuses it outright without this. Named explicitly rather than "*": only these three bots may set Claude running, and the steps above still independently prove the pull request is same-repo and correctly labelled.
+          allowed_bots: "claude,github-actions,dependabot"
           # Passing 'prompt' runs the action automatically instead of waiting for an "@claude" mention.
           prompt: |
             A Cue Clock automation needs you to fix pull request #${{ steps.ctx.outputs.pr }}
