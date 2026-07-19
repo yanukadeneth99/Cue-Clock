@@ -4,12 +4,7 @@
 name: Claude Beta Release Drafter
 
 on:
-  # Runs whenever app code lands on master, so the draft always matches what is on master. The path filter means a website-only or workflow-only push never starts a run.
-  push:
-    branches: [master]
-    paths:
-      - 'app/**'
-  # A button on the Actions tab to run it on demand.
+  # Started by release-drafter-dispatch.yml whenever app code lands on master, and also available as a button on the Actions tab. It cannot listen for pushes itself, because the Claude action only accepts a short list of event types and "push" is not one of them.
   workflow_dispatch:
 
 # Only draft one at a time. A newer push cancels an older run still going, so several pushes landing together produce one draft and one message instead of several.

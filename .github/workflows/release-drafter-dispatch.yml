@@ -1,0 +1,59 @@
+# Release Drafter Dispatch
+# ------------------------
+# This starts the two release drafters. It does no thinking of its own.
+# It exists because the Claude action only accepts a short list of event types, and "push" and "release" are not among them. So this workflow listens for those two events and then starts the right drafter through "workflow_dispatch", which the Claude action does accept.
+name: Release Drafter Dispatch
+
+on:
+  # App code landed on master, so the beta draft may be out of date. The path filter means a website-only or workflow-only push never starts anything.
+  push:
+    branches: [master]
+    paths:
+      - 'app/**'
+  # A release was published. If it was a beta, the production draft may now be out of date.
+  release:
+    types: [published]
+
+# Only start one drafter at a time. A newer push cancels an older run still waiting, so several pushes landing together start the drafter once instead of several times.
+concurrency:
+  group: release-drafter-dispatch
+  cancel-in-progress: true
+
+# Starting another workflow is the only power this needs.
+permissions:
+  actions: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Start the right drafter
+        uses: actions/github-script@v7
+        env:
+          # Passed through env rather than inlined into the script, because release text is untrusted.
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        with:
+          script: |
+            // Push means app code changed, so refresh the beta draft.
+            // A published pre-release means a beta is now live, so refresh the production draft.
+            // A published full release is the end of the line and needs no drafter.
+            let workflow = null;
+            if (context.eventName === 'push') {
+              workflow = 'claude-release-drafter-beta.yml';
+            } else if (process.env.IS_PRERELEASE === 'true') {
+              workflow = 'claude-release-drafter-production.yml';
+            }
+
+            if (!workflow) {
+              core.info('A full release was published. No drafter needed.');
+              return;
+            }
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflow,
+              ref: 'master',
+            });
+            core.info(`Started ${workflow}`);

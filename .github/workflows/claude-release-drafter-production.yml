@@ -4,10 +4,7 @@
 name: Claude Production Release Drafter
 
 on:
-  # Fires the moment a release is published. We use "published" and check the pre-release flag below, because GitHub does NOT fire "prereleased" when a pre-release is published from a draft, which is exactly how our beta drafter creates them. Verified by experiment, not just by the docs. Drafts are inert, so this cannot start a build.
-  release:
-    types: [published]
-  # A button on the Actions tab to run it on demand.
+  # Started by release-drafter-dispatch.yml whenever a beta is published, and also available as a button on the Actions tab. It cannot listen for releases itself, because the Claude action only accepts a short list of event types and "release" is not one of them.
   workflow_dispatch:
 
 # Never let two runs draft at the same time.
@@ -24,8 +21,6 @@ jobs:
   draft-production:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Skip anything that is clearly not one of our tags. This is a cheap first filter only; the real check is in the scaffold, which counts a beta only if it is published AND shaped exactly vX.Y.Z-beta.N. A manual run has no release attached, so it always passes.
-    if: github.event_name == 'workflow_dispatch' || (github.event.release.prerelease == true && startsWith(github.event.release.tag_name, 'v'))
     steps:
       - name: Checkout (full history and tags)
         uses: actions/checkout@v4
