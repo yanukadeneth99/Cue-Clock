@@ -137,6 +137,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
           N8N_WEBHOOK_TOKEN: ${{ secrets.N8N_WEBHOOK_TOKEN }}
+          # TEMPORARY, remove once we have the answer.
+          # This run keeps failing with "403 Resource not accessible by integration" when it saves the draft. This setting makes the gh tool print what GitHub sent back, so we can read the "X-Accepted-GitHub-Permissions" line and see exactly which permission GitHub wanted. Secrets are hidden by GitHub in the log, so this is safe to run once.
+          GH_DEBUG: api
         run: node .github/scripts/create-production-draft.js
 
       - name: Note a skip in the run summary
