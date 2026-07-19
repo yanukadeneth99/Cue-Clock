@@ -34,15 +34,12 @@ Three top-level products live in this one repo. Read this map first to know whic
 
 ## Stack & Layout
 
-React Native 0.83, Expo SDK 55, TypeScript 5.9 (strict), Expo Router, Luxon 3, AsyncStorage, `@notifee/react-native` 9.1.8, `expo-audio` 55, `@react-native-firebase/*`, `@microsoft/react-native-clarity`. Styling is inline `style={...}` only (no StyleSheet libs); colors via `app/constants/colors.ts`, typography via `app/constants/typography.ts`, safe area via `useSafeAreaInsets()` (never hardcode insets). Package: `com.yanukadeneth99.cueclock`.
+Stack and versions live in `app/package.json` and `app/app.json` — read those rather than trusting a copy here. Styling is inline `style={...}` only (no StyleSheet libs); colors via `app/constants/colors.ts`, typography via `app/constants/typography.ts`, safe area via `useSafeAreaInsets()` (never hardcode insets). Package: `com.yanukadeneth99.cueclock`.
 
 - `app/app/index.tsx` — HomeScreen; ALL app state lives here and persists to AsyncStorage. Three render branches (see below).
 - `app/lib/` — `alarms.ts` (Notifee wrapper), `alarmHandlers.ts` (bg/fg event dispatcher + bg vibration loop), `time.ts` (`computeCountdown` etc.), `urgency.ts` (`urgencyFactor`), `useNow.ts` (wall-clock-aligned 1s ticker).
 - `app/modules/expo-alarm-vibrator/` — local native Kotlin module for ALARM-class vibration.
 - `app/plugins/withFullScreenAlarm.js` — adds `showWhenLocked` + `turnScreenOn` to MainActivity (Android-only, no-op elsewhere).
-- `website/` — Next.js 16 landing page (Tailwind 4, GSAP); tokens mirror `app/constants/colors.ts` via `@theme` in `globals.css`.
-- `tests/ai/` — Gemini-driven E2E harness with TWO runners sharing one markdown scenario format: `android/` (LangChain.js + LangGraph driving `agent-device` against a physical Android phone, run via `cold-reload.sh` + Metro) and `web/` (Python `browser-use` + Playwright driving Chromium against the web build). Gemini-only (`config.json` `llm.model`, key in gitignored `tests/ai/.env`). See `## Repository Architecture` above.
-- `.github/workflows/` — `android-internal` (push→master), `android-beta` (pre-release), `android-promote` (full release→Production), `android-release-verify` (PR dry-run), `web-deploy` (full release→Coolify).
 
 ---
 
@@ -134,6 +131,7 @@ Build workflows: Ubuntu 24.04, JDK 17, Node 22, SDK 35; `npm ci` → `expo prebu
 
 **Hard invariants (do NOT change):**
 
+- **Release workflows MUST trigger on `published`, never `prereleased`.** GitHub does not fire `prereleased` when a pre-release is published from a DRAFT, and our drafters always create drafts, so the workflow would silently never run. Use `types: [published]` and check `github.event.release.prerelease` in the job's `if:`. Tested on a scratch repo, July 2026: publishing a draft pre-release fires only `published`; publishing a draft full release fires `published` and `released`. `released` is therefore safe and is why `android-promote.yml` and `web-deploy.yml` are left as they are.
 - **ABIs are ARM-only** (`arm64-v8a,armeabi-v7a`). x86/x86_64 are deliberately excluded; emulators run ARM via translation. Do NOT re-add.
 - **`useLegacyPackaging` MUST stay `true`** (via `expo-build-properties` in `app.json`). It forces `extractNativeLibs="true"`; with `false`, Android 11 and below have a buggy direct-from-APK path for `libc++_shared.so` that fatally crashes RN's New Architecture at `MainApplication.onCreate` (100% Android 11, real devices). Android 12+ is unaffected, but do NOT flip back.
 
@@ -143,14 +141,7 @@ Secrets: `EXPO_PUBLIC_CLARITY_KEY`, `ANDROID_KEYSTORE_BASE64`/`_PASSWORD`, `ANDR
 
 ## Local On-Device Testing (MacBook M1)
 
-| Role        | Device            | Android     | Skin                | Serial         |
-| ----------- | ----------------- | ----------- | ------------------- | -------------- |
-| **Primary** | Xiaomi Mi A2 Lite | 10 (API 29) | Android One (stock) | `7dfe965e0405` |
-| Secondary   | Redmi Note 12     | 15 (API 35) | HyperOS V816        | `eb5f39be`     |
-
-Use the Mi A2 Lite (near-stock) for day-to-day dev and E2E runs; the Note 12 for HyperOS-specific validation. JDK 17 + Android SDK installed; pin `JAVA_HOME` per-command, don't change the global. **JS changes:** `./app/scripts/cold-reload.sh` (kills Metro, restarts with `--clear`, re-forwards the port, relaunches) — never trust Metro's warm cache; `--wipe` also `pm clear`s app data to re-fire onboarding. **Native changes** (Kotlin/Java, app.json, plugins, native deps): `gradlew app:installDebug` with `-PreactNativeArchitectures=arm64-v8a`.
-
-Gotchas: `INSTALL_FAILED_VERSION_DOWNGRADE` → uninstall the Play build first. Every USB replug breaks `adb reverse` — re-run. `expo prebuild` drops Notifee's local Maven entry from `android/build.gradle` — re-add `maven { url "$rootDir/../node_modules/@notifee/react-native/android/libs" }` to `allprojects.repositories`. Android 10 (Mi A2 Lite) doesn't need `POST_NOTIFICATIONS`. HyperOS (Note 12) wipes per-app toggles on every reinstall — re-enable Other Permissions + Autostart + Battery-unrestricted or background/locked FSI silently fails.
+Device table, flash commands, and adb/Metro/Gradle gotchas live in the `on-device-testing` skill (`.claude/skills/on-device-testing/SKILL.md`) so they load only when you're actually working with hardware.
 
 ---
 
