@@ -1,14 +1,11 @@
-// Actor for the beta release drafter.
-// Reads Claude's decision, creates or refreshes the draft, then tells n8n to notify Telegram.
-// Set DRY_RUN=1 to print what it would do without touching GitHub or n8n.
+// Actor for the production release drafter.
+// Reads Claude's decision, creates or refreshes the production draft, then tells n8n
+// to notify Telegram. Set DRY_RUN=1 to print what it would do without touching anything.
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const {
-  validateDecision,
-  resolveVersion,
-} = require('./lib/beta-decision.js');
+const { validateProductionDecision } = require('./lib/production-decision.js');
 const {
   ensureCompareLine,
   buildDraftArgs,
@@ -25,46 +22,31 @@ async function main() {
   const decision = readJson(process.env.DECISION_FILE || 'release-decision.json');
 
   // Guard 1: refuse to act on a malformed decision. No draft appears on a bad file.
-  const check = validateDecision(decision, context.candidates);
+  const check = validateProductionDecision(decision);
   if (!check.ok) {
-    console.error('Invalid decision.json:', check.errors.join('; '));
+    console.error('Invalid release-decision.json:', check.errors.join('; '));
     process.exit(1);
   }
 
-  // Normal "not worth shipping" outcome.
-  if (decision.ship === false) {
-    console.log('Claude decided not to ship. No draft created.');
-    return;
-  }
-
-  const newTag = resolveVersion(context.candidates, decision.bumpKey);
-  const isRefresh = Boolean(context.isRefresh);
-  const existingDraftTag = context.existingDraftTag || null;
-  const versionChanged = isRefresh && existingDraftTag !== null && existingDraftTag !== newTag;
-
-  // Build the final notes with a correct compare line.
-  const compareUrl = context.compareUrlTemplate
-    ? context.compareUrlTemplate.replace('__NEW_TAG__', newTag)
-    : null;
-  const notes = ensureCompareLine(decision.notes, compareUrl);
-
-  const notesFile = path.join(os.tmpdir(), `beta-notes-${newTag}.md`);
+  const notes = ensureCompareLine(decision.notes, context.compareUrl);
+  const notesFile = path.join(os.tmpdir(), `production-notes-${context.targetVersion}.md`);
   fs.writeFileSync(notesFile, notes);
 
+  // prerelease is false here: this is the real thing, waiting for a human to publish.
   const args = buildDraftArgs({
-    newTag,
-    targetSha: context.targetCommit,
+    newTag: context.targetVersion,
+    targetSha: context.targetSha,
     notesFile,
-    isRefresh,
-    existingDraftTag,
-    versionChanged,
-    prerelease: true,
+    isRefresh: context.isRefresh,
+    existingDraftTag: context.existingDraftTag,
+    versionChanged: context.versionChanged,
+    prerelease: false,
   });
 
   const releaseUrl = `${context.repoUrl}/releases`;
   const payload = buildWebhookPayload({
-    event: 'beta_draft_created',
-    version: newTag,
+    event: 'production_draft_created',
+    version: context.targetVersion,
     releaseUrl,
     telegram: decision.telegram,
   });
@@ -76,9 +58,11 @@ async function main() {
     return;
   }
 
-  // Guard 2: create or update the draft. A gh failure fails the run (nothing partial is published).
+  // Guard 2: create or update the draft. A gh failure fails the run.
   execFileSync('gh', args, { stdio: 'inherit', env: process.env });
-  console.log(`Draft ready: ${newTag} (refresh=${isRefresh}, renamed=${versionChanged})`);
+  console.log(
+    `Production draft ready: ${context.targetVersion} (refresh=${context.isRefresh}, renamed=${context.versionChanged})`,
+  );
 
   // Guard 3: notify n8n. A failure here must NOT fail the run; the draft is the source of truth.
   const url = process.env.N8N_WEBHOOK_URL;

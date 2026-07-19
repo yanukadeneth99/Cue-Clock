@@ -1,7 +1,7 @@
 // Tests for the pure beta version logic. No network, no git, just inputs and outputs.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const v = require('./beta-version.js');
+const v = require('./version.js');
 
 test('parseVersion reads production and beta tags', () => {
   assert.deepEqual(v.parseVersion('v0.1.2'), { major: 0, minor: 1, patch: 2, beta: null });

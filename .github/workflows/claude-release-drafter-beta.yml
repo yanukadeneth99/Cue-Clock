@@ -1,19 +1,21 @@
 # Beta Release Drafter
 # --------------------
-# Once a day this checks what changed in the app. If it is worth a new beta, Claude writes the release notes and this saves them as a DRAFT release and sends a Telegram message. It never publishes anything. You read the draft and press Publish yourself, and only that starts a real build.
+# Whenever app code lands on master this checks what changed. If it is worth a new beta, Claude writes the release notes and this saves them as a DRAFT release and sends a Telegram message. It never publishes anything. You read the draft and press Publish yourself, and only that starts a real build.
 name: Claude Beta Release Drafter
 
 on:
-  # Runs every day at 18:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30 with no daylight saving, so that is 12:30 UTC the same day. On quiet days it finds nothing to do and stops early.
-  schedule:
-    - cron: '30 12 * * *'
+  # Runs whenever app code lands on master, so the draft always matches what is on master. The path filter means a website-only or workflow-only push never starts a run.
+  push:
+    branches: [master]
+    paths:
+      - 'app/**'
   # A button on the Actions tab to run it on demand.
   workflow_dispatch:
 
-# Never let a scheduled run and a manual run draft at the same time.
+# Only draft one at a time. A newer push cancels an older run still going, so several pushes landing together produce one draft and one message instead of several.
 concurrency:
   group: claude-release-drafter-beta
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 # The smallest set of powers this needs: save draft releases, plus the sign-in used by the Claude step.
 permissions:
@@ -56,7 +58,7 @@ jobs:
           claude_args: >-
             --model opus
             --max-turns 30
-            --allowed-tools "Read,Grep,Glob,Bash(git log:*),Bash(git diff:*),Write"
+            --allowed-tools "Read,Grep,Glob,Bash(git log:*),Bash(git diff:*),Write(release-decision.json)"
             --disallowed-tools "Edit,MultiEdit,NotebookEdit,WebFetch,WebSearch,Bash(gh:*),Bash(git push:*),Bash(git commit:*),Bash(curl:*),Bash(npm:*),Bash(npx:*)"
           prompt: |
             You draft the next Android beta release for Cue Clock. You do not publish anything.
@@ -82,14 +84,14 @@ jobs:
               "ship": true,
               "bumpKey": "<one key from candidates>",
               "notes": "## What's changed\n- FIXED ...\n- NEW ...",
-              "telegram": "Verdict: ...\nChanges:\n- ...\nCaution:\n- ..."
+              "telegram": "Verdict: ...\n\nChanges:\n- ...\n\nCaution:\n- ..."
             }
             Rules for notes: start with a "## What's changed" heading, then short bullets prefixed NEW, FIXED, UPDATE, or Optimized. Keep it tight; it becomes the Google Play "What's new" and the final text is capped at 500 characters. Keep YOUR written notes under about 380 characters, since a "Full Changelog" link (~95 characters) is appended automatically after you write, and the combined total must stay within the 500-character cap. Do not add a Full Changelog line yourself; it is appended automatically. The notes are user-facing only; never put CLAUDE.md concerns or testing notes in them.
 
-            Rules for telegram: this is a phone message to the maintainer, so it must be skimmable in a few seconds. Write it as ONE JSON string using \n for every line break, with exactly these three labels in this order: "Verdict:", "Changes:", and "Caution:". Verdict is a single plain sentence on the same line as its label, saying what this beta is and whether anything needs attention. Changes and Caution are each followed by "- " bullets on their own lines, one short point per bullet. Under Changes, say what actually changed in the code, but name the feature, screen, or behaviour rather than file paths, class names, or function names. Under Caution, list what to test on a real device plus any CLAUDE.md concern you found; if nothing stands out, say that in one bullet instead of leaving it empty. Plain everyday words only, no jargon and no abbreviations a non-developer would not know. Keep the whole message under about 900 characters.
+            Rules for telegram: this is a phone message to the maintainer, so it must be skimmable in a few seconds. Write it as ONE JSON string using \n for a line break, with exactly these three labels in this order: "Verdict:", "Changes:", and "Caution:". Put a BLANK LINE before "Changes:" and before "Caution:", written as \n\n, so the three sections read as separate blocks on a phone instead of one long paragraph. Verdict is a single plain sentence on the same line as its label, saying what this beta is and whether anything needs attention. Changes and Caution are each followed by "- " bullets on their own lines, one short point per bullet. Under Changes, say what actually changed in the code, but name the feature, screen, or behaviour rather than file paths, class names, or function names. Under Caution, list what to test on a real device plus any CLAUDE.md concern you found; if nothing stands out, say that in one bullet instead of leaving it empty. Plain everyday words only, no jargon and no abbreviations a non-developer would not know. Keep the whole message under about 900 characters.
 
             Example of a good telegram value:
-            "Verdict: A small beta with one real fix to the countdown beep.\nChanges:\n- The final 3 second beep no longer skips its first tick\n- The app opens faster on older phones\nCaution:\n- Test the beep on a real phone, not the emulator\n- Nothing here goes against the project rules"
+            "Verdict: A small beta with one real fix to the countdown beep.\n\nChanges:\n- The final 3 second beep no longer skips its first tick\n- The app opens faster on older phones\n\nCaution:\n- Test the beep on a real phone, not the emulator\n- Nothing here goes against the project rules"
 
       # Save the draft (or update the one already there), then tell n8n to send the Telegram message.
       - name: Create or refresh the draft

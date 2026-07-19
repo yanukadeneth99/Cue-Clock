@@ -1,4 +1,4 @@
-// Pure version logic for the beta release drafter.
+// Pure version logic shared by the beta and production release drafters.
 // No git, no network. Everything here is a plain function of its inputs, so it is easy to test.
 
 // A valid tag is vX.Y.Z or vX.Y.Z-beta.N.
