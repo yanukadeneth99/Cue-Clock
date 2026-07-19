@@ -44,8 +44,8 @@ jobs:
   build-and-deploy:
     name: Build & Deploy to Open Testing
     runs-on: ubuntu-latest
-    # Defense in depth: GitHub already only fires `prereleased` for pre-releases,
-    # but a future trigger change shouldn't accidentally ship a full release here.
+    # This workflow listens to "published", which fires for EVERY release, beta or
+    # full. This check is what stops a full release from being built as a beta.
     if: github.event.release.prerelease == true
 
     steps:

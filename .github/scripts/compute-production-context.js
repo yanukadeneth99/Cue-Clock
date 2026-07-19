@@ -12,6 +12,9 @@ const {
   decideProductionProceed,
 } = require('./lib/production-decision.js');
 
+// Git's built-in "empty tree" hash. Diffing against it means "everything since the very first commit".
+const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+
 function git(args) {
   return execFileSync('git', args, { encoding: 'utf8' }).trim();
 }
@@ -73,9 +76,10 @@ function main() {
   const range = lastProductionTag ? `${lastProductionTag}..${targetSha}` : targetSha;
   const logOut = git(['log', '--pretty=%h %s', range, '--', 'app']);
   const commits = logOut ? logOut.split('\n') : [];
-  const diffStat = lastProductionTag
-    ? git(['diff', '--stat', `${lastProductionTag}..${targetSha}`, '--', 'app'])
-    : '';
+  // With no production tag yet, diff from the empty tree so we still get a real
+  // diffstat covering everything since the first commit, instead of an empty string.
+  const diffBase = lastProductionTag || EMPTY_TREE;
+  const diffStat = git(['diff', '--stat', `${diffBase}..${targetSha}`, '--', 'app']);
 
   const compareUrl = lastProductionTag
     ? `${repoUrl}/compare/${lastProductionTag}...${targetVersion}`

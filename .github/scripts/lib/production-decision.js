@@ -20,7 +20,8 @@ function pickLastPublishedProduction(releases) {
 }
 
 // Every PUBLISHED beta newer than the last production release, lowest first.
-// Draft betas are skipped because they were never built and never reached Google Play.
+// Draft betas are skipped because an unpublished draft never triggers a build at all.
+// (Publishing only means the build was triggered, not that it finished successfully.)
 function pickPublishedBetasAhead(releases, lastProductionTag) {
   // A baseline we can't parse can't be compared, so treat it like "no baseline"
   // instead of crashing: every published beta counts as ahead of it.
