@@ -134,11 +134,14 @@ jobs:
       - name: Create or refresh the production draft
         if: steps.context.outputs.proceed == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          # This step uses RELEASE_PAT, not the built-in token, and it is the ONLY step that does.
+          # Why: this draft points at the beta's commit, which is older than the tip of master. GitHub only lets you aim a release at an older commit if the token also has "workflows" rights, and the built-in token can never be given them. Without this the step fails with "403 Resource not accessible by integration".
+          # RELEASE_PAT is limited to this repo and to two rights, Contents and Workflows. Claude's step runs earlier and never sees it.
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
           N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
           N8N_WEBHOOK_TOKEN: ${{ secrets.N8N_WEBHOOK_TOKEN }}
-          # TEMPORARY, remove once we have the answer.
-          # This run keeps failing with "403 Resource not accessible by integration" when it saves the draft. This setting makes the gh tool print what GitHub sent back, so we can read the "X-Accepted-GitHub-Permissions" line and see exactly which permission GitHub wanted. Secrets are hidden by GitHub in the log, so this is safe to run once.
+          # TEMPORARY, remove once we have seen this step succeed.
+          # Makes the gh tool print what GitHub sent back, so a failure shows the exact permission GitHub wanted instead of a bare 403. Secrets are hidden by GitHub in the log.
           GH_DEBUG: api
         run: node .github/scripts/create-production-draft.js
 
