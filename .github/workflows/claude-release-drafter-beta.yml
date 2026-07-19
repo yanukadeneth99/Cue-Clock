@@ -80,9 +80,14 @@ jobs:
               "ship": true,
               "bumpKey": "<one key from candidates>",
               "notes": "## What's changed\n- FIXED ...\n- NEW ...",
-              "telegram": "Plain-language summary of which areas changed and how, any CLAUDE.md concerns, and what to check when testing."
+              "telegram": "Verdict: ...\nChanges:\n- ...\nCaution:\n- ..."
             }
             Rules for notes: start with a "## What's changed" heading, then short bullets prefixed NEW, FIXED, UPDATE, or Optimized. Keep it tight; it becomes the Google Play "What's new" and the final text is capped at 500 characters. Keep YOUR written notes under about 380 characters, since a "Full Changelog" link (~95 characters) is appended automatically after you write, and the combined total must stay within the 500-character cap. Do not add a Full Changelog line yourself; it is appended automatically. The notes are user-facing only; never put CLAUDE.md concerns or testing notes in them.
+
+            Rules for telegram: this is a phone message to the maintainer, so it must be skimmable in a few seconds. Write it as ONE JSON string using \n for every line break, with exactly these three labels in this order: "Verdict:", "Changes:", and "Caution:". Verdict is a single plain sentence on the same line as its label, saying what this beta is and whether anything needs attention. Changes and Caution are each followed by "- " bullets on their own lines, one short point per bullet. Under Changes, say what actually changed in the code, but name the feature, screen, or behaviour rather than file paths, class names, or function names. Under Caution, list what to test on a real device plus any CLAUDE.md concern you found; if nothing stands out, say that in one bullet instead of leaving it empty. Plain everyday words only, no jargon and no abbreviations a non-developer would not know. Keep the whole message under about 900 characters.
+
+            Example of a good telegram value:
+            "Verdict: A small beta with one real fix to the countdown beep.\nChanges:\n- The final 3 second beep no longer skips its first tick\n- The app opens faster on older phones\nCaution:\n- Test the beep on a real phone, not the emulator\n- Nothing here goes against the project rules"
 
       # Save the draft (or update the one already there), then tell n8n to send the Telegram message.
       - name: Create or refresh the draft
