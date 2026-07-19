@@ -58,7 +58,7 @@ jobs:
           claude_args: >-
             --model opus
             --max-turns 30
-            --allowed-tools "Read,Grep,Glob,Bash(git log:*),Bash(git diff:*),Write(release-decision.json)"
+            --allowed-tools "Read,Grep,Glob,Bash(git log:*),Bash(git diff:*),Write"
             --disallowed-tools "Edit,MultiEdit,NotebookEdit,WebFetch,WebSearch,Bash(gh:*),Bash(git push:*),Bash(git commit:*),Bash(curl:*),Bash(npm:*),Bash(npx:*)"
           prompt: |
             You draft the next PRODUCTION release for Cue Clock. You do not publish anything.
@@ -87,6 +87,17 @@ jobs:
 
             Example of a good telegram value:
             "Verdict: Rolls up two betas of countdown fixes; ready for real users.\n\nChanges:\n- The final 3 second beep no longer skips its first tick\n- Settings now survive a restart\n\nCaution:\n- Confirm the beep on a real phone before publishing\n- Nothing here goes against the project rules"
+
+      # Claude can write files, and the next step runs our scripts with real tokens. Commit text is untrusted, so if anything ever tricked Claude into editing a script, we stop here instead of running it. Claude should only ever add release-decision.json, which is a new file and so does not show up as a change to a tracked file.
+      - name: Make sure Claude only added the decision file
+        if: steps.context.outputs.proceed == 'true'
+        run: |
+          if ! git diff --quiet; then
+            echo "Claude changed files it should not have. Refusing to continue."
+            git diff --name-only
+            exit 1
+          fi
+          echo "No tracked files were changed."
 
       # Save the draft (or update the one already there), then tell n8n to send the Telegram message.
       - name: Create or refresh the production draft
