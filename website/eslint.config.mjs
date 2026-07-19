@@ -1,6 +1,11 @@
+import { createRequire } from "node:module";
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+
+// Read the installed React version instead of hardcoding it, so it can never
+// drift out of sync with package.json.
+const { version: reactVersion } = createRequire(import.meta.url)("react/package.json");
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -10,7 +15,7 @@ const eslintConfig = defineConfig([
   {
     settings: {
       react: {
-        version: "19.2.4",
+        version: reactVersion,
       },
     },
   },
