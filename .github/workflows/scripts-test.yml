@@ -1,0 +1,32 @@
+# Script tests
+# ------------
+# Runs the small unit tests for the .github/scripts helper logic (version math, decision
+# validation). These are pure functions with no network, so the check is fast. It runs only
+# when the scripts change.
+name: Script tests
+
+on:
+  push:
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/scripts-test.yml'
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/scripts-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run unit tests
+        run: node --test .github/scripts/lib/*.test.js
