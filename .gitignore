@@ -67,5 +67,10 @@ docs/superpowers
 
 # Editor & tool configs
 .vscode/
-.claude/
 .remember/
+
+# Claude Code
+.claude/*
+!.claude/skills/
+!.claude/launch.json
+CLAUDE.local.md

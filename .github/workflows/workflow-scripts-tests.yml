@@ -1,0 +1,30 @@
+# Workflow script tests
+# ---------------------
+# Runs the small tests for the helper scripts, covering the version numbering and the decision checks. They are quick because nothing here touches the internet. This only runs when those scripts change.
+name: Workflow script tests
+
+on:
+  push:
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/workflow-scripts-tests.yml'
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/workflow-scripts-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run unit tests
+        run: node --test .github/scripts/lib/*.test.js
