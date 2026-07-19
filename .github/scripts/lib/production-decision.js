@@ -22,11 +22,14 @@ function pickLastPublishedProduction(releases) {
 // Every PUBLISHED beta newer than the last production release, lowest first.
 // Draft betas are skipped because they were never built and never reached Google Play.
 function pickPublishedBetasAhead(releases, lastProductionTag) {
+  // A baseline we can't parse can't be compared, so treat it like "no baseline"
+  // instead of crashing: every published beta counts as ahead of it.
+  const hasBaseline = lastProductionTag !== null && parseVersion(lastProductionTag) !== null;
   const tags = releases
     .filter((r) => r.draft === false && r.prerelease === true)
     .map((r) => r.tag)
     .filter((t) => parseVersion(t) && parseVersion(t).beta !== null)
-    .filter((t) => lastProductionTag === null || compareVersions(t, lastProductionTag) > 0);
+    .filter((t) => !hasBaseline || compareVersions(t, lastProductionTag) > 0);
   return validSorted(tags);
 }
 
@@ -38,11 +41,17 @@ function stripBeta(tag) {
 }
 
 // The open production draft, if there is one. A beta draft is not a match.
+// If more than one production draft exists (should not normally happen), pick the
+// HIGHEST-versioned one so the result never depends on the order releases arrive in.
 function findProductionDraft(releases) {
-  const d = releases.find(
+  const candidates = releases.filter(
     (r) => r.draft === true && parseVersion(r.tag) && parseVersion(r.tag).beta === null,
   );
-  return d ? { tag: d.tag, targetSha: d.targetSha } : null;
+  if (candidates.length === 0) return null;
+  const highest = candidates.reduce((best, r) =>
+    compareVersions(r.tag, best.tag) > 0 ? r : best,
+  );
+  return { tag: highest.tag, targetSha: highest.targetSha };
 }
 
 // Should we act, and are we refreshing or renaming?

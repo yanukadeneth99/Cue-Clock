@@ -67,6 +67,13 @@ test('pickPublishedBetasAhead works when there is no production tag yet', () => 
   assert.deepStrictEqual(pickPublishedBetasAhead(rs, null), ['v0.0.1-beta.1']);
 });
 
+test('pickPublishedBetasAhead treats an unparseable baseline as "no baseline" instead of throwing', () => {
+  // A future caller could pass a bad tag here. It must behave like null, not crash.
+  const rs = [rel('v0.0.1-beta.1', false, true, 'aaa')];
+  assert.doesNotThrow(() => pickPublishedBetasAhead(rs, 'not-a-tag'));
+  assert.deepStrictEqual(pickPublishedBetasAhead(rs, 'not-a-tag'), ['v0.0.1-beta.1']);
+});
+
 test('stripBeta removes the suffix', () => {
   assert.strictEqual(stripBeta('v0.1.3-beta.4'), 'v0.1.3');
   assert.strictEqual(stripBeta('v1.2.0'), 'v1.2.0');
@@ -79,6 +86,15 @@ test('findProductionDraft finds a bare-shaped draft only', () => {
 
 test('findProductionDraft returns null when only a beta draft exists', () => {
   assert.strictEqual(findProductionDraft([rel('v0.1.4-beta.1', true, true, 'eee')]), null);
+});
+
+test('findProductionDraft picks the HIGHEST draft regardless of array order', () => {
+  // Two production drafts should never happen in practice, but if it does, the workflow
+  // must always land on the same one (the highest), not whichever came first in the array.
+  const low = rel('v0.1.3', true, false, 'ddd');
+  const high = rel('v0.1.4', true, false, 'eee');
+  assert.deepStrictEqual(findProductionDraft([low, high]), { tag: 'v0.1.4', targetSha: 'eee' });
+  assert.deepStrictEqual(findProductionDraft([high, low]), { tag: 'v0.1.4', targetSha: 'eee' });
 });
 
 test('decideProductionProceed drafts when nothing exists', () => {
