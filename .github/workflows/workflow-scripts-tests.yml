@@ -1,19 +1,17 @@
-# Script tests
-# ------------
-# Runs the small unit tests for the .github/scripts helper logic (version math, decision
-# validation). These are pure functions with no network, so the check is fast. It runs only
-# when the scripts change.
-name: Script tests
+# Workflow script tests
+# ---------------------
+# Runs the small tests for the helper scripts, covering the version numbering and the decision checks. They are quick because nothing here touches the internet. This only runs when those scripts change.
+name: Workflow script tests
 
 on:
   push:
     paths:
       - '.github/scripts/**'
-      - '.github/workflows/scripts-test.yml'
+      - '.github/workflows/workflow-scripts-tests.yml'
   pull_request:
     paths:
       - '.github/scripts/**'
-      - '.github/workflows/scripts-test.yml'
+      - '.github/workflows/workflow-scripts-tests.yml'
 
 permissions:
   contents: read

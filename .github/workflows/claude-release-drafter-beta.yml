@@ -1,24 +1,21 @@
 # Beta Release Drafter
 # --------------------
-# Once a day, this looks at what changed in the app since the last release. If it is worth a
-# new beta, Claude writes the release notes and a short summary, and this creates a DRAFT
-# pre-release plus a Telegram message. It NEVER publishes: you review the draft and click
-# Publish yourself, which is what actually triggers a build. A draft on its own builds nothing.
-name: Beta Release Drafter
+# Once a day this checks what changed in the app. If it is worth a new beta, Claude writes the release notes and this saves them as a DRAFT release and sends a Telegram message. It never publishes anything. You read the draft and press Publish yourself, and only that starts a real build.
+name: Claude Beta Release Drafter
 
 on:
-  # Every day at 06:00 UTC. Most days this is a cheap no-op.
+  # Runs every day at 18:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30 with no daylight saving, so that is 12:30 UTC the same day. On quiet days it finds nothing to do and stops early.
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '30 12 * * *'
   # A button on the Actions tab to run it on demand.
   workflow_dispatch:
 
 # Never let a scheduled run and a manual run draft at the same time.
 concurrency:
-  group: release-drafter-beta
+  group: claude-release-drafter-beta
   cancel-in-progress: false
 
-# Only what we need: write releases (drafts), and the token the Claude action needs.
+# The smallest set of powers this needs: save draft releases, plus the sign-in used by the Claude step.
 permissions:
   contents: write
   id-token: write
@@ -50,8 +47,7 @@ jobs:
           GITHUB_SERVER_URL: ${{ github.server_url }}
         run: node .github/scripts/compute-beta-context.js
 
-      # Claude reads context.json and the diff, checks it against CLAUDE.md, and writes
-      # release-decision.json. It cannot publish, merge, or call the webhook.
+      # Claude reads the changes, checks them against CLAUDE.md, and saves its answer to a file. It cannot publish, merge, or message anyone.
       - name: Claude drafts the notes and decision
         if: steps.context.outputs.proceed == 'true'
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1.0.175
@@ -88,7 +84,7 @@ jobs:
             }
             Rules for notes: start with a "## What's changed" heading, then short bullets prefixed NEW, FIXED, UPDATE, or Optimized. Keep it tight; it becomes the Google Play "What's new" and the final text is capped at 500 characters. Keep YOUR written notes under about 380 characters, since a "Full Changelog" link (~95 characters) is appended automatically after you write, and the combined total must stay within the 500-character cap. Do not add a Full Changelog line yourself; it is appended automatically. The notes are user-facing only; never put CLAUDE.md concerns or testing notes in them.
 
-      # Create or refresh the draft, then POST to n8n so it sends the Telegram message.
+      # Save the draft (or update the one already there), then tell n8n to send the Telegram message.
       - name: Create or refresh the draft
         if: steps.context.outputs.proceed == 'true'
         env:

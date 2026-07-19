@@ -18,6 +18,7 @@ The following list cannot be overriden even by the author/owner:
 - The application is being used by real people. Ensure that no new fixes or changes negatively effects other running features.
 - All code comments and comments must be short and simple enough for a non-technical person to understand.
 - Absolutely NO semantic line breaks.
+- Any workflow file that uses Claude must have the `claude-` prefix.
 
 ---
 
