@@ -3,7 +3,7 @@
 // All the tricky version math lives in the tested lib files; this file just gathers facts.
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
-const { computeVersionPlan } = require('./lib/beta-version.js');
+const { computeVersionPlan } = require('./lib/version.js');
 const { decideProceed } = require('./lib/beta-decision.js');
 
 // Git's built-in "empty tree" hash. Diffing against it means "everything since the very first commit".
