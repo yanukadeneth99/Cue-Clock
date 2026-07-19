@@ -84,7 +84,7 @@ jobs:
               "ship": true,
               "bumpKey": "<one key from candidates>",
               "notes": "## What's changed\n- FIXED ...\n- NEW ...",
-              "telegram": "Verdict: ...\nChanges:\n- ...\nCaution:\n- ..."
+              "telegram": "Verdict: ...\n\nChanges:\n- ...\n\nCaution:\n- ..."
             }
             Rules for notes: start with a "## What's changed" heading, then short bullets prefixed NEW, FIXED, UPDATE, or Optimized. Keep it tight; it becomes the Google Play "What's new" and the final text is capped at 500 characters. Keep YOUR written notes under about 380 characters, since a "Full Changelog" link (~95 characters) is appended automatically after you write, and the combined total must stay within the 500-character cap. Do not add a Full Changelog line yourself; it is appended automatically. The notes are user-facing only; never put CLAUDE.md concerns or testing notes in them.
 
