@@ -15,16 +15,23 @@ on:
   # A label set as the PR is opened raises this event just the same as one added later by hand (verified against Dependabot's PRs), so the implementer's `gh pr create --label` is enough to start a review.
   pull_request_target:
     types: [labeled]
+  # Path 3 (re-review after a fix): claude-ci-auto-fix patched a PR and wants it looked at again. It hands us the number, because a PR fixed without touching app/ or website/ runs no build and so would never come back through path 1.
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to review (re-review-after-fix path)"
+        required: true
 
 # Only one review/merge per PR at a time; a newer trigger cancels an older one in progress. The PR comes from whichever path fired.
 concurrency:
-  group: claude-pr-decider-${{ github.event.workflow_run.pull_requests[0].number || github.event.pull_request.number }}
+  group: claude-pr-decider-${{ github.event.inputs.pr_number || github.event.workflow_run.pull_requests[0].number || github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   review-merge:
     # Only proceeds if the PR came from this repo, not a fork. Both paths check that the same way: the branch must live in THIS repo.
     # Path 1 also waits for CI to have passed. Path 2 starts ONLY on the two labels that mean "a bot opened this, please review it" — never ai-merge-approved or human-review, which Claude and this workflow add themselves. Listing only those two entry labels is what stops a review from re-triggering itself forever.
+    # Path 3 (dispatch, from the auto-fixer) carries no trustworthy event data of its own, so it is admitted here unconditionally and vetted entirely by the gate step below — which re-reads the PR from the API and applies the same fork / label / human-review / green-checks rules as the other two paths.
     if: |
       (
         github.event_name == 'workflow_run' &&
@@ -35,7 +42,7 @@ jobs:
         github.event_name == 'pull_request_target' &&
         github.event.pull_request.head.repo.full_name == github.repository &&
         contains(fromJSON('["ai-implemented","dependencies"]'), github.event.label.name)
-      )
+      ) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -57,22 +64,27 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          # The PR number arrives in a different place depending on which trigger fired. Both come in as variables, never typed into a command, so nothing in the PR can run as a command.
+          # The PR number arrives in a different place depending on which trigger fired. All three come in as variables, never typed into a command, so nothing in the PR can run as a command.
           WR_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
           EVENT_PR: ${{ github.event.pull_request.number }}
+          DISPATCH_PR: ${{ github.event.inputs.pr_number }}
         run: |
           # Shared "are the other checks green?" helper. Comes from the trusted master checkout above, never from the PR.
           . .github/scripts/pr-checks.sh
 
-          PR="${WR_PR:-$EVENT_PR}"
+          PR="${WR_PR:-${EVENT_PR:-$DISPATCH_PR}}"
           # Only ever trust a plain number.
           case "$PR" in ''|*[!0-9]*) echo "PR '$PR' is not numeric — refusing."; exit 1;; esac
           echo "pr=${PR}" >> "$GITHUB_OUTPUT"
 
           data=$(gh pr view "${PR}" --repo "${REPO}" \
-            --json headRefName,state,labels)
+            --json headRefName,state,labels,isCrossRepository)
           head_ref=$(echo "$data" | jq -r '.headRefName')
           state=$(echo "$data" | jq -r '.state')
+          # Fork safety net. The job-level gate covers the workflow_run and label paths; this is what covers the dispatch path, which carries no repo information of its own.
+          if [ "$(echo "$data" | jq -r '.isCrossRepository')" != "false" ]; then
+            echo "PR #${PR} comes from a fork — refusing."; exit 1
+          fi
           # Grab every label name, one per line, so we can look for the trigger labels.
           labels=$(echo "$data" | jq -r '.labels[].name')
 
@@ -174,15 +186,11 @@ jobs:
             gh pr edit "${PR}" --repo "${REPO}" --remove-label ai-merge-approved || true
             exit 0
           fi
-          # Not approved → rejected. The auto-fixer only works on Claude's own claude/* branches, so only hand it ai-implemented PRs. A rejected Dependabot (dependencies) PR goes straight to a human instead.
-          if echo "$labels" | grep -qx 'ai-implemented'; then
-            echo "PR #${PR} was not approved — dispatching the auto-fixer in review mode."
-            gh workflow run claude-ci-auto-fix.yml --repo "${REPO}" --ref master -f pr_number="${PR}" -f reason=review
-            echo "### Rejected, sent to the auto-fixer" >> "$GITHUB_STEP_SUMMARY"
-            echo "PR #${PR} was not approved. The auto-fixer is now working on it; Claude's comment on the PR says what is blocking." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "PR #${PR} (dependencies) was not approved — flagging for a human, not the fixer."
-            gh pr edit "${PR}" --repo "${REPO}" --add-label human-review
-            echo "### Rejected, needs a human" >> "$GITHUB_STEP_SUMMARY"
-            echo "PR #${PR} is a dependency update the auto-fixer cannot touch. Claude's comment on the PR says what is blocking." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          # Not approved → rejected. Hand it to the auto-fixer, which handles both kinds of bot PR: Claude's own work (ai-implemented) and Dependabot bumps (dependencies). The gate step above already proved this PR carries one of those two labels.
+          # This is the review half of the loop: the fixer patches the branch, pushes, and asks for another review. The fixer's own per-PR attempt counter is what ends the loop — once it runs out it sets human-review, and the gate step above then refuses to review this PR again.
+          echo "PR #${PR} was not approved — dispatching the auto-fixer in review mode."
+          gh workflow run claude-ci-auto-fix.yml --repo "${REPO}" --ref master -f pr_number="${PR}" -f reason=review
+          {
+            echo "### Rejected, sent to the auto-fixer"
+            echo "PR #${PR} was not approved. The auto-fixer is now working on it; Claude's comment on the PR says what is blocking."
+          } >> "$GITHUB_STEP_SUMMARY"
