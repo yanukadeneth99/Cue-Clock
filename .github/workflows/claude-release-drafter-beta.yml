@@ -121,6 +121,23 @@ jobs:
             echo "$tool is $tool_path"
           done
 
+          # 3. Nothing may have added one of our own folders to the search path, which is how a fake program would get picked up in the first place.
+          IFS=':' read -ra path_parts <<< "$PATH"
+          for part in "${path_parts[@]}"; do
+            case "$part" in
+              "$GITHUB_WORKSPACE"|"$GITHUB_WORKSPACE"/*|"$RUNNER_TEMP"|"$RUNNER_TEMP"/*)
+                echo "The search path now includes $part, which we can write to. Refusing to continue."
+                exit 1 ;;
+            esac
+          done
+
+          # 4. Node can be told to load extra code before it starts. That would run inside the next step, with our tokens, even though node itself is genuine.
+          case "${NODE_OPTIONS:-}" in
+            *--require*|*--import*|*-r\ *)
+              echo "NODE_OPTIONS asks node to preload code. Refusing to continue."
+              exit 1 ;;
+          esac
+
           echo "Checks passed."
 
       # Save the draft (or update the one already there), then tell n8n to send the Telegram message.
