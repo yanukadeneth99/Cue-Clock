@@ -55,9 +55,16 @@ function main() {
   const newestBeta = betaTagsCovered[betaTagsCovered.length - 1];
   const targetVersion = stripBeta(newestBeta);
 
-  // Pin to the beta's own commit, NOT to HEAD. Promotion copies the beta's build,
-  // so tagging anywhere else would describe code that is not in the shipped app.
-  const targetSha = git(['rev-list', '-n', '1', newestBeta]);
+  // Pin to the beta, NOT to HEAD. Promotion copies the beta's build, so tagging
+  // anywhere else would describe code that is not in the shipped app.
+  //
+  // We hand GitHub the beta's TAG NAME here, not its commit id, and that detail
+  // matters. GitHub refuses to create a release aimed at a bare commit id when
+  // that commit changes workflow files, unless the token also has "workflows"
+  // rights, which the built-in token can never be given. The tag already points
+  // at the exact commit we want, and published releases here are immutable, so
+  // the tag can never move. Same pin, spelled in a way GitHub accepts.
+  const targetSha = newestBeta;
 
   const draft = findProductionDraft(releases);
   const { proceed, isRefresh, versionChanged } = decideProductionProceed({
