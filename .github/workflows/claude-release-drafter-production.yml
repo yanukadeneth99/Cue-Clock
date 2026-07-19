@@ -88,16 +88,35 @@ jobs:
             Example of a good telegram value:
             "Verdict: Rolls up two betas of countdown fixes; ready for real users.\n\nChanges:\n- The final 3 second beep no longer skips its first tick\n- Settings now survive a restart\n\nCaution:\n- Confirm the beep on a real phone before publishing\n- Nothing here goes against the project rules"
 
-      # Claude can write files, and the next step runs our scripts with real tokens. Commit text is untrusted, so if anything ever tricked Claude into editing a script, we stop here instead of running it. Claude should only ever add release-decision.json, which is a new file and so does not show up as a change to a tracked file.
+      # Claude can write files, and the NEXT step runs our scripts with the GitHub token and the n8n secrets. Commit text is untrusted, so we check three things here and stop the run if any of them look wrong.
       - name: Make sure Claude only added the decision file
         if: steps.context.outputs.proceed == 'true'
         run: |
+          # 1. Nobody may edit our scripts.
           if ! git diff --quiet; then
             echo "Claude changed files it should not have. Refusing to continue."
             git diff --name-only
             exit 1
           fi
-          echo "No tracked files were changed."
+
+          # 2. The next step runs "node" and "gh". Both must still be the runner's own copies. If either now points inside a folder we can write to, something planted a fake one on the path, and running it would hand over our tokens.
+          for tool in node gh; do
+            tool_path="$(command -v "$tool" || true)"
+            case "$tool_path" in
+              /*) ;;
+              *)
+                echo "$tool did not resolve to a real path. Refusing to continue."
+                exit 1 ;;
+            esac
+            case "$tool_path" in
+              "$GITHUB_WORKSPACE"/*|"$RUNNER_TEMP"/*)
+                echo "$tool now resolves to $tool_path, which is not the runner's own copy. Refusing to continue."
+                exit 1 ;;
+            esac
+            echo "$tool is $tool_path"
+          done
+
+          echo "Checks passed."
 
       # Save the draft (or update the one already there), then tell n8n to send the Telegram message.
       - name: Create or refresh the production draft
