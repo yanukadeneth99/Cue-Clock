@@ -1,19 +1,21 @@
 # Beta Release Drafter
 # --------------------
-# Once a day this checks what changed in the app. If it is worth a new beta, Claude writes the release notes and this saves them as a DRAFT release and sends a Telegram message. It never publishes anything. You read the draft and press Publish yourself, and only that starts a real build.
+# Whenever app code lands on master this checks what changed. If it is worth a new beta, Claude writes the release notes and this saves them as a DRAFT release and sends a Telegram message. It never publishes anything. You read the draft and press Publish yourself, and only that starts a real build.
 name: Claude Beta Release Drafter
 
 on:
-  # Runs every day at 18:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30 with no daylight saving, so that is 12:30 UTC the same day. On quiet days it finds nothing to do and stops early.
-  schedule:
-    - cron: '30 12 * * *'
+  # Runs whenever app code lands on master, so the draft always matches what is on master. The path filter means a website-only or workflow-only push never starts a run.
+  push:
+    branches: [master]
+    paths:
+      - 'app/**'
   # A button on the Actions tab to run it on demand.
   workflow_dispatch:
 
-# Never let a scheduled run and a manual run draft at the same time.
+# Only draft one at a time. A newer push cancels an older run still going, so several pushes landing together produce one draft and one message instead of several.
 concurrency:
   group: claude-release-drafter-beta
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 # The smallest set of powers this needs: save draft releases, plus the sign-in used by the Claude step.
 permissions:
