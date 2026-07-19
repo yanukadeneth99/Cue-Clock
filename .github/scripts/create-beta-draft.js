@@ -8,10 +8,12 @@ const { execFileSync } = require('node:child_process');
 const {
   validateDecision,
   resolveVersion,
+} = require('./lib/beta-decision.js');
+const {
   ensureCompareLine,
   buildDraftArgs,
   buildWebhookPayload,
-} = require('./lib/beta-decision.js');
+} = require('./lib/release-shared.js');
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -56,10 +58,16 @@ async function main() {
     isRefresh,
     existingDraftTag,
     versionChanged,
+    prerelease: true,
   });
 
   const releaseUrl = `${context.repoUrl}/releases`;
-  const payload = buildWebhookPayload({ newTag, releaseUrl, telegram: decision.telegram });
+  const payload = buildWebhookPayload({
+    event: 'beta_draft_created',
+    version: newTag,
+    releaseUrl,
+    telegram: decision.telegram,
+  });
 
   if (dryRun) {
     console.log('DRY_RUN gh args:', JSON.stringify(args));

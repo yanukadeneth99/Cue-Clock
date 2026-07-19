@@ -45,41 +45,8 @@ function resolveVersion(candidates, bumpKey) {
   return candidates[bumpKey];
 }
 
-// Make sure the notes end with the correct Full Changelog line, so the compare link is never wrong.
-function ensureCompareLine(notes, compareUrl) {
-  if (!compareUrl) return notes;
-  if (notes.includes(compareUrl)) return notes;
-  const trimmed = notes.replace(/\s+$/, '');
-  return `${trimmed}\n\n**Full Changelog**: ${compareUrl}`;
-}
-
-// Build the gh command arguments for create, edit-in-place, or edit-with-rename.
-function buildDraftArgs({ newTag, targetSha, notesFile, isRefresh, existingDraftTag, versionChanged }) {
-  if (!isRefresh) {
-    return [
-      'release', 'create', newTag, '--draft', '--prerelease',
-      '--target', targetSha, '--title', newTag, '--notes-file', notesFile,
-    ];
-  }
-  if (versionChanged) {
-    return [
-      'release', 'edit', existingDraftTag, '--tag', newTag,
-      '--title', newTag, '--target', targetSha, '--notes-file', notesFile,
-    ];
-  }
-  return ['release', 'edit', existingDraftTag, '--target', targetSha, '--notes-file', notesFile];
-}
-
-// Build the JSON body we POST to the n8n webhook.
-function buildWebhookPayload({ newTag, releaseUrl, telegram }) {
-  return { event: 'beta_draft_created', version: newTag, releaseUrl, telegram };
-}
-
 module.exports = {
   decideProceed,
   validateDecision,
   resolveVersion,
-  ensureCompareLine,
-  buildDraftArgs,
-  buildWebhookPayload,
 };
