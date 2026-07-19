@@ -223,6 +223,24 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      # Put the master copy of the npm helper into the workspace, overwriting whatever the pull request branch has.
+      #
+      # Two reasons, and both matter. First, Dependabot branches are cut from master whenever Dependabot happens to open them, so an older branch simply has no copy of this file and the fixer would be unable to run npm at all. Second, and more important: this script is on Claude's approved-command list, so if we ran the PULL REQUEST's copy, any branch could ship its own version of it and have it run pre-approved inside a privileged job. Taking it from master every time means the approved command is always the reviewed one.
+      - name: Restore the trusted npm helper from master
+        if: steps.ctx.outputs.proceed == 'true' && steps.caps.outputs.blocked == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p .github/scripts
+          gh api "repos/${REPO}/contents/.github/scripts/deps.sh?ref=master" --jq '.content' \
+            | base64 -d > .github/scripts/deps.sh
+          chmod +x .github/scripts/deps.sh
+          # Keep it out of `git status` so it can never be swept into the fix commit on a branch that predates it.
+          echo ".github/scripts/deps.sh" >> .git/info/exclude
+          echo "Restored $(wc -l < .github/scripts/deps.sh) lines of deps.sh from master."
+
       - name: Run Claude Code
         if: steps.ctx.outputs.proceed == 'true' && steps.caps.outputs.blocked == 'false'
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1
@@ -253,6 +271,19 @@ jobs:
             fix is small and mechanical: a peer-dependency mismatch, a lockfile that needs
             regenerating, a renamed export, or a config key that moved in the new version.
 
+            RUNNING NPM. There are two npm projects here, `app/` and `website/`, and you can
+            only reach npm through this helper — a bare `npm` command will be refused:
+              .github/scripts/deps.sh <app|website> ci
+              .github/scripts/deps.sh <app|website> install [package@version ...]
+              .github/scripts/deps.sh <app|website> run <lint|build|test>
+              .github/scripts/deps.sh <app|website> view <package> [field]
+            It has network access, so `view` is how you check which versions exist and what a
+            package's peer dependencies are, and `install` is how you regenerate a lockfile
+            after editing package.json. Installs always skip package install scripts, which is
+            deliberate, so do not try to work around it. Use `run lint` / `run build` to prove
+            your fix actually works before committing — CI runs `npm ci`, so a package.json
+            you changed without regenerating its lockfile will fail the build.
+
             Then, in order:
             1. Diagnose the root cause and make the SMALLEST correct fix in the working tree.
             2. Follow the repo's CLAUDE.md rules (Compulsory).
@@ -278,8 +309,8 @@ jobs:
           #
           # 1. NO `gh pr edit`. That single command operates both of this pipeline's brakes — it can remove human-review (which a person may have set on purpose) and it can remove the ai-fix-attempt counter that ends the fix/review loop. Claude reads untrusted material to do its job (failing logs, pull request text, dependency changelogs), so anything it is instructed by that material to do must not be able to disable the safety limits. Claude signals "a human is needed" by writing .ci-fix-handover instead, and the deterministic step below is what actually applies the label. Same principle as the decider, where Claude can recommend a merge but only a plain shell step performs one.
           #
-          # 2. npm is pinned to --ignore-scripts. This job is privileged, and on a Dependabot branch `npm ci` would otherwise execute install scripts from a brand new, unvetted package version. `npx expo install` is deliberately NOT allowed for the same reason: it shells out to npm and would bypass the flag.
-          claude_args: '--model sonnet --max-turns 120 --allowed-tools "Bash(gh run view:*),Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git:*),Bash(npx expo-doctor:*),Bash(npm ci --ignore-scripts:*),Bash(npm install --ignore-scripts:*),Bash(npm run build:*),Bash(npm run lint:*),Read,Write,Edit,Glob,Grep" --disallowed-tools "Bash(gh pr edit:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh label:*),Bash(gh api:*),Bash(gh workflow:*),WebFetch,WebSearch"'
+          # 2. ALL npm work goes through .github/scripts/deps.sh. Approved commands are matched by how they START, and both npm projects live in subfolders — so a bare `npm ...` rule never matches the `cd website && npm ...` that Claude actually has to run, and every npm command was being refused. The helper takes the folder as its first argument, which gives one stable rule that works for both. It also applies --ignore-scripts to every install itself, so a brand new unvetted package version cannot run its own install scripts in this privileged job even if the command was written carelessly. Bare npm and `npx expo install` stay unapproved precisely so nothing can go round that guarantee.
+          claude_args: '--model sonnet --max-turns 120 --allowed-tools "Bash(gh run view:*),Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git:*),Bash(.github/scripts/deps.sh:*),Bash(bash .github/scripts/deps.sh:*),Bash(./.github/scripts/deps.sh:*),Read,Write,Edit,Glob,Grep" --disallowed-tools "Bash(gh pr edit:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh label:*),Bash(gh api:*),Bash(gh workflow:*),WebFetch,WebSearch"'
           additional_permissions: |
             actions: read
 
