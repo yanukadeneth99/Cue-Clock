@@ -43,6 +43,8 @@ jobs:
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1.0.175
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # On a scheduled run the actor is whoever last touched this file, which becomes a bot as soon as an automated commit lands. Without this list the action would refuse to run.
+          allowed_bots: "claude,github-actions"
           # WebSearch is allowed here, and only here, so version-upgrade proposals can name real current versions instead of guessing. Still no editing, no pushing, no package commands.
           claude_args: >-
             --model opus

@@ -43,6 +43,8 @@ jobs:
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1.0.175
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # On a scheduled run the actor is whoever last touched this file, which becomes a bot as soon as an automated commit lands. Without this list the action would refuse to run.
+          allowed_bots: "claude,github-actions"
           # WebSearch is allowed for one narrow job only: checking published vulnerability advisories against the versions in package.json, which is knowledge that lives outside this repo and goes stale. The prompt below forbids using it to decide whether code is buggy. WebFetch stays blocked, so Claude cannot follow an arbitrary link. Still no editing, no pushing, no package commands.
           claude_args: >-
             --model opus
