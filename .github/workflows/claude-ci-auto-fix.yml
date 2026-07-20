@@ -18,7 +18,6 @@ on:
       - "Android Beta (Open Testing)"
       - "Android Promote (Beta → Production)"
       - "Web App Deploy"
-      - "Auto Assign Owner"
       - "Sync Wiki"
       - "React Doctor"
     types: [completed]
@@ -165,11 +164,13 @@ jobs:
           # --- 2. global daily budget -----------------------------------------------
           since=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
           # %3E is the URL-encoded '>' so the shell doesn't treat it as a redirect.
-          count=$(gh api \
+          # --paginate walks EVERY page of runs, not just the first 100. During a real failure storm, which is exactly when this cap matters, a single page undercounts and the brake would never engage. The jq prints one line per counted run, so counting lines counts runs across all pages.
+          count=$(gh api --paginate \
             "repos/${REPO}/actions/workflows/claude-ci-auto-fix.yml/runs?created=%3E${since}&per_page=100" \
-            --jq "[ .workflow_runs[]
+            --jq ".workflow_runs[]
                     | select(.id != ${THIS_RUN_ID})
-                    | select(.conclusion != \"skipped\" and .conclusion != \"cancelled\") ] | length") || count=0
+                    | select(.conclusion != \"skipped\" and .conclusion != \"cancelled\")
+                    | .id" | wc -l | tr -d ' ') || count=0
           count=${count:-0}
           echo "Real (non-skipped) auto-fix runs in last 24h: ${count} (cap ${DAILY_CAP})."
           if [ "$count" -ge "$DAILY_CAP" ]; then

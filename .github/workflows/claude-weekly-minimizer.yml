@@ -5,7 +5,7 @@ name: Claude Weekly Minimizer
 
 on:
   schedule:
-    # Wednesday 03:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30 with no daylight saving, so that is 21:30 UTC on Tuesday. Spread across the week from the other two scans so three Opus runs never collide.
+    # Wednesday 03:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30 with no daylight saving, so that is 21:30 UTC on Tuesday. Spread across the week from the other two scans so the three weekly scans never collide.
     - cron: "30 21 * * 2"
   # Manual button, so you can test it without waiting a week.
   workflow_dispatch:
@@ -46,8 +46,9 @@ jobs:
           # On a scheduled run the actor is whoever last touched this file, which becomes a bot as soon as an automated commit lands. Without this list the action would refuse to run.
           allowed_bots: "claude,github-actions"
           # Claude may read code and file issues. No editing, no pushing, no package commands.
+          # Sonnet, not Opus: the work is grep-proof-based (show nothing references the dead code) and it only proposes, in an issue a human reads. The deep-reasoning budget stays reserved for the bug scan and the merge-gating reviews.
           claude_args: >-
-            --model opus
+            --model sonnet
             --max-turns 60
             --allowed-tools "Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(git log:*),Bash(git blame:*),Read,Glob,Grep"
             --disallowed-tools "Write,Edit,MultiEdit,NotebookEdit,WebFetch,WebSearch,Bash(git push:*),Bash(git commit:*),Bash(gh api:*),Bash(gh pr:*),Bash(npm:*),Bash(npx:*),Bash(pnpm:*)"

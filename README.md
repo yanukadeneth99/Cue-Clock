@@ -76,6 +76,34 @@ Gemini-driven end-to-end test harness that exercises the real running app. Two r
 
 ---
 
+## 🤖 How the Automation Works
+
+This repository largely runs itself. AI workflows triage issues, write code, review it, and draft releases, while a human presses the final Publish button. The diagram below shows the journey of a change from idea to real users.
+
+```mermaid
+flowchart TD
+    A["An idea, bug report, or app crash becomes an issue"] --> B{"AI triage: is it clear and safe to build?"}
+    B -- "No, or unclear" --> C["Waits for the maintainer with a question"]
+    B -- "Yes" --> D["AI writes the code and opens a pull request"]
+    E["Dependabot suggests a library update"] --> F
+    D --> F["The app is built and tested automatically"]
+    F -- "Build fails" --> G["AI tries to repair it, up to 5 times"]
+    G --> F
+    F -- "Build passes" --> H{"A second AI reviews the change as a strict critic"}
+    H -- "Rejected" --> G
+    G -- "Out of attempts" --> C
+    H -- "Approved" --> I["Merged automatically"]
+    I --> J["A private test build goes to Google Play"]
+    I --> K["AI drafts the beta release notes"]
+    K --> L["Maintainer presses Publish: beta goes to public testers"]
+    L --> M["AI drafts the production release notes"]
+    M --> N["Maintainer presses Publish: the exact tested build reaches real users, and the web app updates"]
+```
+
+Around that main loop, a few helpers keep watch: a daily job turns new Crashlytics crashes into issues, three weekly AI scans look for bugs, removable code, and speed-ups and file at most one issue each, and a daily Telegram digest tells the maintainer only what genuinely needs a human. The AI never merges, publishes, or ships anything on its own; every release requires a human press of the Publish button, and a `human-review` label pauses all automation on any item until a person acts.
+
+---
+
 ## 🚀 Quick Start
 
 ```bash

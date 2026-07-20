@@ -78,8 +78,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "claude,github-actions"
-          # Claude's toolbox: files, git, npm, and the GitHub CLI — enough to implement, commit, push, and open PRs, but nothing repo-admin level.
-          claude_args: '--model opus --max-turns 120 --allowed-tools "Bash(gh:*),Bash(git:*),Bash(npm:*),Bash(npx:*),Bash(pnpm:*),Read,Write,Edit,Glob,Grep"'
+          # Claude's toolbox: files, git, npm, and ONLY the gh commands the steps below actually use: read and comment on the issue, open the PR, and move the issue's labels. The issue text is untrusted, so the dangerous gh commands are blocked outright. gh pr merge would let a prompt hidden in an issue merge its own PR past the adversarial PR decider (the job token has enough rights, and the branch ruleset requires no approvals), and gh api / gh workflow / gh label could touch the pipeline's safety labels and other workflows. Merging stays the PR decider's job alone.
+          claude_args: '--model opus --max-turns 120 --allowed-tools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh pr create:*),Bash(git:*),Bash(npm:*),Bash(npx:*),Bash(pnpm:*),Read,Write,Edit,Glob,Grep" --disallowed-tools "Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr edit:*),Bash(gh api:*),Bash(gh workflow:*),Bash(gh label:*),Bash(gh release:*),Bash(gh repo:*),Bash(gh secret:*),WebFetch,WebSearch"'
           # Only the (validated, numeric) issue number is interpolated into the prompt.
           prompt: |
             You are a developer for the Cue Clock project. Implement the fix to the issue end to end, making the solution maintainable, readable, and standards-following.

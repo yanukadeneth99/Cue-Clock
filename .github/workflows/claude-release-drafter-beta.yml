@@ -52,8 +52,9 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # This run is always started by release-drafter-dispatch.yml, so the actor is the github-actions bot, not a person. Without this list the action refuses to run at all.
           allowed_bots: "claude,github-actions"
+          # Sonnet, not Opus: the judgment here is small (worth a beta or not, pick one bump key), the context is precomputed JSON, and the output is a few hundred characters of notes. A human still reads the draft and presses Publish, so a weaker model cannot ship anything.
           claude_args: >-
-            --model opus
+            --model sonnet
             --max-turns 30
             --allowed-tools "Read,Grep,Glob,Bash(git log:*),Bash(git diff:*),Write"
             --disallowed-tools "Edit,MultiEdit,NotebookEdit,WebFetch,WebSearch,Bash(gh:*),Bash(git push:*),Bash(git commit:*),Bash(curl:*),Bash(npm:*),Bash(npx:*)"
