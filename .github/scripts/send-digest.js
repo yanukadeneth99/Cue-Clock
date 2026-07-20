@@ -50,12 +50,14 @@ async function main() {
   const url = process.env.N8N_DIGEST_WEBHOOK_URL;
   const token = process.env.N8N_WEBHOOK_TOKEN;
   if (!url || !token) {
-    console.warn('N8N_DIGEST_WEBHOOK_URL or N8N_WEBHOOK_TOKEN missing. Nothing sent.');
-    return;
+    console.error('N8N_DIGEST_WEBHOOK_URL or N8N_WEBHOOK_TOKEN missing. Nothing sent.');
+    process.exit(1);
   }
 
-  // A delivery problem is not a broken workflow. Turning the run red every time n8n
-  // restarts would teach us to ignore red runs, which is worse than a missed message.
+  // The message IS the point of this job, so anything short of delivering it fails the run.
+  // The release drafters do the opposite on purpose: there the draft is the real result and
+  // the message is a courtesy, so a hiccup should not turn them red. Here a green run has
+  // to mean the message actually arrived, or a quiet phone looks the same as a quiet day.
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -63,15 +65,18 @@ async function main() {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      console.warn(`n8n webhook returned ${res.status}. Digest not delivered.`);
-    } else {
-      console.log('Digest sent.');
+      // 404 usually means the receiving end is switched off or the address points at a
+      // test endpoint that is not listening.
+      console.error(`n8n webhook returned ${res.status}. Digest NOT delivered.`);
+      process.exit(1);
     }
+    console.log('Digest sent.');
   } catch (err) {
     // Log the KIND of error, never its message. If the webhook address is wrong, Node
     // puts that whole address, token and all, inside the message. This repo is public
     // and its run logs can be read by anyone.
-    console.warn('n8n webhook POST failed:', (err && err.name) || 'unknown error');
+    console.error('n8n webhook POST failed:', (err && err.name) || 'unknown error');
+    process.exit(1);
   }
 }
 

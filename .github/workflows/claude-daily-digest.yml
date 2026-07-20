@@ -212,12 +212,11 @@ jobs:
           N8N_WEBHOOK_TOKEN: ${{ secrets.N8N_WEBHOOK_TOKEN }}
         run: node .github/scripts/send-digest.js
 
-      # Only the quiet-day branch used to leave a trace in the run summary, so a day
-      # that actually sent a digest looked no different from one where the secret was
-      # silently missing. Record it either way now.
+      # This only runs when the send step succeeded, and the sender now stops the run if the
+      # message did not get through. So reaching this line really does mean it was delivered.
       - name: Note a digest was sent in the run summary
         if: steps.context.outputs.proceed == 'true'
-        run: echo "A digest was built and the send step ran. If no message arrived, check the step log above to see whether delivery succeeded." >> "$GITHUB_STEP_SUMMARY"
+        run: echo "A digest was built and delivered." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Note a quiet day in the run summary
         if: steps.context.outputs.proceed != 'true'
