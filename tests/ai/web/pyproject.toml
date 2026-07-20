@@ -1,8 +1,13 @@
 # WHY uv-managed: uv resolves + installs ~10x faster than pip and creates a
 # project-local .venv automatically. Single command (`uv sync`) bootstraps.
 # WHY pinned >= floors only (no caps): browser-use moves fast; we want the
-# latest patch + minor at install time. The lockfile (uv.lock) pins exact
-# versions reproducibly without us hand-managing the upper bound.
+# latest patch + minor at install time.
+# NOTE: uv.lock is generated locally but NOT committed (see .gitignore). It used
+# to be tracked for reproducibility, but Dependabot security alerts scan every
+# lockfile in the repo, and this harness alone accounted for 31 of 32 alerts.
+# Trade-off accepted: a fresh clone resolves the newest allowed versions. If the
+# harness ever breaks after a clean setup, suspect an upstream browser-use bump
+# first and pin a floor here.
 
 [project]
 name = "cueclock-ai-web-runner"

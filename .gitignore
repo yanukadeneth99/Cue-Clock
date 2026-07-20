@@ -56,6 +56,11 @@ tests/ai/results/
 tests/ai/.venv/
 tests/ai/web/.venv/
 tests/ai/web/__pycache__/
+# Not tracked on purpose. Dependabot's SECURITY updates scan every lockfile in
+# the repo and ignore dependabot.yml's directory list, so a tracked uv.lock made
+# this local-only test harness produce 31 of the repo's 32 alerts (PR #100).
+# `uv run` rebuilds it locally, so nothing breaks - see tests/ai/web/pyproject.toml.
+tests/ai/web/uv.lock
 tests/ai/android/node_modules/
 # Un-ignore the harness source — the top-level android/ rule would otherwise swallow it
 !tests/ai/android/
