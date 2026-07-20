@@ -8,9 +8,26 @@
 # Checks from this workflow are ignored. Must match the `name:` in claude-pr-decider.yml.
 SELF_WORKFLOW="Claude PR AI Decider"
 
+# The builds that start a fresh review on their own when they finish. Must match the `workflows:` list under `workflow_run:` in claude-pr-decider.yml.
+BUILD_WORKFLOWS='["Android Release Verify","Website Verify"]'
+
 # How long `wait` mode will keep polling before giving up. Kept under the workflow's timeout-minutes so we exit with a clear message instead of being killed mid-step.
 MAX_WAIT_SECONDS=$((20 * 60))
 POLL_SECONDS=30
+
+# build_check_running <pr> <repo>
+#   Returns 0 if one of the builds listed above is still running on this PR, 1 otherwise.
+#
+# This answers "is someone else already on their way to review this?". When one of those builds finishes it starts a brand new run of the decider, and that run does the review. So a run that got here first has nothing to gain by waiting: it would hold a machine idle for the whole build and then be shut down by the very run the build started.
+#
+# It deliberately asks what is RUNNING rather than which files changed. If the build has not appeared in the check list yet, this simply says "no" and the caller waits as it always did, so a pull request can never be left unreviewed by mistake.
+build_check_running() {
+  local pr="$1" repo="$2" raw running
+  raw=$(gh pr checks "$pr" --repo "$repo" --json name,workflow,bucket 2>/dev/null) || raw='[]'
+  running=$(printf '%s' "$raw" | jq -r --argjson builds "$BUILD_WORKFLOWS" '
+    [ .[] | select(.bucket == "pending" and (.workflow as $w | $builds | index($w) != null)) ] | length')
+  [ "$running" -gt 0 ]
+}
 
 # check_others <pr> <repo> [wait]
 #   Returns 0 if every check other than this workflow's own passed.

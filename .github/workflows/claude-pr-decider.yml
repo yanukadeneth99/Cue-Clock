@@ -71,6 +71,8 @@ jobs:
           WR_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
           EVENT_PR: ${{ github.event.pull_request.number }}
           DISPATCH_PR: ${{ github.event.inputs.pr_number }}
+          # Which trigger fired, used by the hand-over check below.
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           # Shared "are the other checks green?" helper. Comes from the trusted master checkout above, never from the PR.
           . .github/scripts/pr-checks.sh
@@ -104,6 +106,16 @@ jobs:
           # Must still be open.
           if [ "$state" != "OPEN" ]; then
             echo "PR #${PR} is ${state}, not OPEN — skipping."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # HAND-OVER (label path only). A build that starts a review of its own is still running, so step aside and let it do the work.
+          #
+          # Without this, a label run opened alongside the pull request sits polling for the entire build (13 minutes on PR #101) and is then cancelled by the very run that build starts. That is a whole machine held idle to produce nothing, on every pull request that touches app/ or website/.
+          #
+          # Only the label path hands over. The other two paths ARE the review that was asked for, so they always wait it out.
+          # Safe by design: if the build has not shown up in the check list yet, the helper says "not running" and we fall through and wait exactly as before. The worst case is today's behaviour, never a pull request left unreviewed.
+          if [ "$EVENT_NAME" = "pull_request_target" ] && build_check_running "${PR}" "${REPO}"; then
+            echo "PR #${PR}: a build is still running and will start its own review, so standing down."
             echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           # All checks must be passing. We wait for still-running ones, which matters on the label path: the label lands the moment the PR is opened, when CI has barely started. Without waiting we would read "pending", skip, and never come back.
