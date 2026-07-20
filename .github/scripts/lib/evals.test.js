@@ -83,11 +83,36 @@ test('computeScoreboard only counts events inside the window', () => {
   assert.equal(row.scannerIssuesOpened, 1);
   assert.equal(row.issuesClosedByAi, 1);
   assert.equal(row.medianDaysToMerge, 2);
+  // acceptance 1/1 = 1 (50 pts), independence 1/(1+2) = 1/3 (10 of 30 pts), churn: 4 runs over 2 PRs worth of work gives 1 - 4/6 = 1/3 (6.67 of 20 pts). Total 66.67 rounds to 67.
+  assert.equal(row.score, 67);
+});
+
+test('computeScore returns null on a fully quiet month', () => {
+  assert.equal(e.computeScore({ aiPrsOpened: 0, aiPrsMerged: 0, depPrsMerged: 0, autoFixRuns: 0, escalationsOpen: 0, issuesClosedByAi: 0 }), null);
+});
+
+test('computeScore gives a perfect month 100', () => {
+  assert.equal(e.computeScore({ aiPrsOpened: 3, aiPrsMerged: 3, depPrsMerged: 2, autoFixRuns: 0, escalationsOpen: 0, issuesClosedByAi: 3 }), 100);
+});
+
+test('computeScore treats repair runs with no visible work as pure churn', () => {
+  assert.equal(e.computeScore({ aiPrsOpened: 0, aiPrsMerged: 0, depPrsMerged: 0, autoFixRuns: 5, escalationsOpen: 0, issuesClosedByAi: 0 }), 0);
+});
+
+test('computeScore rebalances weights when an ingredient has nothing to measure', () => {
+  // No AI PRs at all, so only independence (30) and lowChurn (20) count: (30*1 + 20*1) / 50 = 100.
+  assert.equal(e.computeScore({ aiPrsOpened: 0, aiPrsMerged: 0, depPrsMerged: 2, autoFixRuns: 0, escalationsOpen: 0, issuesClosedByAi: 1 }), 100);
+});
+
+test('computeScore caps acceptance when merges outnumber opens', () => {
+  // 2 opened but 3 merged (one carried over from last month): acceptance capped at 1 rather than inflating the score.
+  const score = e.computeScore({ aiPrsOpened: 2, aiPrsMerged: 3, depPrsMerged: 0, autoFixRuns: 0, escalationsOpen: 0, issuesClosedByAi: 1 });
+  assert.equal(score, 100);
 });
 
 test('formatScoreboardRow lines up with the header column count', () => {
   const headerColumns = e.SCOREBOARD_HEADER.split('\n').at(-2).split('|').length;
-  const row = e.formatScoreboardRow({ month: '2026-07', aiPrsOpened: 1, aiPrsMerged: 1, depPrsMerged: 0, autoFixRuns: 0, escalationsOpen: 0, crashIssuesOpened: 0, scannerIssuesOpened: 0, issuesClosedByAi: 0, medianDaysToMerge: null });
+  const row = e.formatScoreboardRow({ month: '2026-07', aiPrsOpened: 1, aiPrsMerged: 1, depPrsMerged: 0, autoFixRuns: 0, escalationsOpen: 0, crashIssuesOpened: 0, scannerIssuesOpened: 0, issuesClosedByAi: 0, medianDaysToMerge: null, score: 75 });
   assert.equal(row.split('|').length, headerColumns);
   assert.ok(row.includes('| - |'), 'null renders as a dash');
 });

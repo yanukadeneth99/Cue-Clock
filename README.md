@@ -78,11 +78,12 @@ Gemini-driven end-to-end test harness that exercises the real running app. Two r
 
 ## 🤖 How the Automation Works
 
-This repository largely runs itself. AI workflows triage issues, write code, review it, and draft releases, while a human presses the final Publish button. The diagram below shows the journey of a change from idea to real users.
-
 ```mermaid
 flowchart TD
-    A["An idea, bug report, or app crash becomes an issue"] --> B{"AI triage: is it clear and safe to build?"}
+    A["You or a user reports a bug or idea as an issue"] --> B{"AI triage: is it clear and safe to build?"}
+    X["Crashlytics detects a crash in the live app"] --> X2["Each morning, new crashes are filed as issues automatically"]
+    X2 --> B
+    W["Weekly AI scans hunt for bugs, removable code, and speed-ups, filing issues"] --> B
     B -- "No, or unclear" --> C["Waits for the maintainer with a question"]
     B -- "Yes" --> D["AI writes the code and opens a pull request"]
     E["Dependabot suggests a library update"] --> F
@@ -98,9 +99,16 @@ flowchart TD
     K --> L["Maintainer presses Publish: beta goes to public testers"]
     L --> M["AI drafts the production release notes"]
     M --> N["Maintainer presses Publish: the exact tested build reaches real users, and the web app updates"]
+    C -- "daily summary of what needs a human" --> TG["Telegram message to the maintainer"]
+    K -- "draft ready to review" --> TG
+    M -- "draft ready to review" --> TG
 ```
 
-Around that main loop, a few helpers keep watch: a daily job turns new Crashlytics crashes into issues, three weekly AI scans look for bugs, removable code, and speed-ups and file at most one issue each, and a daily Telegram digest tells the maintainer only what genuinely needs a human. The AI never merges, publishes, or ships anything on its own; every release requires a human press of the Publish button, and a `human-review` label pauses all automation on any item until a person acts.
+---
+
+## 📊 AI Evals
+
+The automation is measured, not just trusted. A weekly job copies every AI comment and decision into [`data/ai-log/`](./data/ai-log/) as plain JSONL (a durable, machine-readable paper trail that can later be judged or used as training data), and a monthly job appends the month's numbers plus a 0 to 100 health score to the [AI Scoreboard](./docs/ai-scoreboard.md).
 
 ---
 
