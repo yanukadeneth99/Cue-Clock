@@ -1485,7 +1485,18 @@ export default function HomeScreen() {
     // when the user was either (a) adding a brand-new cue with an alert or
     // (b) editing an existing cue to ADD an alert it didn't have - both
     // cases left the OS alarm unscheduled.
-    if (tempBlock.alertMinutesBefore === null) return;
+    if (tempBlock.alertMinutesBefore === null) {
+      // The alert was removed (set to "None"). Cancel any alarm we already
+      // scheduled with the OS and clear its id - otherwise a ghost alarm
+      // still fires at the original time even though the user turned it off.
+      if (block?.notificationId) {
+        cancelAnyAlert(block.notificationId).catch(() => {});
+        setTargetBlocks((blocks) =>
+          blocks.map((b) => (b.id === id ? { ...b, notificationId: null } : b))
+        );
+      }
+      return;
+    }
     const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
     (async () => {
       try {
