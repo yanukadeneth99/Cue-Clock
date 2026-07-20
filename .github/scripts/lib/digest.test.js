@@ -187,12 +187,12 @@ test('buildDigestMessage reports both overflow counts separately', () => {
   assert.ok(msg.includes('+9 more'));
 });
 
-test('buildDigestMessage always starts with the date line', () => {
+test('buildDigestMessage always starts with the project name and the date', () => {
   const msg = buildDigestMessage({
     summary: '', stuckLines: [], dateLabel: '2026-07-20',
     needsReviewOverflow: 0, stuckOverflow: 0,
   });
-  assert.strictEqual(msg, 'Daily digest, 2026-07-20');
+  assert.strictEqual(msg, 'Cue Clock daily digest, 2026-07-20');
 });
 
 test('buildDigestMessage returns a message completely unchanged when well under the cap', () => {

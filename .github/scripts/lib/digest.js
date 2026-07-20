@@ -14,6 +14,9 @@ const MAX_NEEDS_REVIEW = 10;
 const MAX_STUCK_LINES = 15;
 // Telegram rejects messages longer than 4096 characters. We stop short to leave room for safety.
 const MAX_MESSAGE_CHARS = 3900;
+// Named in the message so it is obvious which project it came from, since the same
+// Telegram chat also receives the release drafts.
+const PROJECT_NAME = 'Cue Clock';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 // Sri Lanka is always 5 hours 30 minutes ahead of UTC, with no daylight saving.
@@ -102,7 +105,7 @@ function formatStuckLines(items) {
 function buildDigestMessage({
   summary, stuckLines, dateLabel, needsReviewOverflow, stuckOverflow,
 }) {
-  const parts = [`Daily digest, ${dateLabel}`];
+  const parts = [`${PROJECT_NAME} daily digest, ${dateLabel}`];
 
   const text = (summary || '').trim();
   if (text) {
