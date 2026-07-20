@@ -5,6 +5,7 @@ import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import PipelineDiagram from "./pipeline-diagram";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -46,8 +47,12 @@ export default function Home() {
     lastWorkflowDuration: number | null;
     latestReleaseTag: string | null;
     latestReleaseUrl: string | null;
+    latestReleaseDate: string | null;
     latestBetaTag: string | null;
     latestBetaUrl: string | null;
+    latestBetaDate: string | null;
+    aiScore: number | null;
+    aiScorePeriod: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -761,6 +766,15 @@ export default function Home() {
                         <span className="font-mono tabular-nums text-[15px] font-semibold text-accent">
                           {repoStats.latestReleaseTag}
                         </span>
+                        {repoStats.latestReleaseDate ? (
+                          <span className="font-sans text-[11px] text-fg-muted mt-0.5">
+                            {new Date(repoStats.latestReleaseDate).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                        ) : null}
                       </div>
                       <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-accent transition-colors">
                         open_in_new
@@ -788,14 +802,72 @@ export default function Home() {
                         <span className="font-mono tabular-nums text-[15px] font-semibold text-countdown">
                           {repoStats.latestBetaTag}
                         </span>
+                        {repoStats.latestBetaDate ? (
+                          <span className="font-sans text-[11px] text-fg-muted mt-0.5">
+                            {new Date(repoStats.latestBetaDate).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                        ) : null}
                       </div>
                       <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-countdown transition-colors">
                         open_in_new
                       </span>
                     </a>
                   ) : null}
+                  {typeof repoStats?.aiScore === "number" ? (
+                    // Monthly health mark of the repo's AI pipeline, computed by the AI Evals workflow and read from data/ai-scoreboard.json on master. Links to the full scoreboard in the README.
+                    <a
+                      href="https://github.com/yanukadeneth99/Cue-Clock#-ai-evals"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-accent/60 transition-colors group text-left"
+                      aria-label={`AI pipeline health score ${repoStats.aiScore} out of 100 - see the full scoreboard on GitHub`}
+                      title="This repository is maintained by an AI pipeline. Its work is scored monthly: merged work, no human rescues needed, and low repair churn raise the score."
+                    >
+                      <span className="material-symbols-outlined text-accent text-[20px]">
+                        monitoring
+                      </span>
+                      <div className="flex flex-col leading-tight">
+                        <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
+                          AI health
+                        </span>
+                        <span className="font-mono tabular-nums text-[15px] font-semibold text-accent">
+                          {repoStats.aiScore}/100
+                        </span>
+                        <span className="font-sans text-[11px] text-fg-muted mt-0.5">
+                          monthly pipeline score
+                        </span>
+                      </div>
+                      <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-accent transition-colors">
+                        open_in_new
+                      </span>
+                    </a>
+                  ) : null}
                 </div>
               ) : null}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Automation pipeline diagram ───────────────────────── */}
+        {/* Sits right below the open-source section: after "every line is public" comes the proof of HOW the project runs itself. The diagram mirrors the one in the repository README. */}
+        <section className="py-20 md:py-28 px-4 md:px-6 border-t border-card-border">
+          <div className="max-w-screen-xl mx-auto">
+            <div className="mb-12 text-center">
+              <h2 className="font-sans text-3xl md:text-4xl font-semibold tracking-[-0.02em] text-fg mb-4">
+                Maintained by an AI pipeline
+              </h2>
+              <p className="text-fg-muted text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
+                Issues, crash reports, and dependency updates flow through automated triage,
+                implementation, adversarial review, and release drafting - and a human presses
+                every Publish button. This is the actual pipeline, straight from the repository.
+              </p>
+            </div>
+            <div className="rounded-[14px] bg-card border border-card-border p-4 md:p-8">
+              <PipelineDiagram />
             </div>
           </div>
         </section>

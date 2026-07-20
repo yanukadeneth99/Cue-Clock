@@ -1,13 +1,24 @@
-// Monthly scoreboard for the AI pipeline. Appends one row of plain numbers to docs/ai-scoreboard.md.
-// Why: the automation should prove it helps rather than be assumed to. Counting merged PRs, escalations, repair runs, and autonomously closed issues over the last 30 days makes the trend visible at a glance, month after month.
+// Monthly scoreboard for the AI pipeline. Updates the table inside README.md and a small JSON file the website reads.
+// Why: the automation should prove it helps rather than be assumed to. Counting merged PRs, escalations, repair runs, and autonomously closed issues over the last 30 days makes the trend visible at a glance, month after month, right on the repository front page.
 
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { computeScoreboard, formatScoreboardRow, SCOREBOARD_HEADER } = require('./lib/evals.js');
+const {
+  computeScoreboard,
+  formatScoreboardRow,
+  parseScoreboardRow,
+  updateScoreboardRows,
+  buildScoreboardBlock,
+  replaceBetweenMarkers,
+} = require('./lib/evals.js');
 
 const repo = process.env.GITHUB_REPOSITORY || 'yanukadeneth99/Cue-Clock';
-const OUT_FILE = path.join('docs', 'ai-scoreboard.md');
+const README_FILE = 'README.md';
+// The website's open-source section shows the latest score from this file.
+const JSON_FILE = path.join('data', 'ai-scoreboard.json');
+// The scoreboard used to live here before it moved into the README. Deleting it on sight keeps the old copy from going stale in the repo.
+const OLD_FILE = path.join('docs', 'ai-scoreboard.md');
 const WINDOW_DAYS = 30;
 
 function ghJson(args) {
@@ -54,13 +65,19 @@ function main() {
 
   const row = computeScoreboard({ month, from, aiPrs, depPrs, escalationsOpen, autoFixRuns, crashIssues, scannerIssues, closedAiIssues });
 
-  // Rebuild the whole file every run: the current header from code, then the kept data rows, then this month's row. Keeping only data rows (and dropping this month's old one) means a re-run replaces its own row instead of stacking a duplicate, and rewriting the header means a column added in code actually appears. GitHub silently hides any table cell beyond the header's column count, so a stale header would make new columns invisible.
-  fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
-  const monthRowPattern = /^\| \d{4}-\d{2} /;
-  const keptRows = (fs.existsSync(OUT_FILE) ? fs.readFileSync(OUT_FILE, 'utf8').split('\n') : [])
-    .filter((line) => monthRowPattern.test(line) && !line.startsWith(`| ${month} `));
-  const content = SCOREBOARD_HEADER + '\n' + keptRows.concat(formatScoreboardRow(row)).join('\n') + '\n';
-  fs.writeFileSync(OUT_FILE, content);
+  // Update the README in place. Existing rows are parsed back out of the marker block, this month's old row is replaced, finished years collapse into one summary row each, and the block (with its header) is rebuilt fresh so a column added in code actually appears. Everything outside the markers is untouched.
+  const readme = fs.readFileSync(README_FILE, 'utf8');
+  const existingRows = readme.split('\n').map(parseScoreboardRow).filter(Boolean);
+  const rows = updateScoreboardRows(existingRows, row);
+  fs.writeFileSync(README_FILE, replaceBetweenMarkers(readme, buildScoreboardBlock(rows)));
+
+  // The website reads just the newest score from this small file.
+  fs.mkdirSync(path.dirname(JSON_FILE), { recursive: true });
+  fs.writeFileSync(JSON_FILE, JSON.stringify({ period: month, score: row.score, updatedAt: now.toISOString() }, null, 2) + '\n');
+
+  // Retire the old standalone scoreboard file, now that the table lives in the README.
+  if (fs.existsSync(OLD_FILE)) fs.unlinkSync(OLD_FILE);
+
   console.log('Scoreboard row:', formatScoreboardRow(row));
 }
 

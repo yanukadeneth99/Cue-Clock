@@ -48,20 +48,11 @@ jobs:
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1.0.175
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # Limit Claude to a curated toolbox: reading/editing files, git, and a
-          # short list of safe "gh" commands (view/comment/create).
-          # Three deliberate restrictions, matching the rest of the pipeline:
-          # 1. npm is only reachable through the trusted deps.sh helper, which
-          #    always skips package install scripts, so a malicious package can
-          #    never run its own code inside this privileged job.
-          # 2. NO `gh pr edit`. That one command can strip the human-review and
-          #    ai-fix-attempt labels that brake the whole AI pipeline, and Claude
-          #    reads untrusted text here (issue bodies and comments can be
-          #    written by strangers even when the maintainer does the summoning).
-          # 3. The system prompt below pins the untrusted-data rule, since this
-          #    workflow has no fixed prompt of its own (the mention text is the prompt).
-          # Also excluded: merging, closing, deleting, releases, secrets, gh api,
-          # and anything that changes repo settings.
+          # Limit Claude to a curated toolbox: reading/editing files, git, and a short list of safe "gh" commands (view/comment/create). Three deliberate restrictions, matching the rest of the pipeline:
+          # 1. npm is only reachable through the trusted deps.sh helper, which always skips package install scripts, so a malicious package can never run its own code inside this privileged job.
+          # 2. NO `gh pr edit`. That one command can strip the human-review and ai-fix-attempt labels that brake the whole AI pipeline, and Claude reads untrusted text here (issue bodies and comments can be written by strangers even when the maintainer does the summoning).
+          # 3. The system prompt below pins the untrusted-data rule, since this workflow has no fixed prompt of its own (the mention text is the prompt).
+          # Also excluded: merging, closing, deleting, releases, secrets, gh api, and anything that changes repo settings.
           claude_args: >-
             --model opus
             --max-turns 120

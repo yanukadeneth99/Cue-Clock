@@ -110,9 +110,77 @@ test('computeScore caps acceptance when merges outnumber opens', () => {
   assert.equal(score, 100);
 });
 
-test('formatScoreboardRow lines up with the header column count', () => {
-  const headerColumns = e.SCOREBOARD_HEADER.split('\n').at(-2).split('|').length;
+test('formatScoreboardRow lines up with the table head column count', () => {
+  const headerColumns = e.SCOREBOARD_TABLE_HEAD.split('\n')[0].split('|').length;
   const row = e.formatScoreboardRow({ month: '2026-07', aiPrsOpened: 1, aiPrsMerged: 1, depPrsMerged: 0, autoFixRuns: 0, escalationsOpen: 0, crashIssuesOpened: 0, scannerIssuesOpened: 0, issuesClosedByAi: 0, medianDaysToMerge: null, score: 75 });
   assert.equal(row.split('|').length, headerColumns);
   assert.ok(row.includes('| - |'), 'null renders as a dash');
+});
+
+test('parseScoreboardRow round-trips a formatted row', () => {
+  const original = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, depPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, crashIssuesOpened: 0, scannerIssuesOpened: 1, issuesClosedByAi: 4, medianDaysToMerge: null, score: 58 };
+  assert.deepEqual(e.parseScoreboardRow(e.formatScoreboardRow(original)), original);
+});
+
+test('parseScoreboardRow ignores non-data lines and reads short old-format rows', () => {
+  assert.equal(e.parseScoreboardRow('| Period | AI PRs opened |'), null);
+  assert.equal(e.parseScoreboardRow('| --- | --- |'), null);
+  assert.equal(e.parseScoreboardRow('Some prose with | pipes |'), null);
+  // A row written before the Score column existed: score reads back as null.
+  const old = e.parseScoreboardRow('| 2026-06 | 3 | 2 | 1 | 5 | 1 | 0 | 0 | 2 | 1.5 |');
+  assert.equal(old.month, '2026-06');
+  assert.equal(old.medianDaysToMerge, 1.5);
+  assert.equal(old.score, null);
+});
+
+test('summarizeYear sums the counts and averages the quality numbers', () => {
+  const year = e.summarizeYear('2025', [
+    { month: '2025-11', aiPrsOpened: 2, aiPrsMerged: 1, depPrsMerged: 3, autoFixRuns: 4, escalationsOpen: 1, crashIssuesOpened: 1, scannerIssuesOpened: 2, issuesClosedByAi: 1, medianDaysToMerge: 1, score: 60 },
+    { month: '2025-12', aiPrsOpened: 4, aiPrsMerged: 3, depPrsMerged: 1, autoFixRuns: 2, escalationsOpen: 3, crashIssuesOpened: 0, scannerIssuesOpened: 0, issuesClosedByAi: 3, medianDaysToMerge: 2, score: 80 },
+  ]);
+  assert.equal(year.month, '2025');
+  assert.equal(year.aiPrsOpened, 6);
+  assert.equal(year.aiPrsMerged, 4);
+  assert.equal(year.escalationsOpen, 2);
+  assert.equal(year.medianDaysToMerge, 1.5);
+  assert.equal(year.score, 70);
+});
+
+test('updateScoreboardRows replaces this month and rolls up finished years', () => {
+  const base = { aiPrsOpened: 1, aiPrsMerged: 1, depPrsMerged: 0, autoFixRuns: 0, escalationsOpen: 0, crashIssuesOpened: 0, scannerIssuesOpened: 0, issuesClosedByAi: 0, medianDaysToMerge: null, score: 50 };
+  const existing = [
+    { ...base, month: '2025-11' },
+    { ...base, month: '2025-12' },
+    { ...base, month: '2026-06' },
+    { ...base, month: '2026-07', score: 10 },
+  ];
+  const fresh = { ...base, month: '2026-07', score: 58 };
+  const rows = e.updateScoreboardRows(existing, fresh);
+  assert.deepEqual(rows.map((row) => row.month), ['2025', '2026-06', '2026-07']);
+  // The stale 2026-07 row (score 10) was replaced by the fresh one.
+  assert.equal(rows.at(-1).score, 58);
+  // The 2025 months collapsed into one summary row.
+  assert.equal(rows[0].aiPrsOpened, 2);
+});
+
+test('updateScoreboardRows leaves an already summarized year alone', () => {
+  const base = { aiPrsOpened: 5, aiPrsMerged: 5, depPrsMerged: 0, autoFixRuns: 0, escalationsOpen: 0, crashIssuesOpened: 0, scannerIssuesOpened: 0, issuesClosedByAi: 0, medianDaysToMerge: 1, score: 90 };
+  const rows = e.updateScoreboardRows([{ ...base, month: '2025' }], { ...base, month: '2026-01' });
+  assert.deepEqual(rows.map((row) => row.month), ['2025', '2026-01']);
+  assert.equal(rows[0].aiPrsOpened, 5);
+});
+
+test('replaceBetweenMarkers swaps only the fenced block and fails without markers', () => {
+  const readme = `before\n${e.SCOREBOARD_START}\nold table\n${e.SCOREBOARD_END}\nafter`;
+  const updated = e.replaceBetweenMarkers(readme, 'new table');
+  assert.equal(updated, `before\n${e.SCOREBOARD_START}\nnew table\n${e.SCOREBOARD_END}\nafter`);
+  assert.throws(() => e.replaceBetweenMarkers('no markers here', 'x'), /markers/);
+});
+
+test('buildScoreboardBlock produces parseable rows under the table head', () => {
+  const row = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, depPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, crashIssuesOpened: 0, scannerIssuesOpened: 1, issuesClosedByAi: 4, medianDaysToMerge: 0, score: 58 };
+  const block = e.buildScoreboardBlock([row]);
+  assert.ok(block.includes(e.SCOREBOARD_TABLE_HEAD));
+  const parsed = block.split('\n').map(e.parseScoreboardRow).filter(Boolean);
+  assert.deepEqual(parsed, [row]);
 });

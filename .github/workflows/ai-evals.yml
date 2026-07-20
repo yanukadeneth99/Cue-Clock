@@ -67,9 +67,9 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          # Add each output only if it exists: a weekly run makes no scoreboard, a monthly run may make no log, and git add refuses everything when one listed path is missing.
-          for p in data/ai-log docs/ai-scoreboard.md; do
-            [ -e "$p" ] && git add "$p"
+          # Stage everything the scripts may have changed. -A also stages deletions (the retired docs/ai-scoreboard.md), and a path that does not exist in this run is skipped without failing the step.
+          for p in data/ai-log data/ai-scoreboard.json docs/ai-scoreboard.md README.md; do
+            git add -A "$p" 2>/dev/null || true
           done
           if git diff --cached --quiet; then
             echo "Nothing new to commit." >> "$GITHUB_STEP_SUMMARY"

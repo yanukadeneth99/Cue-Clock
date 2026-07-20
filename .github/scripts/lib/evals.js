@@ -133,16 +133,90 @@ function computeScoreboard({ month, from, aiPrs, depPrs, escalationsOpen, autoFi
   return row;
 }
 
-const SCOREBOARD_HEADER = [
-  '# AI Scoreboard',
-  '',
-  'One row is added every month by the AI Evals workflow (`.github/workflows/ai-evals.yml`). It answers, in plain numbers, whether the automation is actually helping. Each row covers the 30 days before it was written.',
-  '',
-  'The Score column is a 0 to 100 health mark made of three parts: how much of the AI\'s opened work was merged (50%), how much finished work needed no human rescue (30%), and how little automated repair churn the month took (20%). Higher is better, and a dash means the month was too quiet to score.',
-  '',
-  '| Month | AI PRs opened | AI PRs merged | Dependency PRs merged | Auto-fix runs | Waiting on a human | Crash issues filed | Scanner issues filed | Issues closed by AI | Median days to merge | Score /100 |',
+// The scoreboard table lives inside README.md between these two markers. The monthly script replaces ONLY what sits between them, so the rest of the README is never touched by automation.
+const SCOREBOARD_START = '<!-- AI-SCOREBOARD:START -->';
+const SCOREBOARD_END = '<!-- AI-SCOREBOARD:END -->';
+
+// The numeric fields of a scoreboard row, in table column order after the period cell.
+const ROW_FIELDS = ['aiPrsOpened', 'aiPrsMerged', 'depPrsMerged', 'autoFixRuns', 'escalationsOpen', 'crashIssuesOpened', 'scannerIssuesOpened', 'issuesClosedByAi', 'medianDaysToMerge', 'score'];
+
+const SCOREBOARD_TABLE_HEAD = [
+  '| Period | AI PRs opened | AI PRs merged | Dependency PRs merged | Auto-fix runs | Waiting on a human | Crash issues filed | Scanner issues filed | Issues closed by AI | Median days to merge | Score /100 |',
   '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
 ].join('\n');
+
+// Turn one markdown table line back into a row object, or null when the line is not a data row. A period is "2026-07" for a month or "2025" for a whole summarized year. A dash cell reads back as null, and a row from before a column existed gets null for it.
+function parseScoreboardRow(line) {
+  if (!/^\| \d{4}(-\d{2})? \|/.test(line)) return null;
+  const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
+  const row = { month: cells[0] };
+  ROW_FIELDS.forEach((field, index) => {
+    const cell = cells[index + 1];
+    row[field] = cell === undefined || cell === '' || cell === '-' ? null : Number(cell);
+  });
+  return row;
+}
+
+// Collapse one finished year's month rows into a single summary row so the README table never grows past roughly 12 lines plus one line per past year. Counts are summed; the point-in-time and quality numbers (waiting on a human, median days, score) are averaged, since summing those would be meaningless.
+function summarizeYear(year, rows) {
+  const sum = (field) => rows.reduce((total, row) => total + (row[field] || 0), 0);
+  const average = (field, decimals) => {
+    const values = rows.map((row) => row[field]).filter((value) => value !== null && value !== undefined);
+    if (values.length === 0) return null;
+    const factor = 10 ** decimals;
+    return Math.round((values.reduce((total, value) => total + value, 0) / values.length) * factor) / factor;
+  };
+  return {
+    month: String(year),
+    aiPrsOpened: sum('aiPrsOpened'),
+    aiPrsMerged: sum('aiPrsMerged'),
+    depPrsMerged: sum('depPrsMerged'),
+    autoFixRuns: sum('autoFixRuns'),
+    escalationsOpen: average('escalationsOpen', 0),
+    crashIssuesOpened: sum('crashIssuesOpened'),
+    scannerIssuesOpened: sum('scannerIssuesOpened'),
+    issuesClosedByAi: sum('issuesClosedByAi'),
+    medianDaysToMerge: average('medianDaysToMerge', 1),
+    score: average('score', 0),
+  };
+}
+
+// Merge the fresh month row into the existing rows: replace this month's old row, roll every fully finished past year into one summary row, and keep everything sorted oldest first. A year that already has a summary row is left alone.
+function updateScoreboardRows(existingRows, freshRow) {
+  const currentYear = freshRow.month.slice(0, 4);
+  const kept = existingRows.filter((row) => row.month !== freshRow.month);
+  const yearRows = kept.filter((row) => row.month.length === 4);
+  let monthRows = kept.filter((row) => row.month.length === 7);
+  const summarizedYears = new Set(yearRows.map((row) => row.month));
+  const pastYears = [...new Set(monthRows.map((row) => row.month.slice(0, 4)))]
+    .filter((year) => year < currentYear && !summarizedYears.has(year));
+  for (const year of pastYears) {
+    yearRows.push(summarizeYear(year, monthRows.filter((row) => row.month.startsWith(year))));
+    monthRows = monthRows.filter((row) => !row.month.startsWith(year));
+  }
+  // Plain text sort works here: "2025" sorts before "2025-01", which sorts before "2026-07".
+  return [...yearRows, ...monthRows, freshRow].sort((a, b) => (a.month < b.month ? -1 : 1));
+}
+
+// Build the full README block that goes between the markers.
+function buildScoreboardBlock(rows) {
+  return [
+    'The Score column is a 0 to 100 health mark made of three parts: how much of the AI\'s opened work was merged (50%), how much finished work needed no human rescue (30%), and how little automated repair churn the month took (20%). Higher is better, and a dash means the period was too quiet to score. A finished year collapses into a single summary row. Updated monthly by `.github/workflows/ai-evals.yml`.',
+    '',
+    SCOREBOARD_TABLE_HEAD,
+    ...rows.map(formatScoreboardRow),
+  ].join('\n');
+}
+
+// Swap the text between the markers for a new block, leaving every other byte of the file alone. Missing markers are a hard error: silently appending could wreck the README.
+function replaceBetweenMarkers(content, block) {
+  const startIndex = content.indexOf(SCOREBOARD_START);
+  const endIndex = content.indexOf(SCOREBOARD_END);
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    throw new Error('README.md is missing the AI-SCOREBOARD markers.');
+  }
+  return content.slice(0, startIndex + SCOREBOARD_START.length) + '\n' + block + '\n' + content.slice(endIndex);
+}
 
 function formatScoreboardRow(row) {
   const cell = (value) => (value === null || value === undefined ? '-' : String(value));
@@ -174,6 +248,13 @@ module.exports = {
   daysBetween,
   computeScore,
   computeScoreboard,
-  SCOREBOARD_HEADER,
+  SCOREBOARD_START,
+  SCOREBOARD_END,
+  SCOREBOARD_TABLE_HEAD,
+  parseScoreboardRow,
+  summarizeYear,
+  updateScoreboardRows,
+  buildScoreboardBlock,
+  replaceBetweenMarkers,
   formatScoreboardRow,
 };

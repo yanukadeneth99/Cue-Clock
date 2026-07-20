@@ -31,9 +31,7 @@ async function main() {
   try {
     credentials = JSON.parse(saJson);
   } catch {
-    // Never include the parse error message here. Node's JSON.parse errors quote a snippet
-    // of the input, and a snippet of the service account key is NOT caught by the log
-    // masking (which only hides the full exact secret). This repo is public.
+    // Never include the parse error message here. Node's JSON.parse errors quote a snippet of the input, and a snippet of the service account key is NOT caught by the log masking (which only hides the full exact secret). This repo is public.
     fail("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not valid JSON. Re-save the secret in repo Settings > Secrets.");
   }
 
@@ -152,9 +150,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  // Only print the Play API's error body (safe: it is Google's error JSON, no credentials)
-  // or the error's name. Never dump the whole error object: it can carry the request
-  // config, and this repo's run logs are public.
+  // Only print the Play API's error body (safe: it is Google's error JSON, no credentials) or the error's name. Never dump the whole error object: it can carry the request config, and this repo's run logs are public.
   console.error("✗ Promotion failed:");
   if (err?.response?.data) {
     console.error(JSON.stringify(err.response.data));
