@@ -17,6 +17,8 @@ const MAX_MESSAGE_CHARS = 3900;
 // Named in the message so it is obvious which project it came from, since the same
 // Telegram chat also receives the release drafts.
 const PROJECT_NAME = 'Cue Clock';
+// Items wearing this label are already being worked on, so the digest leaves them alone.
+const IN_PROGRESS_LABEL = 'in-progress';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 // Sri Lanka is always 5 hours 30 minutes ahead of UTC, with no daylight saving.
@@ -56,6 +58,10 @@ function classify(items, { nowMs, staleDays }) {
     }
     // A draft is deliberately unfinished, so nagging about its age would just be noise.
     if (item.isDraft) continue;
+    // Someone is already on this one, so telling them it is old adds nothing.
+    // Note this only skips the stuck list. An in-progress item that an AI escalated
+    // still shows up above, because that means it is stuck ON you.
+    if (labels.includes(IN_PROGRESS_LABEL)) continue;
     // No labels at all means nothing triaged it, which usually means our labelling broke.
     if (labels.length === 0 || withAge.ageDays >= staleDays) {
       stuck.push(withAge);

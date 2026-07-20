@@ -68,6 +68,18 @@ test('classify still reports a draft that carries human-review', () => {
   assert.strictEqual(out.needsReview.length, 1);
 });
 
+test('classify ignores an in-progress item however old it gets', () => {
+  const out = classify([item({ labels: ['bug', 'in-progress'], createdAt: '2026-07-01T00:00:00Z' })], { nowMs: NOW, staleDays: STALE_DAYS });
+  assert.strictEqual(out.needsReview.length, 0);
+  assert.strictEqual(out.stuck.length, 0);
+});
+
+test('classify still reports an in-progress item that carries human-review', () => {
+  const out = classify([item({ labels: ['in-progress', 'human-review'], createdAt: '2026-07-01T00:00:00Z' })], { nowMs: NOW, staleDays: STALE_DAYS });
+  assert.strictEqual(out.needsReview.length, 1);
+  assert.strictEqual(out.stuck.length, 0);
+});
+
 test('classify leaves out a labelled item that is younger than the limit', () => {
   const out = classify([item({ createdAt: '2026-07-19T12:30:00Z' })], { nowMs: NOW, staleDays: STALE_DAYS });
   assert.strictEqual(out.stuck.length, 0);
