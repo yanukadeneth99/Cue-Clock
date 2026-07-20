@@ -81,6 +81,11 @@
           "@microsoft/react-native-clarity"
         ]
       }
+    },
+    "install": {
+      "exclude": [
+        "@react-native-community/datetimepicker"
+      ]
     }
   }
 }
