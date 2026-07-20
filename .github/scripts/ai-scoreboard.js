@@ -54,12 +54,12 @@ function main() {
 
   const row = computeScoreboard({ month, from, aiPrs, depPrs, escalationsOpen, autoFixRuns, crashIssues, scannerIssues, closedAiIssues });
 
-  // Start the file with its header once, then keep exactly one row per month: a re-run inside the same month replaces its own row instead of stacking a duplicate.
+  // Rebuild the whole file every run: the current header from code, then the kept data rows, then this month's row. Keeping only data rows (and dropping this month's old one) means a re-run replaces its own row instead of stacking a duplicate, and rewriting the header means a column added in code actually appears. GitHub silently hides any table cell beyond the header's column count, so a stale header would make new columns invisible.
   fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
-  let content = fs.existsSync(OUT_FILE) ? fs.readFileSync(OUT_FILE, 'utf8') : SCOREBOARD_HEADER + '\n';
-  content = content.split('\n').filter((line) => !line.startsWith(`| ${month} `)).join('\n');
-  if (!content.endsWith('\n')) content += '\n';
-  content += formatScoreboardRow(row) + '\n';
+  const monthRowPattern = /^\| \d{4}-\d{2} /;
+  const keptRows = (fs.existsSync(OUT_FILE) ? fs.readFileSync(OUT_FILE, 'utf8').split('\n') : [])
+    .filter((line) => monthRowPattern.test(line) && !line.startsWith(`| ${month} `));
+  const content = SCOREBOARD_HEADER + '\n' + keptRows.concat(formatScoreboardRow(row)).join('\n') + '\n';
   fs.writeFileSync(OUT_FILE, content);
   console.log('Scoreboard row:', formatScoreboardRow(row));
 }
