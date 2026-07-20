@@ -1,0 +1,82 @@
+# Crash to issue
+# -------------
+# Once a day this reads new crashes from the Crashlytics export in BigQuery and opens one GitHub issue per crash, so the usual issue workflows can pick them up. It files nothing on a day with no new crashes.
+name: Crash to Issue
+
+on:
+  schedule:
+    # 06:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30, so that is 00:30 UTC. Early enough that the daily export from Firebase has landed.
+    - cron: "30 0 * * *"
+  # Manual button, so you can test it without waiting for tomorrow.
+  workflow_dispatch:
+
+# One run at a time, and never cancel one that is already creating issues.
+concurrency:
+  group: crash-to-issue
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Needed to create issues, and to read them back when checking for duplicates.
+  issues: write
+  # No id-token here on purpose. That is only needed when Google logs in through GitHub itself.
+  # We hand the login step a key instead, so asking for it would be extra power for no gain.
+
+jobs:
+  crashes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Drop git login after checkout as an extra safety net.
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Fail loudly and early if the setup was never finished, rather than looking like a quiet day.
+      - name: Check the settings are configured
+        env:
+          GCP_SA_KEY_JSON: ${{ secrets.GCP_SA_KEY_JSON }}
+          MERGE_PAT: ${{ secrets.MERGE_PAT }}
+        run: |
+          # Only test whether each secret is set, never print it. This repo is public.
+          for name in GCP_SA_KEY_JSON MERGE_PAT; do
+            if [ -z "$(printenv "$name")" ]; then
+              echo "$name is not set. Add it in repo Settings > Secrets before this workflow can run."
+              exit 1
+            fi
+          done
+
+      # Turn the service account key into a short lived token. We ask for a token rather than a
+      # credentials file so nothing sensitive is ever written to disk.
+      - name: Get a Google access token
+        id: auth
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+          token_format: access_token
+          create_credentials_file: false
+
+      - name: File issues for new crashes
+        env:
+          BIGQUERY_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          # These three are written out in full on purpose. They are public names, not secrets: the package name ships inside the app and the project name is visible in every Firebase console link. Keeping them as secrets would only mean GitHub blanks them out as *** in the logs, which makes a broken link harder to debug rather than safer.
+          # The app part of a Crashlytics link is the word android plus the package name. Checked by hand against a real console URL, it is NOT the 1:...:android:... id that Firebase shows on the settings page.
+          GCP_PROJECT_ID: cue-clock
+          FIREBASE_APP_ID: android:com.yanukadeneth99.cueclock
+          CRASH_TABLE: cue-clock.firebase_crashlytics.com_yanukadeneth99_cueclock_ANDROID
+          # The Google data centre region holding the crash data. BigQuery assumes the United States when nobody tells it, so without this it looks in the wrong place and says the table does not exist. Confirm this matches the dataset's own region in the BigQuery console before trusting it.
+          BIGQUERY_LOCATION: asia-southeast1
+          # This label must already exist in the repo. gh fails the whole issue creation if it does not.
+          CRASH_ISSUE_LABELS: firebase-crash
+          # A personal token, not the built in one, on purpose. GitHub refuses to start a new
+          # workflow from anything the built in token did, so an issue filed with it would sit
+          # there and the decider would never wake up. The personal token does not have that block.
+          GH_TOKEN: ${{ secrets.MERGE_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node .github/scripts/crash-to-issue.js
