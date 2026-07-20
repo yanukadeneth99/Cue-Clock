@@ -34,9 +34,12 @@ on:
         default: "review"
 
 # One responder per pull request at a time; a newer trigger cancels the older run. The pull request comes from whichever path fired.
+#
+# Only a run that is going to DO something may cancel. A run joins its concurrency group the moment it is created, BEFORE the job's `if:` below is checked, so a run that will skip can still kill one that is working. Website Verify and React Doctor both watch `website/**` and finish seconds apart, so a passing build kept cancelling the fixer the failing one had just started.
+# Passing, cancelled and skipped builds now wait their turn and then skip. A newer failure still cancels an older fixer, so a fresh commit still replaces a stale run, and waiting is safe because the first step below re-reads the pull request from the API when it runs.
 concurrency:
   group: claude-ci-auto-fix-${{ github.event.inputs.pr_number || github.event.workflow_run.pull_requests[0].number }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure' }}
 
 jobs:
   claude-fix:

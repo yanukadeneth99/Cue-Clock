@@ -25,10 +25,11 @@ on:
 # Only one review/merge per PR at a time. The PR comes from whichever path fired.
 #
 # Label runs (path 2) must NOT cancel anything. GitHub puts a run into its concurrency group the moment the run is created, BEFORE the job's `if:` below is checked — so a run that is going to skip still cancels whatever is already running. Adding a label fires one run PER LABEL, and Dependabot adds several at once ("dependencies", then "python:uv" and friends). The result was that the "dependencies" run, the one that does the real work, got cancelled by a sibling run for a label we don't care about, which then skipped itself — so dependency pull requests were silently never reviewed (PR #100). With cancelling off for this path the real run finishes, and the sibling runs just wait their turn and then skip.
-# The other two paths still cancel, so a finished build or a re-review request replaces an older review in progress exactly as before. Waiting instead of cancelling is safe because the gate step below re-reads the pull request from the API (labels, open/closed, checks) at the moment it runs, so a queued run can never act on stale information.
+# The same trap catches a FAILED build (path 1): it skips, since it needs a green build to review, but it was cancelling the label run first. So a run now only cancels if it is actually going to review, meaning a dispatch or a build that PASSED.
+# Those two paths still cancel, so a green build or a re-review request replaces an older review in progress exactly as before. Waiting instead of cancelling is safe because the gate step below re-reads the pull request from the API (labels, open/closed, checks) at the moment it runs, so a queued run can never act on stale information.
 concurrency:
   group: claude-pr-decider-${{ github.event.inputs.pr_number || github.event.workflow_run.pull_requests[0].number || github.event.pull_request.number }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
 
 jobs:
   review-merge:
