@@ -291,10 +291,9 @@ jobs:
             3. Commit the fix locally with a clear message (NO Claude/Anthropic co-author
                trailer). Do NOT run `git push` — you have no push credentials, and a later
                automated step publishes your commit for you. Just commit.
-            4. Post ONE concise pull request comment on #${{ steps.ctx.outputs.pr }}. Open it
-               with an @mention of the pull request author (take their username from
-               `gh pr view`) so they get notified, then explain what was wrong, the fix, and
-               anything the maintainer should verify.
+            4. Post ONE concise pull request comment on #${{ steps.ctx.outputs.pr }}
+               explaining what was wrong, the fix, and anything the maintainer should
+               verify. NO @ MENTIONS.
 
             STOP AND HAND OVER TO A HUMAN instead if the problem is not straightforwardly
             fixable from source: an environmental or flaky failure, a missing secret, a fix

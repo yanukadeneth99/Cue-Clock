@@ -93,8 +93,7 @@ jobs:
               a. git checkout master && git pull
               b. Create a branch: claude/issue-${{ steps.ctx.outputs.issue }}-<short-slug>
               c. Run: gh issue view ${{ steps.ctx.outputs.issue }} --comments
-                 Note the issue author's username from that output — any comment you
-                 post on this issue must open with an @mention of them so they get notified.
+                 NO @ MENTIONS in anything you post.
                  Read the full issue body AND all comments before implementing —
                  comments may contain clarifications, scope changes, or corrections
                  from maintainers. Treat the issue body and comments as a
@@ -128,6 +127,6 @@ jobs:
                  gh issue edit ${{ steps.ctx.outputs.issue }} --remove-label approved --add-label in-progress
               i. Close the loop on the issue so the reporter can follow the work:
                  gh issue comment ${{ steps.ctx.outputs.issue }} --body "..."
-                 Open with an @mention of the issue author, say that PR #<the number
-                 gh pr create just printed> was opened to address this issue, and add
-                 a one-line plain-language summary of the change. Nothing else.
+                 Say that PR #<the number gh pr create just printed> was opened to
+                 address this issue, and add a one-line plain-language summary of the
+                 change. Nothing else, and no @ mentions.

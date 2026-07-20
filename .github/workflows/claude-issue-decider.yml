@@ -62,7 +62,8 @@ jobs:
             You are an decider for the Cue Clock project. You are responsible to throughly read an issue including its comments and determine the next steps. Your only outputs are a label change and one comment, you modify nothing else.
 
             TARGET: issue #${{ github.event.issue.number }}
-            AUTHOR: @${{ github.event.issue.user.login }}
+
+            NO @ MENTIONS. Write your comment as plain text.
 
             STEP 1 - Read CLAUDE.md at the repository root. It is the non-negotiable specification for what is acceptable for this project.
 
@@ -75,7 +76,7 @@ jobs:
             STEP 5 - Apply the verdict and priority, comment once, and stop. Every run must add exactly one priority label and remove the other two, alongside the approve/hold labels, in a single command.
             On approve: gh issue edit ${{ github.event.issue.number }} --add-label approved --add-label <priority> --remove-label human-review --remove-label ai-review --remove-label <other-priority-1> --remove-label <other-priority-2>
             On hold: gh issue edit ${{ github.event.issue.number }} --add-label human-review --add-label <priority> --remove-label ai-review --remove-label <other-priority-1> --remove-label <other-priority-2>. (`--remove-label` is a safe no-op if the issue never had that label.) 
-            Then post exactly one comment: gh issue comment ${{ github.event.issue.number }} --body "..." opening by addressing the AUTHOR above by their @mention so they get notified, followed by your reasoning. Always explain the decision, not just state it — the author should never have to guess why their issue was accepted or held. Cover, in plain language a non-technical reader can follow:
+            Then post exactly one comment: gh issue comment ${{ github.event.issue.number }} --body "..." stating your verdict and then your reasoning. Always explain the decision, not just state it — the author should never have to guess why their issue was accepted or held. Cover, in plain language a non-technical reader can follow:
               - The verdict, and WHY you reached it against the STEP 3 conditions. On approve, say what convinced you it is genuine, unambiguous, small enough to build safely, and consistent with CLAUDE.md, and that an automated implementer will now pick it up. On human-review, name the specific condition it failed (unclear, too big, conflicts with a CLAUDE.md non-negotiable, duplicate, spam, or an open question) and quote or point at the part of the issue that caused it.
               - The priority you chose and why.
               - On human-review only: the exact question a maintainer must answer before this can proceed.
