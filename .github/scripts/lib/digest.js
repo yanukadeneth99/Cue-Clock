@@ -16,9 +16,9 @@ const MAX_STUCK_LINES = 15;
 const MAX_MESSAGE_CHARS = 3900;
 // Named in the message so it is obvious which project it came from, since the same
 // Telegram chat also receives the release drafts.
-const PROJECT_NAME = 'Cue Clock';
+const PROJECT_NAME = "Cue Clock";
 // Items wearing this label are already being worked on, so the digest leaves them alone.
-const IN_PROGRESS_LABEL = 'in-progress';
+const IN_PROGRESS_LABEL = "in-progress";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 // Sri Lanka is always 5 hours 30 minutes ahead of UTC, with no daylight saving.
@@ -52,7 +52,7 @@ function classify(items, { nowMs, staleDays }) {
     // Copy rather than edit, so the caller's data is never changed underneath it.
     const withAge = { ...item, ageDays: ageInDays(item.createdAt, nowMs) };
 
-    if (labels.includes('human-review')) {
+    if (labels.includes("human-review")) {
       needsReview.push(withAge);
       continue;
     }
@@ -82,7 +82,7 @@ function trimComments(comments, budgetChars) {
   let used = 0;
 
   for (let i = comments.length - 1; i >= 0; i -= 1) {
-    const body = comments[i].body || '';
+    const body = comments[i].body || "";
     if (used + body.length > budgetChars) {
       // Always keep at least the newest comment, cut down to whatever budget is left.
       if (kept.length === 0) {
@@ -101,36 +101,53 @@ function trimComments(comments, budgetChars) {
 function formatStuckLines(items) {
   return items.map((i) => {
     // A title with a line break in it would split one item across two lines, so flatten it.
-    const title = String(i.title).replace(/\s+/g, ' ').trim();
+    const title = String(i.title).replace(/\s+/g, " ").trim();
     return `- #${i.number} ${title} (${i.ageDays}d) ${i.url}`;
   });
+}
+
+// Put a blank line between items so each one is easy to pick out on a phone.
+// Claude writes its summary as one line per item, so we space it out here rather than
+// asking the model to do it, because our own code gets it right every single time.
+// Blank lines are dropped first, so a stray one never turns into a huge gap.
+function spaceOutLines(text) {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join("\n\n");
 }
 
 // Put the final message together. A section with nothing in it is left out completely,
 // heading included, so an empty heading never makes the reader look for missing items.
 function buildDigestMessage({
-  summary, stuckLines, dateLabel, needsReviewOverflow, stuckOverflow,
+  summary,
+  stuckLines,
+  dateLabel,
+  needsReviewOverflow,
+  stuckOverflow,
 }) {
   const parts = [`${PROJECT_NAME} daily digest, ${dateLabel}`];
 
-  const text = (summary || '').trim();
+  const text = spaceOutLines((summary || "").trim());
   if (text) {
-    let block = `Needs you:\n${text}`;
-    if (needsReviewOverflow > 0) block += `\n+${needsReviewOverflow} more not summarised`;
+    let block = `PRs:\n${text}`;
+    if (needsReviewOverflow > 0)
+      block += `\n\n+${needsReviewOverflow} more not summarised`;
     parts.push(block);
   }
 
   if (stuckLines.length > 0) {
-    let block = `Stuck:\n${stuckLines.join('\n')}`;
-    if (stuckOverflow > 0) block += `\n+${stuckOverflow} more`;
+    let block = `Issues:\n${stuckLines.join("\n\n")}`;
+    if (stuckOverflow > 0) block += `\n\n+${stuckOverflow} more`;
     parts.push(block);
   }
 
   // A blank line between blocks, so the sections read as separate on a phone.
-  let message = parts.join('\n\n');
+  let message = parts.join("\n\n");
 
   // Cap at Telegram's limit so the message is never rejected.
-  const marker = '\n\n(message truncated)';
+  const marker = "\n\n(message truncated)";
   if (message.length > MAX_MESSAGE_CHARS) {
     // Reserve space for the marker and truncate.
     message = message.slice(0, MAX_MESSAGE_CHARS - marker.length) + marker;
