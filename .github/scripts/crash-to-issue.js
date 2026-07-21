@@ -101,6 +101,19 @@ async function runQuery() {
   );
 
   if (!res.ok) {
+    // A 404 whose reason is "notFound" means the Crashlytics export table does not exist yet.
+    // Firebase only creates that table the first time a crash is exported, so before the very
+    // first crash this is the normal quiet state, not a failure. Return null so the run ends
+    // cleanly instead of turning red every day until the first crash lands. We read ONLY the
+    // fixed reason code here, never the free-text message, so no table name or URL is logged.
+    // Any other 404 (wrong project), plus 403/500/etc, still fails loudly just below.
+    if (res.status === 404) {
+      const detail = await res.json().catch(() => null);
+      const reason = detail && detail.error && Array.isArray(detail.error.errors)
+        ? (detail.error.errors[0] || {}).reason
+        : undefined;
+      if (reason === 'notFound') return null;
+    }
     // Never print the response body or the message. The message on a fetch error can carry
     // the whole request URL, token included, and this repo is public. The status code is
     // just a number, so it is safe to put in the error name and that name is what gets
@@ -153,6 +166,12 @@ async function main() {
   }
 
   const body = await runQuery();
+  // runQuery returns null when the export table does not exist yet (no crash has ever been
+  // exported). Treat that as a genuine quiet day and stop, rather than failing the run.
+  if (body === null) {
+    console.log('No Crashlytics export table yet, so no crashes have been exported. Nothing to file.');
+    return;
+  }
   const clusters = decodeRows(body).map(toCluster);
   console.log(`Crash clusters in the last ${WINDOW_DAYS} days: ${clusters.length}`);
 
