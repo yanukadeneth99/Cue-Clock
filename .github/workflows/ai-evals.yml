@@ -1,0 +1,84 @@
+# AI Evals
+# --------
+# Two small measuring jobs that watch the AI pipeline instead of trusting it. No Claude runs here, only the GitHub API, which is why this file has no claude- prefix.
+#
+# 1. Log export (weekly): copies every bot-written comment and a snapshot of every AI-pipeline issue and pull request into plain JSONL files under data/ai-log/. GitHub scatters that history across hundreds of threads and Actions run logs expire after 90 days; these files keep it in one durable, machine-readable place for later judging or model training.
+# 2. Scoreboard (monthly): appends one row of plain numbers to docs/ai-scoreboard.md answering "is the automation actually helping?".
+#
+# Both write their results back to master, so the data lives in the repo with everything else.
+name: AI Evals
+
+on:
+  schedule:
+    # Weekly log export: Sunday 04:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30 with no daylight saving, so that is 22:30 UTC on Saturday.
+    - cron: "30 22 * * 6"
+    # Monthly scoreboard: the 1st at 06:00 Sri Lanka time, which is 00:30 UTC on the 1st.
+    - cron: "30 0 1 * *"
+  # Manual button runs BOTH jobs, so the whole thing can be tested without waiting.
+  workflow_dispatch:
+
+# One run at a time, and never cancel one that is already writing files.
+concurrency:
+  group: ai-evals
+  cancel-in-progress: false
+
+# Reading is all the job token does. The push at the end uses MERGE_PAT instead, because the master branch ruleset only lets the repository admin push directly.
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  actions: read
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Drop git login after checkout; the push step signs in with its own token.
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Which schedule fired decides which script runs. The cron strings here must match the schedule list above exactly. A manual dispatch runs both.
+      - name: Export the AI activity log
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 22 * * 6'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node .github/scripts/ai-log-export.js
+
+      - name: Append the monthly scoreboard row
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 0 1 * *'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node .github/scripts/ai-scoreboard.js
+
+      # Commit whatever the scripts produced. MERGE_PAT, not the built-in token: the master ruleset requires changes to arrive by pull request and only exempts the repository admin, so a push with the built-in token would be refused. A push touching only data/ and docs/ starts no other workflow, so this cannot set the pipeline off.
+      - name: Commit and push the results
+        env:
+          MERGE_PAT: ${{ secrets.MERGE_PAT }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Stage everything the scripts may have changed. -A also stages deletions (the retired docs/ai-scoreboard.md), and a path that does not exist in this run is skipped without failing the step.
+          for p in data/ai-log data/ai-scoreboard.json docs/ai-scoreboard.md README.md; do
+            git add -A "$p" 2>/dev/null || true
+          done
+          if git diff --cached --quiet; then
+            echo "Nothing new to commit." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: update AI eval data"
+          # Rebase on top of anything that landed on master while this ran, then push. The token stays inside the URL and out of the logs; Actions also masks the value.
+          git pull --rebase "https://x-access-token:${MERGE_PAT}@github.com/${REPO}.git" master >/dev/null 2>&1
+          git push "https://x-access-token:${MERGE_PAT}@github.com/${REPO}.git" HEAD:master >/dev/null 2>&1
+          echo "Eval data committed to master." >> "$GITHUB_STEP_SUMMARY"

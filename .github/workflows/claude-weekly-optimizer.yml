@@ -5,7 +5,7 @@ name: Claude Weekly Optimizer
 
 on:
   schedule:
-    # Friday 03:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30 with no daylight saving, so that is 21:30 UTC on Thursday. Spread across the week from the other two scans so three Opus runs never collide.
+    # Friday 03:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30 with no daylight saving, so that is 21:30 UTC on Thursday. Spread across the week from the other two scans so the three weekly scans never collide.
     - cron: "30 21 * * 4"
   # Manual button, so you can test it without waiting a week.
   workflow_dispatch:
@@ -43,9 +43,12 @@ jobs:
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1.0.175
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # On a scheduled run the actor is whoever last touched this file, which becomes a bot as soon as an automated commit lands. Without this list the action would refuse to run.
+          allowed_bots: "claude,github-actions"
           # WebSearch is allowed here, and only here, so version-upgrade proposals can name real current versions instead of guessing. Still no editing, no pushing, no package commands.
+          # Sonnet, not Opus: this only proposes, in an issue a human reads, and the scope test rejects anything big. The deep-reasoning budget stays reserved for the bug scan and the merge-gating reviews.
           claude_args: >-
-            --model opus
+            --model sonnet
             --max-turns 60
             --allowed-tools "Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(git log:*),Bash(git blame:*),Read,Glob,Grep,WebSearch"
             --disallowed-tools "Write,Edit,MultiEdit,NotebookEdit,WebFetch,Bash(git push:*),Bash(git commit:*),Bash(gh api:*),Bash(gh pr:*),Bash(npm:*),Bash(npx:*),Bash(pnpm:*)"

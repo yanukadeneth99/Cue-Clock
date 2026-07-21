@@ -5,6 +5,7 @@ import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import PipelineDiagram from "./pipeline-diagram";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -46,8 +47,12 @@ export default function Home() {
     lastWorkflowDuration: number | null;
     latestReleaseTag: string | null;
     latestReleaseUrl: string | null;
+    latestReleaseDate: string | null;
     latestBetaTag: string | null;
     latestBetaUrl: string | null;
+    latestBetaDate: string | null;
+    aiScore: number | null;
+    aiScorePeriod: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -621,58 +626,30 @@ export default function Home() {
                 infrastructure should be something the community owns - not rents.
               </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+              <div className="grid grid-cols-3 gap-3 mb-8">
                 {repoStats ? (
                   <>
-                    <Stat value={String(repoStats.stars)} label="Stars" icon="star" />
-                    <Stat value={String(repoStats.forks)} label="Forks" icon="fork_right" />
+                    <Stat
+                      value={String(repoStats.stars)}
+                      label="Stars"
+                      icon="star"
+                      href="https://github.com/yanukadeneth99/Cue-Clock/stargazers"
+                    />
+                    <Stat
+                      value={String(repoStats.forks)}
+                      label="Forks"
+                      icon="fork_right"
+                      href="https://github.com/yanukadeneth99/Cue-Clock/forks"
+                    />
                     <Stat
                       value={String(repoStats.openIssues)}
                       label="Open issues"
                       icon="bug_report"
+                      href="https://github.com/yanukadeneth99/Cue-Clock/issues"
                     />
-                    {repoStats.lastCommit ? (
-                      <Stat
-                        value={new Date(repoStats.lastCommit).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                        label="Last commit"
-                        icon="commit"
-                        small
-                      />
-                    ) : null}
-                    {repoStats.lastWorkflowStatus ? (
-                      <Stat
-                        value={repoStats.lastWorkflowStatus}
-                        label="Last CI run"
-                        icon="play_circle"
-                        small
-                        tone={
-                          repoStats.lastWorkflowStatus === "success"
-                            ? "zone1"
-                            : repoStats.lastWorkflowStatus === "failure"
-                            ? "danger"
-                            : "countdown"
-                        }
-                      />
-                    ) : null}
-                    {repoStats.lastWorkflowDuration !== null ? (
-                      <Stat
-                        value={
-                          repoStats.lastWorkflowDuration >= 60
-                            ? `${Math.floor(repoStats.lastWorkflowDuration / 60)}m ${repoStats.lastWorkflowDuration % 60}s`
-                            : `${repoStats.lastWorkflowDuration}s`
-                        }
-                        label="Build time"
-                        icon="timer"
-                        small
-                      />
-                    ) : null}
                   </>
                 ) : (
-                  Array.from({ length: 4 }).map((_, i) => (
+                  Array.from({ length: 3 }).map((_, i) => (
                     <div
                       key={i}
                       className="surface-card p-4 animate-pulse h-16"
@@ -705,7 +682,11 @@ export default function Home() {
                 </a>
               </div>
             </div>
-            <div>
+            {/* This column is shorter than the stats column beside it. Centering
+                it in the row (instead of pinning it to the top like the stats
+                column) avoids a lopsided block of empty space underneath it
+                on wide screens. */}
+            <div className="md:self-center">
               <h3 className="font-sans text-xl font-semibold mb-6 text-fg text-center md:text-left">Contributors</h3>
               <div className="flex flex-wrap justify-center md:justify-start gap-3">
                 {contributors.length > 0 ? (
@@ -739,63 +720,137 @@ export default function Home() {
                 )}
               </div>
               {(repoStats?.latestReleaseTag || repoStats?.latestBetaTag) ? (
-                <div className="mt-8 flex flex-wrap justify-center md:justify-start gap-3">
-                  {repoStats?.latestReleaseTag ? (
+                <div className="mt-8 flex flex-col gap-3">
+                  <div className="flex flex-wrap justify-center md:justify-start gap-3">
+                    {repoStats?.latestReleaseTag ? (
+                      <a
+                        href={
+                          repoStats.latestReleaseUrl ??
+                          "https://github.com/yanukadeneth99/Cue-Clock/releases"
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 min-w-[180px] inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-accent/60 transition-colors group text-left"
+                        aria-label={`Latest stable release ${repoStats.latestReleaseTag} - view on GitHub`}
+                      >
+                        <span className="material-symbols-outlined text-accent text-[20px]">
+                          new_releases
+                        </span>
+                        <div className="flex flex-col leading-tight">
+                          <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
+                            Latest stable
+                          </span>
+                          <span className="font-mono tabular-nums text-[15px] font-semibold text-accent">
+                            {repoStats.latestReleaseTag}
+                          </span>
+                          {repoStats.latestReleaseDate ? (
+                            <span className="font-sans text-[11px] text-fg-muted mt-0.5">
+                              {new Date(repoStats.latestReleaseDate).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-accent transition-colors ml-auto">
+                          open_in_new
+                        </span>
+                      </a>
+                    ) : null}
+                    {repoStats?.latestBetaTag ? (
+                      <a
+                        href={
+                          repoStats.latestBetaUrl ??
+                          "https://github.com/yanukadeneth99/Cue-Clock/releases"
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 min-w-[180px] inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-countdown/60 transition-colors group text-left"
+                        aria-label={`Latest beta pre-release ${repoStats.latestBetaTag} - view on GitHub`}
+                      >
+                        <span className="material-symbols-outlined text-countdown text-[20px]">
+                          science
+                        </span>
+                        <div className="flex flex-col leading-tight">
+                          <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
+                            Latest beta
+                          </span>
+                          <span className="font-mono tabular-nums text-[15px] font-semibold text-countdown">
+                            {repoStats.latestBetaTag}
+                          </span>
+                          {repoStats.latestBetaDate ? (
+                            <span className="font-sans text-[11px] text-fg-muted mt-0.5">
+                              {new Date(repoStats.latestBetaDate).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-countdown transition-colors ml-auto">
+                          open_in_new
+                        </span>
+                      </a>
+                    ) : null}
+                  </div>
+                  {typeof repoStats?.aiScore === "number" ? (
+                    // Monthly health mark of the repo's AI pipeline, computed by the AI Evals workflow and read from data/ai-scoreboard.json on master. Links to the full scoreboard in the README.
+                    // Spans the full combined width of the stable/beta row above it
+                    // (rather than sitting narrower like a third badge) since it's a
+                    // single wide metric, not a third release tag. The description
+                    // wraps across two lines (max-w below) so the left column has
+                    // the same label+line+line shape as Stable/Beta's label/value/date
+                    // stack, keeping this tile's height matched to theirs without a
+                    // hardcoded height that would drift out of sync on other screens.
                     <a
-                      href={
-                        repoStats.latestReleaseUrl ??
-                        "https://github.com/yanukadeneth99/Cue-Clock/releases"
-                      }
+                      href="https://github.com/yanukadeneth99/Cue-Clock#-ai-evals"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-accent/60 transition-colors group text-left"
-                      aria-label={`Latest stable release ${repoStats.latestReleaseTag} - view on GitHub`}
+                      className="flex items-center gap-4 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-violet/60 transition-colors group text-left"
+                      aria-label={`AI pipeline health score ${repoStats.aiScore} out of 100 - see the full scoreboard on GitHub`}
+                      title="This repository is maintained by an AI pipeline. Its work is scored monthly: merged work, no human rescues needed, and low repair churn raise the score."
                     >
-                      <span className="material-symbols-outlined text-accent text-[20px]">
-                        new_releases
+                      <span className="material-symbols-outlined text-violet text-[20px]">
+                        monitoring
                       </span>
-                      <div className="flex flex-col leading-tight">
+                      <div className="flex flex-col leading-tight min-w-0">
                         <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
-                          Latest stable
+                          AI health
                         </span>
-                        <span className="font-mono tabular-nums text-[15px] font-semibold text-accent">
-                          {repoStats.latestReleaseTag}
+                        <span className="font-sans text-[11px] text-fg-muted mt-0.5 max-w-[220px]">
+                          Scored monthly on merged work, human rescues avoided, and low repair churn
                         </span>
                       </div>
-                      <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-accent transition-colors">
-                        open_in_new
+                      <span className="font-mono tabular-nums text-xl md:text-2xl font-bold text-violet ml-auto shrink-0">
+                        {repoStats.aiScore}/100
                       </span>
-                    </a>
-                  ) : null}
-                  {repoStats?.latestBetaTag ? (
-                    <a
-                      href={
-                        repoStats.latestBetaUrl ??
-                        "https://github.com/yanukadeneth99/Cue-Clock/releases"
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-3 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-countdown/60 transition-colors group text-left"
-                      aria-label={`Latest beta pre-release ${repoStats.latestBetaTag} - view on GitHub`}
-                    >
-                      <span className="material-symbols-outlined text-countdown text-[20px]">
-                        science
-                      </span>
-                      <div className="flex flex-col leading-tight">
-                        <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
-                          Latest beta
-                        </span>
-                        <span className="font-mono tabular-nums text-[15px] font-semibold text-countdown">
-                          {repoStats.latestBetaTag}
-                        </span>
-                      </div>
-                      <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-countdown transition-colors">
+                      <span className="material-symbols-outlined text-fg-muted text-[16px] group-hover:text-violet transition-colors shrink-0">
                         open_in_new
                       </span>
                     </a>
                   ) : null}
                 </div>
               ) : null}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Automation pipeline diagram ───────────────────────── */}
+        {/* Sits right below the open-source section: after "every line is public" comes the proof of HOW the project runs itself. The diagram mirrors the one in the repository README. */}
+        <section className="py-20 md:py-28 px-4 md:px-6 border-t border-card-border">
+          <div className="max-w-screen-xl mx-auto">
+            <div className="mb-12 text-center">
+              <h2 className="font-sans text-3xl md:text-4xl font-semibold tracking-[-0.02em] text-fg mb-4">
+                Maintained by an AI pipeline
+              </h2>
+              <p className="text-fg-muted text-base md:text-lg leading-relaxed max-w-4xl mx-auto">
+                Issues, crash reports, and dependency updates flow through automated triage, implementation, adversarial review, and release drafting - and a human presses every Publish button. This is the actual pipeline, straight from the repository.
+              </p>
+            </div>
+            <div className="rounded-[14px] bg-card border border-card-border p-4 md:p-8">
+              <PipelineDiagram />
             </div>
           </div>
         </section>
@@ -1164,12 +1219,14 @@ function Stat({
   icon,
   small,
   tone,
+  href,
 }: {
   value: string;
   label: string;
   icon: string;
   small?: boolean;
   tone?: "zone1" | "danger" | "countdown";
+  href?: string;
 }) {
   const toneClass =
     tone === "zone1"
@@ -1179,8 +1236,8 @@ function Stat({
       : tone === "countdown"
       ? "text-countdown"
       : "text-accent";
-  return (
-    <div className="surface-card p-4">
+  const content = (
+    <>
       <div
         className={`font-mono tabular-nums font-bold mb-1 capitalize ${
           small ? "text-sm" : "text-2xl"
@@ -1192,6 +1249,21 @@ function Stat({
         <span className="material-symbols-outlined text-sm">{icon}</span>
         {label}
       </div>
-    </div>
+    </>
   );
+  // Each stat links back to the matching GitHub page, so a viewer curious
+  // about "4 open issues" or "1m 23s build time" can jump straight to it.
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="surface-card p-4 block hover:border-accent transition-colors"
+      >
+        {content}
+      </a>
+    );
+  }
+  return <div className="surface-card p-4">{content}</div>;
 }

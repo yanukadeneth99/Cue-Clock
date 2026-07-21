@@ -23,11 +23,16 @@ type RepoStats = {
   // pre-releases, so this maps cleanly to "stable" for users.
   latestReleaseTag: string | null;
   latestReleaseUrl: string | null;
+  latestReleaseDate: string | null;
   // `latestBetaTag` is the most recent pre-release (open testing on Play).
   // GitHub's REST API has no dedicated "latest pre-release" endpoint, so we
   // list /releases and pick the first one with prerelease === true.
   latestBetaTag: string | null;
   latestBetaUrl: string | null;
+  latestBetaDate: string | null;
+  // Latest AI pipeline health score (0-100), written to data/ai-scoreboard.json on master by the monthly AI Evals workflow. Null until that file exists.
+  aiScore: number | null;
+  aiScorePeriod: string | null;
 };
 
 async function ghFetch(path: string): Promise<unknown> {
@@ -39,8 +44,15 @@ async function ghFetch(path: string): Promise<unknown> {
   return res.json();
 }
 
+// For files served straight from the repository (raw.githubusercontent.com), which the GitHub REST helper above cannot reach.
+async function rawFetch(url: string): Promise<unknown> {
+  const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export async function GET() {
-  const [repoData, commitData, runsData, releaseData, releasesListData, contributorsData] =
+  const [repoData, commitData, runsData, releaseData, releasesListData, contributorsData, scoreData, issueSearchData] =
     await Promise.all([
       ghFetch(`/repos/${REPO}`),
       ghFetch(`/repos/${REPO}/commits/master`),
@@ -51,12 +63,32 @@ export async function GET() {
       // recent pre-release will be in here.
       ghFetch(`/repos/${REPO}/releases?per_page=10`),
       ghFetch(`/repos/${REPO}/contributors`),
+      rawFetch(`https://raw.githubusercontent.com/${REPO}/master/data/ai-scoreboard.json`),
+      // Count of OPEN ISSUES only. The repo object's open_issues_count lumps in
+      // open pull requests (GitHub treats a PR as a kind of issue), so it
+      // over-counts. The Search API with `type:issue` returns a total_count of
+      // genuine issues with PRs excluded. per_page=1 because we only read the
+      // count, not the results. This is the search rate-limit bucket (~10/min
+      // unauthenticated), but the hourly revalidate below keeps us well under.
+      ghFetch(`/search/issues?q=repo:${REPO}+type:issue+state:open&per_page=1`),
     ]);
 
   const repo = (repoData as Record<string, unknown> | null) ?? null;
   const commit = (commitData as Record<string, unknown> | null) ?? null;
   const runs = (runsData as Record<string, unknown> | null) ?? null;
   const release = (releaseData as Record<string, unknown> | null) ?? null;
+  const issueSearch = (issueSearchData as Record<string, unknown> | null) ?? null;
+
+  // Prefer the PR-free count from the Search API. If that call failed (e.g. a
+  // rare search rate-limit), fall back to the repo's open_issues_count so the
+  // tile still shows a number rather than zero - it may be slightly high, but
+  // never blank.
+  const openIssues =
+    typeof issueSearch?.total_count === "number"
+      ? issueSearch.total_count
+      : typeof repo?.open_issues_count === "number"
+        ? repo.open_issues_count
+        : 0;
 
   let lastCommit: string | null = null;
   if (commit?.commit && typeof commit.commit === "object") {
@@ -81,10 +113,12 @@ export async function GET() {
 
   let latestReleaseTag: string | null = null;
   let latestReleaseUrl: string | null = null;
+  let latestReleaseDate: string | null = null;
   if (release) {
     if (typeof release.tag_name === "string") latestReleaseTag = release.tag_name;
     else if (typeof release.name === "string") latestReleaseTag = release.name;
     if (typeof release.html_url === "string") latestReleaseUrl = release.html_url;
+    if (typeof release.published_at === "string") latestReleaseDate = release.published_at;
   }
 
   // The /releases list is ordered newest-first by created_at. Find the first
@@ -93,6 +127,7 @@ export async function GET() {
   // a beta cycle), nor do we re-sort: GitHub's order is correct for our use.
   let latestBetaTag: string | null = null;
   let latestBetaUrl: string | null = null;
+  let latestBetaDate: string | null = null;
   if (Array.isArray(releasesListData)) {
     for (const r of releasesListData) {
       if (!r || typeof r !== "object") continue;
@@ -101,21 +136,35 @@ export async function GET() {
       if (typeof rel.tag_name === "string") latestBetaTag = rel.tag_name;
       else if (typeof rel.name === "string") latestBetaTag = rel.name;
       if (typeof rel.html_url === "string") latestBetaUrl = rel.html_url;
+      if (typeof rel.published_at === "string") latestBetaDate = rel.published_at;
       if (latestBetaTag) break;
     }
+  }
+
+  // The monthly evals workflow writes { period, score } to master; a missing or malformed file simply leaves the score card off the page.
+  let aiScore: number | null = null;
+  let aiScorePeriod: string | null = null;
+  const scoreJson = (scoreData as Record<string, unknown> | null) ?? null;
+  if (scoreJson) {
+    if (typeof scoreJson.score === "number") aiScore = scoreJson.score;
+    if (typeof scoreJson.period === "string") aiScorePeriod = scoreJson.period;
   }
 
   const repoStats: RepoStats = {
     stars: typeof repo?.stargazers_count === "number" ? repo.stargazers_count : 0,
     forks: typeof repo?.forks_count === "number" ? repo.forks_count : 0,
-    openIssues: typeof repo?.open_issues_count === "number" ? repo.open_issues_count : 0,
+    openIssues,
     lastCommit,
     lastWorkflowStatus,
     lastWorkflowDuration,
     latestReleaseTag,
     latestReleaseUrl,
+    latestReleaseDate,
     latestBetaTag,
     latestBetaUrl,
+    latestBetaDate,
+    aiScore,
+    aiScorePeriod,
   };
 
   const contributors: Contributor[] = Array.isArray(contributorsData)

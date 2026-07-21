@@ -225,8 +225,9 @@ jobs:
           "
 
       # Send the finished build to Google Play's public beta (Open Testing) track.
+      # Pinned to an exact commit (not the movable @v1 tag): this community action receives the Google Play service account key, so its code must never be able to change under us without a deliberate bump here. Same rule as the Claude action pins.
       - name: Upload to Google Play (Open Testing - Beta track)
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.yanukadeneth99.cueclock

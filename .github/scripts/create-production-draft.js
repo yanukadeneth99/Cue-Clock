@@ -83,7 +83,10 @@ async function main() {
       console.log('n8n notified.');
     }
   } catch (err) {
-    console.warn('n8n webhook POST failed. Draft was still created.', err && err.message);
+    // Log the KIND of error, never its message. If the webhook address is wrong, Node
+    // puts that whole address, token and all, inside the message. This repo is public
+    // and its run logs can be read by anyone.
+    console.warn('n8n webhook POST failed. Draft was still created.', (err && err.name) || 'unknown error');
   }
 }
 

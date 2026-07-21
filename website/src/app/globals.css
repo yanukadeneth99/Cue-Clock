@@ -1,14 +1,13 @@
 @import "tailwindcss";
 
-/* Self-hosted Material Symbols icon font (see material-symbols npm package).
-   Serving the icon font and its CSS from our own origin means the
-   `.material-symbols-outlined` class ships in this render-blocking stylesheet
-   instead of arriving later over a separate Google Fonts request. That removes
-   the brief flash where icons showed as their raw ligature words (e.g.
-   "settings help") and the buttons resized once the glyphs swapped in. The
-   package CSS declares `font-display: block`, so glyphs stay blank (never the
-   words) until the font loads. */
-@import "material-symbols/outlined.css";
+/* The self-hosted Material Symbols icon font is loaded from the
+   `material-symbols` npm package. Its CSS is imported in layout.tsx (a JS
+   import) rather than with `@import` here, because Turbopack's dev server
+   cannot resolve a node_modules `@import` inside this Tailwind-processed file
+   (it works in the production build but throws "Can't resolve
+   material-symbols/outlined.css" under `next dev`). The JS import uses the
+   bundler's own module resolution, works in both dev and build, and still
+   ships the `.material-symbols-outlined` class render-blocking in the head. */
 
 /* ─── Canonical design tokens ───────────────────────────────────────
    Mirror of app/constants/colors.ts + typography.ts. Surface stack runs
@@ -44,6 +43,11 @@
   /* Time-urgency */
   --color-countdown:      #fbbf24;
   --color-danger:         #ef4444;
+
+  /* AI Health badge - blue is already "Latest stable" and amber is already
+     "Latest beta" in that same row, so this needs its own colour to read as
+     a distinct thing at a glance. */
+  --color-violet:         #a78bfa;
 
   /* Radii */
   --radius-row:     0.625rem; /* 10px - queued mini */
