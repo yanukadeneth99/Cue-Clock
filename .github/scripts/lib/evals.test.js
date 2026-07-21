@@ -70,6 +70,7 @@ test('computeScoreboard only counts events inside the window', () => {
     depPrs: [{ createdAt: '2026-07-02T00:00:00Z', mergedAt: '2026-07-02T12:00:00Z' }],
     escalationsOpen: 2,
     autoFixRuns: 4,
+    researchRuns: 3,
     crashIssues: [{ createdAt: '2026-07-05T00:00:00Z' }, { createdAt: '2026-01-01T00:00:00Z' }],
     scannerIssues: [{ createdAt: '2026-07-06T00:00:00Z' }],
     closedAiIssues: [{ closedAt: '2026-07-04T00:00:00Z' }, { closedAt: '2026-02-01T00:00:00Z' }],
@@ -79,12 +80,34 @@ test('computeScoreboard only counts events inside the window', () => {
   assert.equal(row.depPrsMerged, 1);
   assert.equal(row.escalationsOpen, 2);
   assert.equal(row.autoFixRuns, 4);
+  assert.equal(row.researchRuns, 3);
   assert.equal(row.crashIssuesOpened, 1);
   assert.equal(row.scannerIssuesOpened, 1);
   assert.equal(row.issuesClosedByAi, 1);
   assert.equal(row.medianDaysToMerge, 2);
   // acceptance 1/1 = 1 (50 pts), independence 1/(1+2) = 1/3 (10 of 30 pts), churn: 4 runs over 2 PRs worth of work gives 1 - 4/6 = 1/3 (6.67 of 20 pts). Total 66.67 rounds to 67.
   assert.equal(row.score, 67);
+});
+
+test('research runs are recorded but never move the score', () => {
+  // Same month, same everything, only the research-runs count differs. The score
+  // must come out identical, so adding this metric can never rewrite history or
+  // make a future month look better or worse than a past one by comparison.
+  const common = {
+    month: '2026-07',
+    from: '2026-06-20T00:00:00Z',
+    aiPrs: [{ createdAt: '2026-07-01T00:00:00Z', mergedAt: '2026-07-03T00:00:00Z' }],
+    depPrs: [],
+    escalationsOpen: 1,
+    autoFixRuns: 2,
+    crashIssues: [],
+    scannerIssues: [],
+    closedAiIssues: [{ closedAt: '2026-07-04T00:00:00Z' }],
+  };
+  const none = e.computeScoreboard({ ...common, researchRuns: 0 });
+  const many = e.computeScoreboard({ ...common, researchRuns: 99 });
+  assert.equal(none.score, many.score);
+  assert.equal(many.researchRuns, 99);
 });
 
 test('computeScore returns null on a fully quiet month', () => {
@@ -112,13 +135,13 @@ test('computeScore caps acceptance when merges outnumber opens', () => {
 
 test('formatScoreboardRow lines up with the table head column count', () => {
   const headerColumns = e.SCOREBOARD_TABLE_HEAD.split('\n')[0].split('|').length;
-  const row = e.formatScoreboardRow({ month: '2026-07', aiPrsOpened: 1, aiPrsMerged: 1, autoFixRuns: 0, escalationsOpen: 0, score: null });
+  const row = e.formatScoreboardRow({ month: '2026-07', aiPrsOpened: 1, aiPrsMerged: 1, autoFixRuns: 0, escalationsOpen: 0, score: null, researchRuns: 2 });
   assert.equal(row.split('|').length, headerColumns);
   assert.ok(row.includes('| - |'), 'null renders as a dash');
 });
 
 test('parseScoreboardRow round-trips a formatted row', () => {
-  const original = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, score: 58 };
+  const original = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, score: 58, researchRuns: 6 };
   assert.deepEqual(e.parseScoreboardRow(e.formatScoreboardRow(original)), original);
 });
 
@@ -127,23 +150,40 @@ test('parseScoreboardRow ignores non-data lines and reads short old-format rows'
   assert.equal(e.parseScoreboardRow('| --- | --- |'), null);
   assert.equal(e.parseScoreboardRow('Some prose with | pipes |'), null);
   // A row written before the later columns existed: the missing trailing cells
-  // (auto-fix runs, waiting on a human, score) read back as null.
+  // (auto-fix runs, waiting on a human, score, research runs) read back as null.
+  // This is why a new column MUST be appended at the end: an old row keeps every
+  // value it already had, and only gains a null for the column it predates.
   const old = e.parseScoreboardRow('| 2026-06 | 3 | 2 |');
   assert.equal(old.month, '2026-06');
   assert.equal(old.aiPrsOpened, 3);
   assert.equal(old.aiPrsMerged, 2);
   assert.equal(old.autoFixRuns, null);
   assert.equal(old.score, null);
+  assert.equal(old.researchRuns, null);
+});
+
+// The real historical row committed to the README today has no research-runs cell.
+// This proves that adding the column leaves every number in it exactly where it was.
+test('a pre-research README row keeps all its old values and only gains a null', () => {
+  const parsed = e.parseScoreboardRow('| 2026-07 | 7 | 4 | 17 | 2 | 58 |');
+  assert.equal(parsed.aiPrsOpened, 7);
+  assert.equal(parsed.aiPrsMerged, 4);
+  assert.equal(parsed.autoFixRuns, 17);
+  assert.equal(parsed.escalationsOpen, 2);
+  assert.equal(parsed.score, 58);
+  assert.equal(parsed.researchRuns, null);
 });
 
 test('summarizeYear sums the counts and averages the quality numbers', () => {
   const year = e.summarizeYear('2025', [
-    { month: '2025-11', aiPrsOpened: 2, aiPrsMerged: 1, depPrsMerged: 3, autoFixRuns: 4, escalationsOpen: 1, crashIssuesOpened: 1, scannerIssuesOpened: 2, issuesClosedByAi: 1, medianDaysToMerge: 1, score: 60 },
-    { month: '2025-12', aiPrsOpened: 4, aiPrsMerged: 3, depPrsMerged: 1, autoFixRuns: 2, escalationsOpen: 3, crashIssuesOpened: 0, scannerIssuesOpened: 0, issuesClosedByAi: 3, medianDaysToMerge: 2, score: 80 },
+    { month: '2025-11', aiPrsOpened: 2, aiPrsMerged: 1, depPrsMerged: 3, autoFixRuns: 4, researchRuns: 5, escalationsOpen: 1, crashIssuesOpened: 1, scannerIssuesOpened: 2, issuesClosedByAi: 1, medianDaysToMerge: 1, score: 60 },
+    { month: '2025-12', aiPrsOpened: 4, aiPrsMerged: 3, depPrsMerged: 1, autoFixRuns: 2, researchRuns: 6, escalationsOpen: 3, crashIssuesOpened: 0, scannerIssuesOpened: 0, issuesClosedByAi: 3, medianDaysToMerge: 2, score: 80 },
   ]);
   assert.equal(year.month, '2025');
   assert.equal(year.aiPrsOpened, 6);
   assert.equal(year.aiPrsMerged, 4);
+  assert.equal(year.autoFixRuns, 6);
+  assert.equal(year.researchRuns, 11);
   assert.equal(year.escalationsOpen, 2);
   assert.equal(year.medianDaysToMerge, 1.5);
   assert.equal(year.score, 70);
@@ -181,7 +221,7 @@ test('replaceBetweenMarkers swaps only the fenced block and fails without marker
 });
 
 test('buildScoreboardBlock produces parseable rows under the table head', () => {
-  const row = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, score: 58 };
+  const row = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, score: 58, researchRuns: 9 };
   const block = e.buildScoreboardBlock([row]);
   assert.ok(block.includes(e.SCOREBOARD_TABLE_HEAD));
   const parsed = block.split('\n').map(e.parseScoreboardRow).filter(Boolean);

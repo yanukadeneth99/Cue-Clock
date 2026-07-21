@@ -2,9 +2,9 @@
 #
 # Two ways it starts, both meaning "this issue is approved to build":
 #   1. The maintainer adds the `approved` label by hand.
-#   2. The issue-decider approved it and dispatches this workflow (it must dispatch,
-#      because a label the decider adds with the built-in token does NOT, by GitHub's
-#      own anti-recursion rule, trigger this workflow).
+#   2. The researcher finished gathering facts and dispatches this workflow (it must
+#      dispatch, because a label the researcher adds with the built-in token does NOT,
+#      by GitHub's own anti-recursion rule, trigger this workflow).
 # It never merges — the PR-decider reviews and merges (or flags human-review) later.
 name: Claude Implementer
 

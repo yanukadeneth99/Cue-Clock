@@ -112,7 +112,8 @@ function computeScore({ aiPrsOpened, aiPrsMerged, depPrsMerged, autoFixRuns, esc
 }
 
 // Work the monthly numbers out from raw lists. Only events inside the window (an ISO timestamp in `from`) are counted. ISO strings in the same UTC format compare correctly as plain text, so no date parsing is needed for the filters.
-function computeScoreboard({ month, from, aiPrs, depPrs, escalationsOpen, autoFixRuns, crashIssues, scannerIssues, closedAiIssues }) {
+// researchRuns is counted and shown, but on purpose it does NOT feed the score: a research pass is healthy up-front work (one per approved issue), not the churn, acceptance, or human-rescue the score measures, so rewarding or penalising it would only distort the mark.
+function computeScoreboard({ month, from, aiPrs, depPrs, escalationsOpen, autoFixRuns, researchRuns, crashIssues, scannerIssues, closedAiIssues }) {
   const inWindow = (iso) => Boolean(iso) && iso >= from;
   const aiMerged = aiPrs.filter((pr) => inWindow(pr.mergedAt));
   const mergeDays = aiMerged.filter((pr) => pr.createdAt).map((pr) => daysBetween(pr.createdAt, pr.mergedAt));
@@ -123,6 +124,7 @@ function computeScoreboard({ month, from, aiPrs, depPrs, escalationsOpen, autoFi
     aiPrsMerged: aiMerged.length,
     depPrsMerged: depPrs.filter((pr) => inWindow(pr.mergedAt)).length,
     autoFixRuns,
+    researchRuns,
     escalationsOpen,
     crashIssuesOpened: crashIssues.filter((issue) => inWindow(issue.createdAt)).length,
     scannerIssuesOpened: scannerIssues.filter((issue) => inWindow(issue.createdAt)).length,
@@ -138,15 +140,18 @@ const SCOREBOARD_START = '<!-- AI-SCOREBOARD:START -->';
 const SCOREBOARD_END = '<!-- AI-SCOREBOARD:END -->';
 
 // The numeric fields of a scoreboard row, in table column order after the period cell.
-// The table shows only the score and its three ingredients (acceptance = opened
-// vs merged, churn = auto-fix runs, independence = waiting on a human) so the
-// Score stays visible without horizontal scrolling. Other metrics are still
-// computed for the score and the JSONL record; they are just not displayed here.
-const ROW_FIELDS = ['aiPrsOpened', 'aiPrsMerged', 'autoFixRuns', 'escalationsOpen', 'score'];
+// The table shows the score and its three ingredients (acceptance = opened vs merged,
+// churn = auto-fix runs, independence = waiting on a human), so the Score stays visible
+// without horizontal scrolling. Research runs are appended LAST on purpose: new columns
+// must go at the end, because rows are parsed back by position and a row written before
+// a column existed reads that trailing cell as null. Keeping Research runs last also keeps
+// the Score in the visible part of the table. Other metrics are still computed for the
+// score and the record; they are just not displayed here.
+const ROW_FIELDS = ['aiPrsOpened', 'aiPrsMerged', 'autoFixRuns', 'escalationsOpen', 'score', 'researchRuns'];
 
 const SCOREBOARD_TABLE_HEAD = [
-  '| Period | AI PRs opened | AI PRs merged | Auto-fix runs | Waiting on a human | Score /100 |',
-  '| --- | --- | --- | --- | --- | --- |',
+  '| Period | AI PRs opened | AI PRs merged | Auto-fix runs | Waiting on a human | Score /100 | Research runs |',
+  '| --- | --- | --- | --- | --- | --- | --- |',
 ].join('\n');
 
 // Turn one markdown table line back into a row object, or null when the line is not a data row. A period is "2026-07" for a month or "2025" for a whole summarized year. A dash cell reads back as null, and a row from before a column existed gets null for it.
@@ -176,6 +181,7 @@ function summarizeYear(year, rows) {
     aiPrsMerged: sum('aiPrsMerged'),
     depPrsMerged: sum('depPrsMerged'),
     autoFixRuns: sum('autoFixRuns'),
+    researchRuns: sum('researchRuns'),
     escalationsOpen: average('escalationsOpen', 0),
     crashIssuesOpened: sum('crashIssuesOpened'),
     scannerIssuesOpened: sum('scannerIssuesOpened'),
@@ -230,7 +236,8 @@ function formatScoreboardRow(row) {
     `| ${cell(row.aiPrsMerged)} `,
     `| ${cell(row.autoFixRuns)} `,
     `| ${cell(row.escalationsOpen)} `,
-    `| ${cell(row.score)} |`,
+    `| ${cell(row.score)} `,
+    `| ${cell(row.researchRuns)} |`,
   ].join('');
 }
 

@@ -87,7 +87,8 @@ flowchart LR
     X2 --> B
     W["Weekly AI scans hunt for bugs, removable code, and speed-ups, filing issues"] --> B
     B -- "No, or unclear" --> C["Waits for the maintainer with a question"]
-    B -- "Yes" --> D["AI writes the code and opens a pull request"]
+    B -- "Yes" --> R["AI researches the issue and posts notes for the builder"]
+    R --> D["AI writes the code and opens a pull request"]
     E["Dependabot suggests a library update"] --> F
     D --> F["The app is built and tested automatically"]
     F -- "Build fails" --> G["AI tries to repair it, up to 5 times"]

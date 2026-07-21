@@ -47,13 +47,20 @@ function main() {
     issueList(['--state', 'open', '--label', 'human-review']).length +
     prList(['--state', 'open', '--label', 'human-review']).length;
 
-  // Real repair runs in the window, counted the same way the fixer's own daily cap does: skipped and cancelled runs are noise, not work.
-  const runsRaw = execFileSync('gh', [
-    'api', '--paginate',
-    `repos/${repo}/actions/workflows/claude-ci-auto-fix.yml/runs?created=%3E${from}&per_page=100`,
-    '--jq', '.workflow_runs[] | select(.conclusion != "skipped" and .conclusion != "cancelled") | .id',
-  ], { encoding: 'utf8' });
-  const autoFixRuns = runsRaw.split('\n').filter(Boolean).length;
+  // Count the runs of a workflow in the window, the same way the fixer's own daily cap does: skipped and cancelled runs are noise, not work.
+  const countRuns = (workflowFile) => {
+    const raw = execFileSync('gh', [
+      'api', '--paginate',
+      `repos/${repo}/actions/workflows/${workflowFile}/runs?created=%3E${from}&per_page=100`,
+      '--jq', '.workflow_runs[] | select(.conclusion != "skipped" and .conclusion != "cancelled") | .id',
+    ], { encoding: 'utf8' });
+    return raw.split('\n').filter(Boolean).length;
+  };
+
+  // Real repair runs in the window.
+  const autoFixRuns = countRuns('claude-ci-auto-fix.yml');
+  // Research passes in the window, shown next to repair runs as a matching pair: facts gathered up front versus repairs needed after. This is recorded and displayed but deliberately kept out of the health score (see computeScoreboard).
+  const researchRuns = countRuns('claude-issue-researcher.yml');
 
   const crashIssues = issueList(['--state', 'all', '--label', 'firebase-crash']);
   const scannerIssues = ['claude-bugs', 'claude-optimize', 'claude-minimize']
@@ -63,7 +70,7 @@ function main() {
   const closedAiIssues = issueList(['--state', 'closed', '--label', 'in-progress'])
     .filter((issue) => !(issue.labels || []).some((label) => label.name === 'human-review'));
 
-  const row = computeScoreboard({ month, from, aiPrs, depPrs, escalationsOpen, autoFixRuns, crashIssues, scannerIssues, closedAiIssues });
+  const row = computeScoreboard({ month, from, aiPrs, depPrs, escalationsOpen, autoFixRuns, researchRuns, crashIssues, scannerIssues, closedAiIssues });
 
   // Update the README in place. Existing rows are parsed back out of the marker block, this month's old row is replaced, finished years collapse into one summary row each, and the block (with its header) is rebuilt fresh so a column added in code actually appears. Everything outside the markers is untouched.
   const readme = fs.readFileSync(README_FILE, 'utf8');
