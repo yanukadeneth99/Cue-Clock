@@ -15,11 +15,11 @@
 
 A minimal, distraction-free clock app built specifically for broadcast professionals who need to monitor multiple timezones and track countdown timers simultaneously.
 
-| Platform            | Link                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------ |
-| 🌐 Live Site        | [cueclock.app](https://cueclock.app)                                                             |
-| 🌐 Web Application  | [live.cueclock.app](https://live.cueclock.app)                                                   |
-| 📱 Android          | [Google Play Store](https://play.google.com/store/apps/details?id=com.yanukadeneth99.cueclock)   |
+| Platform           | Link                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| 🌐 Live Site       | [cueclock.app](https://cueclock.app)                                                           |
+| 🌐 Web Application | [live.cueclock.app](https://live.cueclock.app)                                                 |
+| 📱 Android         | [Google Play Store](https://play.google.com/store/apps/details?id=com.yanukadeneth99.cueclock) |
 
 ---
 
@@ -81,7 +81,7 @@ Gemini-driven end-to-end test harness that exercises the real running app. Two r
 This repository largely runs itself. AI workflows triage issues, write code, review it, and draft releases, while a human presses the final Publish button. The diagram below shows the journey of a change from idea to real users.
 
 ```mermaid
-flowchart TD
+flowchart LR
     A["You or a user reports a bug or idea as an issue"] --> B{"AI triage: is it clear and safe to build?"}
     X["Crashlytics detects a crash in the live app"] --> X2["Each morning, new crashes are filed as issues automatically"]
     X2 --> B
@@ -113,11 +113,13 @@ flowchart TD
 The automation is measured, not just trusted. A weekly job copies every AI comment and decision into [`data/ai-log/`](./data/ai-log/) as plain JSONL (a durable, machine-readable paper trail that can later be judged or used as training data), and a monthly job updates the scoreboard below.
 
 <!-- AI-SCOREBOARD:START -->
+
 The Score column is a 0 to 100 health mark made of three parts: how much of the AI's opened work was merged (50%), how much finished work needed no human rescue (30%), and how little automated repair churn the month took (20%). Higher is better, and a dash means the period was too quiet to score. A finished year collapses into a single summary row. Updated monthly by `.github/workflows/ai-evals.yml`.
 
-| Period | AI PRs opened | AI PRs merged | Dependency PRs merged | Auto-fix runs | Waiting on a human | Crash issues filed | Scanner issues filed | Issues closed by AI | Median days to merge | Score /100 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-07 | 7 | 4 | 4 | 17 | 2 | 0 | 1 | 4 | 0 | 58 |
+| Period  | AI PRs opened | AI PRs merged | Auto-fix runs | Waiting on a human | Score /100 |
+| ------- | ------------- | ------------- | ------------- | ------------------ | ---------- |
+| 2026-07 | 7             | 4             | 17            | 2                  | 58         |
+
 <!-- AI-SCOREBOARD:END -->
 
 ---
@@ -144,11 +146,11 @@ cd app && npm run test:web  # web only
 
 ## 🛠️ Tech Stack
 
-| Project     | Tech Stack                                                                          |
-| ----------- | ----------------------------------------------------------------------------------- |
-| **App**     | React Native, Expo, Luxon, TypeScript (strict), Expo Router, AsyncStorage           |
-| **Website** | Next.js, Tailwind CSS, GSAP, TypeScript                                             |
-| **Tests**   | Python (browser-use, Playwright), TypeScript (LangChain.js, LangGraph), Gemini API  |
+| Project     | Tech Stack                                                                         |
+| ----------- | ---------------------------------------------------------------------------------- |
+| **App**     | React Native, Expo, Luxon, TypeScript (strict), Expo Router, AsyncStorage          |
+| **Website** | Next.js, Tailwind CSS, GSAP, TypeScript                                            |
+| **Tests**   | Python (browser-use, Playwright), TypeScript (LangChain.js, LangGraph), Gemini API |
 
 ---
 

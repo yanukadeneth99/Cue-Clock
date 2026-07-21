@@ -52,7 +52,7 @@ async function rawFetch(url: string): Promise<unknown> {
 }
 
 export async function GET() {
-  const [repoData, commitData, runsData, releaseData, releasesListData, contributorsData, scoreData] =
+  const [repoData, commitData, runsData, releaseData, releasesListData, contributorsData, scoreData, issueSearchData] =
     await Promise.all([
       ghFetch(`/repos/${REPO}`),
       ghFetch(`/repos/${REPO}/commits/master`),
@@ -64,12 +64,31 @@ export async function GET() {
       ghFetch(`/repos/${REPO}/releases?per_page=10`),
       ghFetch(`/repos/${REPO}/contributors`),
       rawFetch(`https://raw.githubusercontent.com/${REPO}/master/data/ai-scoreboard.json`),
+      // Count of OPEN ISSUES only. The repo object's open_issues_count lumps in
+      // open pull requests (GitHub treats a PR as a kind of issue), so it
+      // over-counts. The Search API with `type:issue` returns a total_count of
+      // genuine issues with PRs excluded. per_page=1 because we only read the
+      // count, not the results. This is the search rate-limit bucket (~10/min
+      // unauthenticated), but the hourly revalidate below keeps us well under.
+      ghFetch(`/search/issues?q=repo:${REPO}+type:issue+state:open&per_page=1`),
     ]);
 
   const repo = (repoData as Record<string, unknown> | null) ?? null;
   const commit = (commitData as Record<string, unknown> | null) ?? null;
   const runs = (runsData as Record<string, unknown> | null) ?? null;
   const release = (releaseData as Record<string, unknown> | null) ?? null;
+  const issueSearch = (issueSearchData as Record<string, unknown> | null) ?? null;
+
+  // Prefer the PR-free count from the Search API. If that call failed (e.g. a
+  // rare search rate-limit), fall back to the repo's open_issues_count so the
+  // tile still shows a number rather than zero - it may be slightly high, but
+  // never blank.
+  const openIssues =
+    typeof issueSearch?.total_count === "number"
+      ? issueSearch.total_count
+      : typeof repo?.open_issues_count === "number"
+        ? repo.open_issues_count
+        : 0;
 
   let lastCommit: string | null = null;
   if (commit?.commit && typeof commit.commit === "object") {
@@ -134,7 +153,7 @@ export async function GET() {
   const repoStats: RepoStats = {
     stars: typeof repo?.stargazers_count === "number" ? repo.stargazers_count : 0,
     forks: typeof repo?.forks_count === "number" ? repo.forks_count : 0,
-    openIssues: typeof repo?.open_issues_count === "number" ? repo.open_issues_count : 0,
+    openIssues,
     lastCommit,
     lastWorkflowStatus,
     lastWorkflowDuration,

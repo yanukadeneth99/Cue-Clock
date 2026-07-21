@@ -112,13 +112,13 @@ test('computeScore caps acceptance when merges outnumber opens', () => {
 
 test('formatScoreboardRow lines up with the table head column count', () => {
   const headerColumns = e.SCOREBOARD_TABLE_HEAD.split('\n')[0].split('|').length;
-  const row = e.formatScoreboardRow({ month: '2026-07', aiPrsOpened: 1, aiPrsMerged: 1, depPrsMerged: 0, autoFixRuns: 0, escalationsOpen: 0, crashIssuesOpened: 0, scannerIssuesOpened: 0, issuesClosedByAi: 0, medianDaysToMerge: null, score: 75 });
+  const row = e.formatScoreboardRow({ month: '2026-07', aiPrsOpened: 1, aiPrsMerged: 1, autoFixRuns: 0, escalationsOpen: 0, score: null });
   assert.equal(row.split('|').length, headerColumns);
   assert.ok(row.includes('| - |'), 'null renders as a dash');
 });
 
 test('parseScoreboardRow round-trips a formatted row', () => {
-  const original = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, depPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, crashIssuesOpened: 0, scannerIssuesOpened: 1, issuesClosedByAi: 4, medianDaysToMerge: null, score: 58 };
+  const original = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, score: 58 };
   assert.deepEqual(e.parseScoreboardRow(e.formatScoreboardRow(original)), original);
 });
 
@@ -126,10 +126,13 @@ test('parseScoreboardRow ignores non-data lines and reads short old-format rows'
   assert.equal(e.parseScoreboardRow('| Period | AI PRs opened |'), null);
   assert.equal(e.parseScoreboardRow('| --- | --- |'), null);
   assert.equal(e.parseScoreboardRow('Some prose with | pipes |'), null);
-  // A row written before the Score column existed: score reads back as null.
-  const old = e.parseScoreboardRow('| 2026-06 | 3 | 2 | 1 | 5 | 1 | 0 | 0 | 2 | 1.5 |');
+  // A row written before the later columns existed: the missing trailing cells
+  // (auto-fix runs, waiting on a human, score) read back as null.
+  const old = e.parseScoreboardRow('| 2026-06 | 3 | 2 |');
   assert.equal(old.month, '2026-06');
-  assert.equal(old.medianDaysToMerge, 1.5);
+  assert.equal(old.aiPrsOpened, 3);
+  assert.equal(old.aiPrsMerged, 2);
+  assert.equal(old.autoFixRuns, null);
   assert.equal(old.score, null);
 });
 
@@ -178,7 +181,7 @@ test('replaceBetweenMarkers swaps only the fenced block and fails without marker
 });
 
 test('buildScoreboardBlock produces parseable rows under the table head', () => {
-  const row = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, depPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, crashIssuesOpened: 0, scannerIssuesOpened: 1, issuesClosedByAi: 4, medianDaysToMerge: 0, score: 58 };
+  const row = { month: '2026-07', aiPrsOpened: 7, aiPrsMerged: 4, autoFixRuns: 17, escalationsOpen: 2, score: 58 };
   const block = e.buildScoreboardBlock([row]);
   assert.ok(block.includes(e.SCOREBOARD_TABLE_HEAD));
   const parsed = block.split('\n').map(e.parseScoreboardRow).filter(Boolean);

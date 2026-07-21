@@ -35,6 +35,11 @@
   --color-countdown:      #fbbf24;
   --color-danger:         #ef4444;
 
+  /* AI Health badge - blue is already "Latest stable" and amber is already
+     "Latest beta" in that same row, so this needs its own colour to read as
+     a distinct thing at a glance. */
+  --color-violet:         #a78bfa;
+
   /* Radii */
   --radius-row:     0.625rem; /* 10px - queued mini */
   --radius-setting: 0.75rem;  /* 12px - settings rows */

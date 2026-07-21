@@ -138,11 +138,15 @@ const SCOREBOARD_START = '<!-- AI-SCOREBOARD:START -->';
 const SCOREBOARD_END = '<!-- AI-SCOREBOARD:END -->';
 
 // The numeric fields of a scoreboard row, in table column order after the period cell.
-const ROW_FIELDS = ['aiPrsOpened', 'aiPrsMerged', 'depPrsMerged', 'autoFixRuns', 'escalationsOpen', 'crashIssuesOpened', 'scannerIssuesOpened', 'issuesClosedByAi', 'medianDaysToMerge', 'score'];
+// The table shows only the score and its three ingredients (acceptance = opened
+// vs merged, churn = auto-fix runs, independence = waiting on a human) so the
+// Score stays visible without horizontal scrolling. Other metrics are still
+// computed for the score and the JSONL record; they are just not displayed here.
+const ROW_FIELDS = ['aiPrsOpened', 'aiPrsMerged', 'autoFixRuns', 'escalationsOpen', 'score'];
 
 const SCOREBOARD_TABLE_HEAD = [
-  '| Period | AI PRs opened | AI PRs merged | Dependency PRs merged | Auto-fix runs | Waiting on a human | Crash issues filed | Scanner issues filed | Issues closed by AI | Median days to merge | Score /100 |',
-  '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  '| Period | AI PRs opened | AI PRs merged | Auto-fix runs | Waiting on a human | Score /100 |',
+  '| --- | --- | --- | --- | --- | --- |',
 ].join('\n');
 
 // Turn one markdown table line back into a row object, or null when the line is not a data row. A period is "2026-07" for a month or "2025" for a whole summarized year. A dash cell reads back as null, and a row from before a column existed gets null for it.
@@ -224,13 +228,8 @@ function formatScoreboardRow(row) {
     `| ${row.month} `,
     `| ${cell(row.aiPrsOpened)} `,
     `| ${cell(row.aiPrsMerged)} `,
-    `| ${cell(row.depPrsMerged)} `,
     `| ${cell(row.autoFixRuns)} `,
     `| ${cell(row.escalationsOpen)} `,
-    `| ${cell(row.crashIssuesOpened)} `,
-    `| ${cell(row.scannerIssuesOpened)} `,
-    `| ${cell(row.issuesClosedByAi)} `,
-    `| ${cell(row.medianDaysToMerge)} `,
     `| ${cell(row.score)} |`,
   ].join('');
 }
