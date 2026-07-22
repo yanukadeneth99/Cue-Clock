@@ -105,8 +105,10 @@ jobs:
           notes = notes.replace(/\r\n/g, '\n');
           notes = notes.replace(/\[([^\]]+)\]\([^)]+\)/g, '\$1');
           notes = notes.replace(/^\s{0,3}#{1,6}\s*/gm, '');
-          notes = notes.replace(/^\s*[*+-]\s+/gm, '• ');
-          notes = notes.replace(/^\s*\d+\.\s+/gm, '• ');
+          // Match only spaces/tabs before a bullet, NOT \s* (which also matches newlines and would
+          // swallow the blank line above the first bullet, collapsing the gap after the one-liner).
+          notes = notes.replace(/^[ \t]*[*+-]\s+/gm, '• ');
+          notes = notes.replace(/^[ \t]*\d+\.\s+/gm, '• ');
           notes = notes.replace(/\*\*([^*]+)\*\*/g, '\$1');
           notes = notes.replace(/__([^_]+)__/g, '\$1');
           notes = notes.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '\$1');

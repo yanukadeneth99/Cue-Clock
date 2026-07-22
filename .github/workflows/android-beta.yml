@@ -199,8 +199,10 @@ jobs:
           notes = notes.replace(/\r\n/g, '\n');
           notes = notes.replace(/\[([^\]]+)\]\([^)]+\)/g, '\$1'); // Converts [Link Text](https://...) to just 'Link Text'
           notes = notes.replace(/^\s{0,3}#{1,6}\s*/gm, ''); // Removes markdown heading markers only
-          notes = notes.replace(/^\s*[*+-]\s+/gm, '• '); // Converts markdown bullets to readable bullets
-          notes = notes.replace(/^\s*\d+\.\s+/gm, '• '); // Converts numbered lists to readable bullets
+          // Match only spaces/tabs before a bullet, NOT \s* (which also matches newlines and would
+          // swallow the blank line above the first bullet, collapsing the gap after the one-liner).
+          notes = notes.replace(/^[ \t]*[*+-]\s+/gm, '• '); // Converts markdown bullets to readable bullets
+          notes = notes.replace(/^[ \t]*\d+\.\s+/gm, '• '); // Converts numbered lists to readable bullets
           notes = notes.replace(/\*\*([^*]+)\*\*/g, '\$1'); // Removes bold markers while keeping text
           notes = notes.replace(/__([^_]+)__/g, '\$1');
           notes = notes.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '\$1'); // Removes italic markers without touching bullets
