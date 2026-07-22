@@ -7,7 +7,7 @@ function isBotLogin(login) {
 }
 
 // The labels that mark an issue or pull request as part of the AI pipeline.
-const AI_LABELS = ['ai-implemented', 'dependencies', 'claude-bugs', 'claude-optimize', 'claude-minimize', 'firebase-crash'];
+const AI_LABELS = ['ai-implemented', 'dependencies', 'claude-bugs', 'claude-optimize', 'claude-minimize', 'firebase-crash', 'claude-quality'];
 
 // Keep stored bodies a sane size. 4000 characters keeps the meaning while capping file growth.
 const MAX_BODY_CHARS = 4000;

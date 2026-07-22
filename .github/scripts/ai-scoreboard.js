@@ -63,7 +63,7 @@ function main() {
   const researchRuns = countRuns('claude-issue-researcher.yml');
 
   const crashIssues = issueList(['--state', 'all', '--label', 'firebase-crash']);
-  const scannerIssues = ['claude-bugs', 'claude-optimize', 'claude-minimize']
+  const scannerIssues = ['claude-bugs', 'claude-optimize', 'claude-minimize', 'claude-quality']
     .flatMap((label) => issueList(['--state', 'all', '--label', label]));
 
   // Issues the pipeline finished on its own: the implementer set in-progress, the merged PR closed them, and no human was ever pulled in.

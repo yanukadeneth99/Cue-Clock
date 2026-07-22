@@ -37,7 +37,7 @@ const DIAGRAM = `flowchart LR
     A("You or a user reports a bug or idea as an issue") --> B{"AI triage: is it clear and safe to build?"}
     X("Crashlytics detects a crash in the live app") --> X2("Each morning, new crashes are filed as issues automatically")
     X2 --> B
-    W("Weekly AI scans hunt for bugs, removable code, and speed-ups, filing issues") --> B
+    W("Weekly AI scans hunt for bugs, removable code, speed-ups, and code-quality problems, filing issues") --> B
     B -- "No, or unclear" --> C("Waits for the maintainer with a question")
     B -- "Yes" --> R("AI researches the issue and posts notes for the builder")
     R --> D("AI writes the code and opens a pull request")
@@ -45,7 +45,9 @@ const DIAGRAM = `flowchart LR
     D --> F("The app is built and tested automatically")
     F -- "Build fails" --> G("AI tries to repair it, up to 5 times")
     G --> F
-    F -- "Build passes" --> H{"A second AI reviews the change as a strict critic"}
+    F -- "Build passes" --> Q("A code-quality gate checks the pull request")
+    Q -- "Quality issue found" --> G
+    Q -- "Looks clean" --> H{"A second AI reviews the change as a strict critic"}
     H -- "Rejected" --> G
     G -- "Out of attempts" --> C
     H -- "Approved" --> I("Merged automatically")
@@ -64,7 +66,7 @@ const DIAGRAM = `flowchart LR
     classDef wait fill:#272113,stroke:#fbbf24,color:#e8eaed,stroke-width:1.5px
     classDef tg fill:#1c2636,stroke:#60a5fa,color:#e8eaed,stroke-width:1px
     class A,X,X2,W,E source
-    class D,F,G,I,K,M,R ai
+    class D,F,G,I,K,M,R,Q ai
     class B,H decision
     class J,L,N ship
     class C wait
@@ -301,7 +303,7 @@ export default function PipelineDiagram() {
         <div
           ref={contentRef}
           role="img"
-          aria-label="Diagram of the automated pipeline: issues, crashes, and weekly AI scans are triaged by AI, researched, implemented, built, repaired if needed, adversarially reviewed, merged, and released to beta and production with a human pressing Publish, while Telegram keeps the maintainer informed"
+          aria-label="Diagram of the automated pipeline: issues, crashes, and weekly AI scans are triaged by AI, researched, implemented, built, quality-checked, repaired if needed, adversarially reviewed, merged, and released to beta and production with a human pressing Publish, while Telegram keeps the maintainer informed"
           className="w-full [&>svg]:block"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,

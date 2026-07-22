@@ -85,7 +85,7 @@ flowchart LR
     A["You or a user reports a bug or idea as an issue"] --> B{"AI triage: is it clear and safe to build?"}
     X["Crashlytics detects a crash in the live app"] --> X2["Each morning, new crashes are filed as issues automatically"]
     X2 --> B
-    W["Weekly AI scans hunt for bugs, removable code, and speed-ups, filing issues"] --> B
+    W["Weekly AI scans hunt for bugs, removable code, speed-ups, and code-quality problems, filing issues"] --> B
     B -- "No, or unclear" --> C["Waits for the maintainer with a question"]
     B -- "Yes" --> R["AI researches the issue and posts notes for the builder"]
     R --> D["AI writes the code and opens a pull request"]
@@ -93,7 +93,9 @@ flowchart LR
     D --> F["The app is built and tested automatically"]
     F -- "Build fails" --> G["AI tries to repair it, up to 5 times"]
     G --> F
-    F -- "Build passes" --> H{"A second AI reviews the change as a strict critic"}
+    F -- "Build passes" --> Q["A code-quality gate checks the pull request"]
+    Q -- "Quality issue found" --> G
+    Q -- "Looks clean" --> H{"A second AI reviews the change as a strict critic"}
     H -- "Rejected" --> G
     G -- "Out of attempts" --> C
     H -- "Approved" --> I["Merged automatically"]
