@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Icon, { type IconName } from "@/components/Icon";
 
 /**
  * SEO landing page for churches searching for a countdown timer.
@@ -119,9 +120,7 @@ export default function ChurchCountdownTimer() {
                 className="cta-primary inline-flex items-center justify-center gap-2.5 px-7 py-4 text-sm transition-all hover:brightness-110 active:scale-[0.98]"
               >
                 Start your countdown
-                <span className="material-symbols-outlined text-base">
-                  arrow_forward
-                </span>
+                <Icon name="arrow_forward" className="text-base" />
               </a>
               <a
                 href="#how-to-use"
@@ -215,9 +214,7 @@ export default function ChurchCountdownTimer() {
                 className="cta-primary inline-flex items-center justify-center gap-2.5 px-7 py-4 text-sm transition-all hover:brightness-110 active:scale-[0.98]"
               >
                 Open the free countdown timer
-                <span className="material-symbols-outlined text-base">
-                  arrow_forward
-                </span>
+                <Icon name="arrow_forward" className="text-base" />
               </a>
               <a
                 href={PLAY_URL}
@@ -226,9 +223,7 @@ export default function ChurchCountdownTimer() {
                 className="inline-flex items-center justify-center gap-2.5 rounded-[14px] border border-card-border px-7 py-4 text-sm font-semibold text-fg transition-colors hover:bg-card"
               >
                 Get it on Android
-                <span className="material-symbols-outlined text-base">
-                  phone_android
-                </span>
+                <Icon name="phone_android" className="text-base" />
               </a>
             </div>
           </div>
@@ -266,7 +261,7 @@ export default function ChurchCountdownTimer() {
 
 /* ─── Content ─────────────────────────────────────────────────────── */
 
-const FEATURES: { title: string; icon: string; description: string }[] = [
+const FEATURES: { title: string; icon: IconName; description: string }[] = [
   {
     title: "Count down to service start",
     icon: "schedule",
@@ -337,9 +332,10 @@ function FeatureCard({
       <p className="mb-5 text-[13.5px] leading-relaxed text-fg-muted">
         {description}
       </p>
-      <span className="material-symbols-outlined text-fg-muted/60 transition-colors group-hover:text-accent">
-        {icon}
-      </span>
+      <Icon
+        name={icon}
+        className="text-fg-muted/60 transition-colors group-hover:text-accent"
+      />
     </div>
   );
 }

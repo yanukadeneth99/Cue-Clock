@@ -198,3 +198,26 @@
     text-shadow: 0 0 15px rgba(164, 201, 255, 0.3);
   }
 }
+
+/*
+  Stop the app-mockup graphic from "flashing" on slow connections.
+
+  The intro animation in page.tsx hides the mockup with JavaScript
+  (gsap.set opacity 0) and then fades it in (gsap.to opacity 1). On a slow
+  network the HTML paints the mockup fully visible for a moment BEFORE that
+  JavaScript arrives, so it shows, then jumps back to the start and animates
+  in. That jump is what looks broken.
+
+  Painting the animation's START state here in CSS removes the jump. GSAP's
+  .to() sets an explicit end (opacity 1), so the mockup still animates in
+  normally once the script loads. We do this ONLY for the mockup: the hero
+  text uses gsap.from(), which would animate TO this hidden state instead of
+  FROM it, so it must keep its natural (visible) CSS.
+
+  The <noscript> override in layout.tsx re-shows the mockup if JavaScript is
+  turned off, so it is never permanently hidden.
+*/
+.hero-mockup {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}

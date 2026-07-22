@@ -360,30 +360,31 @@ export default function RootLayout({
             content="script-src 'self' 'unsafe-eval' 'unsafe-inline'"
           />
         ) : null}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin=""
-        />
         {/*
-          Material Symbols is a ligature icon font: glyphs are resolved from
-          text like "settings", "help", "fullscreen". With `display=swap`, the
-          fallback font renders the ligature *source text* until the icon font
-          loads, so users briefly see the literal words "settings help
-          fullscreen" before the glyphs appear. `display=block` hides those
-          spots (for up to ~3s) instead of showing wrong text, which is the
-          right trade-off for an icon font even though Next.js flags it.
-          The `no-page-custom-font` disable is for using <link> instead of
-          next/font (Material Symbols isn't supported by next/font/google).
+          Icons are now inline SVGs (see components/Icon.tsx), not a web font.
+          That removed the Material Symbols <link> to Google Fonts, so on slow
+          networks users no longer see the raw ligature words ("settings",
+          "arrow_downward") or a stretched button before the font loaded. The
+          Google preconnects went with it: our text fonts use next/font, which
+          self-hosts them, so nothing else talks to Google Fonts at runtime.
         */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
-          rel="stylesheet"
-        />
         <link rel="icon" href="/logo_cropped.png" type="image/png" />
         <link rel="apple-touch-icon" href="/logo_cropped.png" />
+        {/*
+          The app-mockup's animation start-state (in globals.css) hides it
+          until GSAP fades it in. If a visitor has JavaScript disabled, GSAP
+          never runs, so this override paints the mockup normally for them.
+          Visitors with JavaScript on ignore <noscript>, so the animation is
+          unaffected.
+        */}
+        <noscript>
+          <style
+            dangerouslySetInnerHTML={{
+              __html:
+                ".hero-mockup{opacity:1!important;transform:none!important}",
+            }}
+          />
+        </noscript>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import Icon from "@/components/Icon";
 
 // "Zoom" here is a multiplier of the FIT-TO-WIDTH baseline: 1 shows the whole
 // diagram across the container width, higher values zoom in for detail. Because
@@ -266,7 +267,7 @@ export default function PipelineDiagram() {
           aria-label="Zoom out"
           className="w-8 h-8 grid place-items-center rounded-[10px] bg-card border border-card-border text-fg-muted hover:text-fg hover:border-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-fg-muted disabled:hover:border-card-border"
         >
-          <span className="material-symbols-outlined text-[18px]">remove</span>
+          <Icon name="remove" className="text-[18px]" />
         </button>
         <button
           type="button"
@@ -274,7 +275,7 @@ export default function PipelineDiagram() {
           aria-label="Reset zoom"
           className="w-8 h-8 grid place-items-center rounded-[10px] bg-card border border-card-border text-fg-muted hover:text-fg hover:border-accent transition-colors"
         >
-          <span className="material-symbols-outlined text-[18px]">refresh</span>
+          <Icon name="refresh" className="text-[18px]" />
         </button>
         <button
           type="button"
@@ -283,7 +284,7 @@ export default function PipelineDiagram() {
           aria-label="Zoom in"
           className="w-8 h-8 grid place-items-center rounded-[10px] bg-card border border-card-border text-fg-muted hover:text-fg hover:border-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-fg-muted disabled:hover:border-card-border"
         >
-          <span className="material-symbols-outlined text-[18px]">add</span>
+          <Icon name="add" className="text-[18px]" />
         </button>
       </div>
       <div
