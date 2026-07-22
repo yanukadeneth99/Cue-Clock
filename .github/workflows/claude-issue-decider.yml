@@ -9,7 +9,7 @@ on:
 # One run at a time, but only a run that will actually triage may cancel. A run joins the group before the job's `if:` is checked, so a run that will skip can still kill one that is working — and Claude's own label write starts exactly such a run, which used to cancel the run that wrote it. The labels Claude writes are not in the list below, so those runs now wait their turn and skip.
 concurrency:
   group: claude-issue-triage-${{ github.event.issue.number }}
-  cancel-in-progress: ${{ github.event.action == 'opened' || contains(fromJSON('["dependencies", "claude-bugs", "claude-minimize", "claude-optimize", "ai-review", "firebase-crash"]'), github.event.label.name) }}
+  cancel-in-progress: ${{ github.event.action == 'opened' || contains(fromJSON('["dependencies", "claude-bugs", "claude-minimize", "claude-optimize", "ai-review", "firebase-crash", "claude-quality"]'), github.event.label.name) }}
 
 jobs:
   triage:
@@ -26,7 +26,7 @@ jobs:
           github.event.issue.user.id == 61384503
         ) || (
           github.event.action == 'labeled' && (
-            contains(fromJSON('["dependencies", "claude-bugs", "claude-minimize", "claude-optimize", "firebase-crash"]'), github.event.label.name) ||
+            contains(fromJSON('["dependencies", "claude-bugs", "claude-minimize", "claude-optimize", "firebase-crash", "claude-quality"]'), github.event.label.name) ||
             github.event.label.name == 'ai-review'
           )
         )
