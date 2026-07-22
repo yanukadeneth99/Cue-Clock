@@ -21,16 +21,20 @@ on:
       - "Sync Wiki"
       - "React Doctor"
     types: [completed]
-  # Path 2 (review rejection): claude-pr-decider rejected a pull request and hands us the number. A failed workflow_run can't carry the pull request (it runs on master), so the decider passes it explicitly as an input here.
+  # Path 2 (manual / decider handoff): claude-pr-decider hands us a pull request number, or a maintainer runs this by hand. The mode input picks what to fix: "review" re-fixes after a rejected review, "quality" repairs a red SonarCloud gate (the decider uses this to route a Sonar-red PR here when its label is re-added). A failed workflow_run can't carry the pull request (it runs on master), so the number is passed explicitly as an input here.
   workflow_dispatch:
     inputs:
       pr_number:
-        description: "PR number to fix (review-rejection path)"
+        description: "PR number to fix"
         required: true
-      reason:
-        description: "Why this fixer was invoked (e.g. review)"
+      mode:
+        description: "Fix mode: review (after a rejected review) or quality (red Sonar gate)"
         required: false
-        default: "review"
+        type: choice
+        default: review
+        options:
+          - review
+          - quality
   # Path 3 (quality gate): SonarQube Cloud posts its result through the Checks API, which the workflow_run list above cannot see, so a red quality gate needs its own trigger. Sonar's app owns this check suite, so filtering by its slug in the job below means only Sonar wakes us, not every check. Note: a check_suite trigger only fires from the copy of this file on the default branch, which is where it lives.
   check_suite:
     types: [completed]
@@ -80,13 +84,16 @@ jobs:
           REPO: ${{ github.repository }}
           EVENT: ${{ github.event_name }}
           DISPATCH_PR: ${{ github.event.inputs.pr_number }}
+          DISPATCH_MODE: ${{ github.event.inputs.mode }}
           WR_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
           WR_RUN_ID: ${{ github.event.workflow_run.id }}
           CS_PR: ${{ github.event.check_suite.pull_requests[0].number }}
         run: |
           set -euo pipefail
           if [ "$EVENT" = "workflow_dispatch" ]; then
-            pr="$DISPATCH_PR"; mode="review"; run_id=""
+            # Manual and decider-triggered runs choose their mode. An unexpected value is refused, not quietly defaulted, so nothing unvetted can slip through. Build mode is deliberately not offered here: it needs a failed-run id that a dispatch has no way to supply.
+            pr="$DISPATCH_PR"; mode="${DISPATCH_MODE:-review}"; run_id=""
+            case "$mode" in review|quality) ;; *) echo "mode '$mode' is not allowed via dispatch — refusing."; exit 1;; esac
           elif [ "$EVENT" = "check_suite" ]; then
             pr="$CS_PR"; mode="quality"; run_id=""
           else

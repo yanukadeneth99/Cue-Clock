@@ -76,3 +76,15 @@ check_others() {
     sleep "$POLL_SECONDS"
   done
 }
+
+# sonar_failing <pr> <repo>
+#   Returns 0 if SonarCloud's quality-gate check is currently failing on this PR, 1 otherwise.
+#
+# The decider uses this to tell a "red because of Sonar" PR apart from a "red because a build broke" one: only the Sonar case is handed to the auto-fixer's quality mode. Matched by check name (the SonarCloud app names its check "SonarCloud Code Analysis"); a broken build carries a different name and so answers "no".
+sonar_failing() {
+  local pr="$1" repo="$2" raw hit
+  raw=$(gh pr checks "$pr" --repo "$repo" --json name,bucket 2>/dev/null) || raw='[]'
+  hit=$(printf '%s' "$raw" | jq -r '
+    [ .[] | select(.bucket == "fail" and (.name | test("SonarCloud"; "i"))) ] | length')
+  [ "$hit" -gt 0 ]
+}

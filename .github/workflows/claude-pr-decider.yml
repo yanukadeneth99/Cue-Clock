@@ -124,10 +124,27 @@ jobs:
           # We can NOT use `gh pr checks --watch` here. This workflow runs on pull_request_target, so this very job shows up as a check on the PR ("review-merge") and stays pending until it finishes. --watch would sit waiting for itself and hang until the job timeout, so the review would never run at all. Instead we poll ourselves and ignore every check belonging to THIS workflow.
           if ! check_others "${PR}" "${REPO}" wait; then
             echo "PR #${PR} has non-passing checks — not merging."
+            # Manual re-trigger: when a maintainer re-adds the ai-implemented label (the label path) and the only thing red is the SonarCloud gate, route this PR to the auto-fixer's quality mode so it repairs the findings. Other paths do not need this — a fresh Sonar failure already wakes the fixer through its own check_suite trigger. human-review was checked above, so a maintainer's explicit opt-out has exited before here. A separate MERGE_PAT step does the dispatch, because this gate's token is read-only and cannot start a workflow.
+            if [ "$EVENT_NAME" = "pull_request_target" ] && sonar_failing "${PR}" "${REPO}"; then
+              echo "Sonar quality gate is red on the label path — will hand PR #${PR} to the auto-fixer in quality mode."
+              echo "fix_mode=quality" >> "$GITHUB_OUTPUT"
+            fi
             echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "PR #${PR} (branch ${head_ref}) is same-repo, open, and green — reviewing."
           echo "proceed=true" >> "$GITHUB_OUTPUT"
+
+      # A red SonarCloud gate is not a merge decision, so the review and merge steps below stay skipped (proceed is false). Instead we hand the PR to the auto-fixer's quality mode, which pulls the exact findings and repairs them, then asks for a fresh review. This reuses the same MERGE_PAT dispatch as the rejection handoff below, because the gate's read-only token cannot start a workflow. The PR number was already proven numeric in the gate.
+      - name: Hand a Sonar-red PR to the auto-fixer (quality mode)
+        if: steps.gate.outputs.fix_mode == 'quality'
+        env:
+          GH_TOKEN: ${{ secrets.MERGE_PAT }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.gate.outputs.pr }}
+        run: |
+          set -euo pipefail
+          echo "Dispatching the auto-fixer in quality mode for PR #${PR}."
+          gh workflow run claude-ci-auto-fix.yml --repo "${REPO}" --ref master -f pr_number="${PR}" -f mode=quality
 
       - name: Run Claude adversarial review
         if: steps.gate.outputs.proceed == 'true'
@@ -206,7 +223,7 @@ jobs:
           # Not approved → rejected. Hand it to the auto-fixer, which handles both kinds of bot PR: Claude's own work (ai-implemented) and Dependabot bumps (dependencies). The gate step above already proved this PR carries one of those two labels.
           # This is the review half of the loop: the fixer patches the branch, pushes, and asks for another review. The fixer's own per-PR attempt counter is what ends the loop — once it runs out it sets human-review, and the gate step above then refuses to review this PR again.
           echo "PR #${PR} was not approved — dispatching the auto-fixer in review mode."
-          gh workflow run claude-ci-auto-fix.yml --repo "${REPO}" --ref master -f pr_number="${PR}" -f reason=review
+          gh workflow run claude-ci-auto-fix.yml --repo "${REPO}" --ref master -f pr_number="${PR}" -f mode=review
           {
             echo "### Rejected, sent to the auto-fixer"
             echo "PR #${PR} was not approved. The auto-fixer is now working on it; Claude's comment on the PR says what is blocking."
