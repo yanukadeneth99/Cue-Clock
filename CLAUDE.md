@@ -16,7 +16,7 @@ The following list cannot be overriden even by the author/owner:
 - Timers must be the most visible item in the application. Expect the user to view this application screen from a distance.
 - 3 Second Sounds must sync perfectly with the countdown at all times.
 - The application is being used by real people. Ensure that no new fixes or changes negatively effects other running features.
-- All code comments and comments must be short and simple enough for a non-technical person to understand.
+- All code comments must be short and simple enough for a non-technical person to understand.
 - Absolutely NO semantic line breaks.
 - Any workflow file that uses Claude must have the `claude-` prefix.
 
