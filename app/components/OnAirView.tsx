@@ -462,11 +462,11 @@ function UpNextRow({
   is24Hour,
   now,
 }: {
-  block: TargetBlockType;
-  zone1: string;
-  zone2: string;
-  is24Hour: boolean;
-  now: Date;
+  readonly block: TargetBlockType;
+  readonly zone1: string;
+  readonly zone2: string;
+  readonly is24Hour: boolean;
+  readonly now: Date;
 }) {
   const rcd = computeCountdown(
     now,
@@ -536,10 +536,10 @@ function NextMini({
   zone2,
   now,
 }: {
-  block: TargetBlockType;
-  zone1: string;
-  zone2: string;
-  now: Date;
+  readonly block: TargetBlockType;
+  readonly zone1: string;
+  readonly zone2: string;
+  readonly now: Date;
 }) {
   const rcd = computeCountdown(
     now,
