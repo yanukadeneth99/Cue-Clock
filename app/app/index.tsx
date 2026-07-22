@@ -354,14 +354,14 @@ function HeaderIconButton({
  * Persists state to AsyncStorage and rehydrates on mount.
  */
 export default function HomeScreen() {
-  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [zone1, setZone1] = useState("Europe/Berlin");
   const [zone2, setZone2] = useState("Asia/Colombo");
   const [fullScreen, setFullScreen] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const [resetModalVisible, setResetModalVisible] = useState(false);
-  const [, setExitButtonOpacity] = useState(1);
+  const exitButtonOpacityRef = useRef(1);
   const [notifBlocked, setNotifBlocked] = useState(false);
   // null = first launch (consent not yet given); true/false = user's explicit choice
   const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean | null>(null);
@@ -864,9 +864,11 @@ export default function HomeScreen() {
    * display is less distracting for people watching the screen on-air/in-studio.
    */
   const resetOpacityTimer = useCallback(() => {
-    setExitButtonOpacity(1);
+    exitButtonOpacityRef.current = 1;
     if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
-    exitButtonTimerRef.current = setTimeout(() => setExitButtonOpacity(0.3), 3000);
+    exitButtonTimerRef.current = setTimeout(() => {
+      exitButtonOpacityRef.current = 0.3;
+    }, 3000);
   }, []);
 
   // In fullscreen on web and Android, prioritize the time display over controls.
@@ -874,7 +876,7 @@ export default function HomeScreen() {
   // distracted by persistent UI chrome.
   useEffect(() => {
     if (!fullScreen) {
-      setExitButtonOpacity(1);
+      exitButtonOpacityRef.current = 1;
       if (exitButtonTimerRef.current) clearTimeout(exitButtonTimerRef.current);
       return;
     }
