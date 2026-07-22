@@ -48,22 +48,40 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure' || (github.event_name == 'check_suite' && github.event.check_suite.conclusion == 'failure') }}
 
 jobs:
+  # SonarCloud reports through a check_suite event, but anthropics/claude-code-action refuses to run under that event type ("Unsupported event type: check_suite"), so we never run Claude here. This tiny job turns a red Sonar gate into a workflow_dispatch of THIS SAME workflow in quality mode — an event the action DOES support — and the real fix happens in that dispatched run. MERGE_PAT because the default token cannot start a workflow run. Fork pull requests never appear in check_suite.pull_requests, so a non-null PR is itself the same-repo check; the dispatched run re-validates labels, human-review and open-state in its own gate.
+  redispatch-sonar:
+    if: |
+      github.event_name == 'check_suite' &&
+      github.event.check_suite.app.slug == 'sonarqubecloud' &&
+      github.event.check_suite.conclusion == 'failure' &&
+      github.event.check_suite.pull_requests[0] != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Re-dispatch the fixer in quality mode
+        env:
+          GH_TOKEN: ${{ secrets.MERGE_PAT }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.check_suite.pull_requests[0].number }}
+        run: |
+          set -euo pipefail
+          # Only ever trust a plain number from the event payload.
+          case "$PR" in ''|*[!0-9]*) echo "check_suite carried no numeric PR ('$PR') — nothing to do."; exit 0;; esac
+          echo "Sonar gate failed on PR #${PR} — dispatching the fixer in quality mode."
+          gh workflow run claude-ci-auto-fix.yml --repo "${REPO}" --ref master -f pr_number="${PR}" -f mode=quality
+
   claude-fix:
     # Run for a decider/manual dispatch, OR a failed CI build on a pull request whose branch lives in THIS repo (head_repository is the fork check).
     # Note there is deliberately NO branch-name test here. Branch names are a weak signal — the real "is this one of ours?" decision is made from the pull request's LABELS in the first step below, exactly like the decider does it.
-    # Also run when SonarQube Cloud's quality gate fails on one of our pull requests. Fork pull requests never appear in check_suite.pull_requests, so that list being non-empty is itself the same-repo check, and the label gate in the first step still confirms it is one of our bots' pull requests.
+    # SonarCloud's quality gate is NOT handled directly here: its check_suite event is bridged to a workflow_dispatch by the redispatch-sonar job above, because the Claude action cannot run under a check_suite event.
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
         github.event.workflow_run.conclusion == 'failure' &&
         github.event.workflow_run.head_repository.full_name == github.repository &&
         github.event.workflow_run.pull_requests[0] != null
-      ) ||
-      (
-        github.event_name == 'check_suite' &&
-        github.event.check_suite.app.slug == 'sonarqubecloud' &&
-        github.event.check_suite.conclusion == 'failure' &&
-        github.event.check_suite.pull_requests[0] != null
       )
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -87,15 +105,12 @@ jobs:
           DISPATCH_MODE: ${{ github.event.inputs.mode }}
           WR_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
           WR_RUN_ID: ${{ github.event.workflow_run.id }}
-          CS_PR: ${{ github.event.check_suite.pull_requests[0].number }}
         run: |
           set -euo pipefail
           if [ "$EVENT" = "workflow_dispatch" ]; then
-            # Manual and decider-triggered runs choose their mode. An unexpected value is refused, not quietly defaulted, so nothing unvetted can slip through. Build mode is deliberately not offered here: it needs a failed-run id that a dispatch has no way to supply.
+            # Manual and decider-triggered runs choose their mode. An unexpected value is refused, not quietly defaulted, so nothing unvetted can slip through. Build mode is deliberately not offered here: it needs a failed-run id that a dispatch has no way to supply. Sonar's quality gate reaches this branch too — the redispatch-sonar job turns its check_suite event into a workflow_dispatch with mode=quality.
             pr="$DISPATCH_PR"; mode="${DISPATCH_MODE:-review}"; run_id=""
             case "$mode" in review|quality) ;; *) echo "mode '$mode' is not allowed via dispatch — refusing."; exit 1;; esac
-          elif [ "$EVENT" = "check_suite" ]; then
-            pr="$CS_PR"; mode="quality"; run_id=""
           else
             pr="$WR_PR"; mode="build"; run_id="$WR_RUN_ID"
           fi
