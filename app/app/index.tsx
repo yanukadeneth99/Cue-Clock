@@ -361,9 +361,8 @@ export default function HomeScreen() {
   const [fullScreen, setFullScreen] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const [resetModalVisible, setResetModalVisible] = useState(false);
-  const [exitButtonOpacity, setExitButtonOpacity] = useState(1);
+  const [, setExitButtonOpacity] = useState(1);
   const [notifBlocked, setNotifBlocked] = useState(false);
-  const [addTargetHovered, setAddTargetHovered] = useState(false);
   // null = first launch (consent not yet given); true/false = user's explicit choice
   const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean | null>(null);
   const [consentModalVisible, setConsentModalVisible] = useState(false);
@@ -1453,22 +1452,6 @@ export default function HomeScreen() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const toggleTargetPicker = useCallback((id: number, show: boolean) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, isTargetPickerVisible: show } : b
-      )
-    );
-  }, []);
-
-  const toggleDeductPicker = useCallback((id: number, show: boolean) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, isDeductPickerVisible: show } : b
-      )
-    );
-  }, []);
-
   // Reschedule a block's native notification in the background without blocking
   // the UI. The state has already been updated optimistically; this just keeps
   // the scheduled notification in sync. Errors are swallowed because the in-app
@@ -1508,141 +1491,12 @@ export default function HomeScreen() {
     })();
   }, [zone1, zone2, alertMode]);
 
-  const handleTargetConfirm = useCallback((id: number, date: Date) => {
-    const targetHour = date.getHours();
-    const targetMinute = date.getMinutes();
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, targetHour, targetMinute, isTargetPickerVisible: false, alertFired: false }
-          : b
-      )
-    );
-    rescheduleInBackground(id, { targetHour, targetMinute });
-  }, [rescheduleInBackground]);
-
-  const handleDeductConfirm = useCallback((id: number, date: Date) => {
-    const deductMinute = date.getHours();
-    const deductSecond = date.getMinutes();
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, deductMinute, deductSecond, isDeductPickerVisible: false, alertFired: false }
-          : b
-      )
-    );
-    rescheduleInBackground(id, { deductMinute, deductSecond });
-  }, [rescheduleInBackground]);
-
-  const toggleAlertModal = useCallback((id: number, show: boolean) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, isAlertModalVisible: show } : b
-      )
-    );
-  }, []);
-
-  const handleAlertConfirm = useCallback((id: number, minutes: number) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, alertMinutesBefore: minutes, isAlertModalVisible: false, alertFired: false, snoozeCount: 0 }
-          : b
-      )
-    );
-    // Schedule the native notification in the background. Use a temp block with
-    // the new alertMinutesBefore so scheduleBlockNotification computes the
-    // correct fire time even before React has flushed the state update.
-    const block = targetBlocksRef.current.find((b) => b.id === id);
-    if (!block) return;
-    const tempBlock = { ...block, alertMinutesBefore: minutes, alertFired: false, snoozeCount: 0 };
-    const zone = tempBlock.targetZone === "zone1" ? zone1 : zone2;
-    (async () => {
-      try {
-        if (block.notificationId) await cancelAnyAlert(block.notificationId);
-        const notifId = await scheduleBlockAlert(tempBlock, zone, alertMode);
-        setTargetBlocks((blocks) =>
-          blocks.map((b) => (b.id === id ? { ...b, notificationId: notifId } : b))
-        );
-      } catch {}
-    })();
-  }, [zone1, zone2, alertMode]);
-
-  const handleAlertDelete = useCallback((id: number) => {
-    const block = targetBlocksRef.current.find((b) => b.id === id);
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id
-          ? { ...b, alertMinutesBefore: null, isAlertModalVisible: false, alertFired: false, notificationId: null }
-          : b
-      )
-    );
-    if (block?.notificationId) {
-      cancelAnyAlert(block.notificationId).catch(() => {});
-    }
-  }, []);
-
-  const updateTargetTime = useCallback((id: number, hour: number, minute: number) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, targetHour: hour, targetMinute: minute, alertFired: false } : b
-      )
-    );
-    rescheduleInBackground(id, { targetHour: hour, targetMinute: minute });
-  }, [rescheduleInBackground]);
-
-  const updateDeductTime = useCallback((id: number, minute: number, second: number) => {
-    setTargetBlocks((blocks) =>
-      blocks.map((b) =>
-        b.id === id ? { ...b, deductMinute: minute, deductSecond: second, alertFired: false } : b
-      )
-    );
-    rescheduleInBackground(id, { deductMinute: minute, deductSecond: second });
-  }, [rescheduleInBackground]);
-
-  const addTargetBlock = useCallback(() => {
-    const newId = nextIdRef.current++;
-    setTargetBlocks((blocks) => [
-      ...blocks.map((b) => ({
-        ...b,
-        isTargetPickerVisible: false,
-        isDeductPickerVisible: false,
-      })),
-      { ...createDefaultBlock(newId), isTargetPickerVisible: true },
-    ]);
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 0);
-    });
-  }, []);
-
   const removeBlock = useCallback((id: number) => {
     const block = targetBlocksRef.current.find((b) => b.id === id);
     setTargetBlocks((blocks) => blocks.filter((b) => b.id !== id));
     if (block?.notificationId) {
       cancelAnyAlert(block.notificationId).catch(() => {});
     }
-  }, []);
-
-  const requestNotifPermission = useCallback(async () => {
-    if (!Notifications) return;
-    try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status === "granted") {
-        setNotifBlocked(false);
-      } else {
-        // Permanently denied - send user to app settings
-        await Linking.openSettings();
-      }
-    } catch {}
-  }, []);
-
-  const collapseExpandAll = useCallback(() => {
-    setTargetBlocks((blocks) => {
-      const shouldCollapse = blocks.some((b) => !b.isCollapsed);
-      return blocks.map((b) => ({ ...b, isCollapsed: shouldCollapse }));
-    });
   }, []);
 
   // New-design path: open the unified CueEditModal in add or edit mode.
@@ -2077,26 +1931,9 @@ export default function HomeScreen() {
     }
   }, [doReset]);
 
-  // Compute dynamic font size for fullscreen target blocks
   const safeTop = Math.max(insets.top + 4, Platform.OS === "web" ? 20 : 36);
-  const safeBottom = Math.max(insets.bottom + 24, Platform.OS === "web" ? 32 : 52);
-  const fullscreenAvailableHeight =
-    screenHeight - FULLSCREEN_CLOCK_HEIGHT - FULLSCREEN_EXIT_BTN_HEIGHT - safeTop - safeBottom;
-  const blockCount = targetBlocks.length;
-  const idealFontSize =
-    blockCount > 0
-      ? Math.floor((fullscreenAvailableHeight / blockCount - BLOCK_OVERHEAD) / 1.2)
-      : FULLSCREEN_MAX_FONT;
-  const countdownFontSize = Math.min(FULLSCREEN_MAX_FONT, Math.max(FULLSCREEN_MIN_FONT, idealFontSize));
-  const fullscreenNeedsScroll = idealFontSize < FULLSCREEN_MIN_FONT;
 
   const isWeb = Platform.OS === "web";
-  const notifUnavailableReason =
-    !isWeb && isExpoGo
-      ? "Expo Go falls back to in-app alerts here, so alarms will not fire after you leave the app."
-      : (!isWeb && !Notifications
-          ? "Native notifications are unavailable in this build, so background alerts cannot be scheduled."
-          : null);
   // Alarm mode is available when we're on Android, permissions are not blocked,
   // and we're not running in Expo Go (which lacks full notification support).
   const alarmAvailable = Platform.OS === "android" && !notifBlocked && !isExpoGo && !!Notifications;
