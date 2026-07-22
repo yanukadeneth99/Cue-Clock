@@ -29,6 +29,9 @@ reject_unsafe_specs() {
         echo "Only packages from the npm registry are allowed, not '${spec}'." >&2
         exit 2
         ;;
+      *)
+        # anything else is an ordinary package name/version spec — allowed through
+        ;;
     esac
   done
 }
