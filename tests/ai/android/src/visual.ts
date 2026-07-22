@@ -152,7 +152,6 @@ export function analyzeGeometry(
   const roots = nodes.filter((n) => n.parentIndex == null);
   const dimSource = roots.length ? roots : nodes;
   const screenW = Math.max(...dimSource.map((n) => n.rect.x + n.rect.width));
-  const screenH = Math.max(...dimSource.map((n) => n.rect.y + n.rect.height));
 
   // Scope to the app's OWN nodes. The status bar / nav bar belong to
   // com.android.systemui and legitimately span the full width — judging them
