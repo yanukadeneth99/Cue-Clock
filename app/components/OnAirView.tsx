@@ -99,10 +99,14 @@ export function OnAirView({ blocks, zone1, zone2, is24Hour, showSeconds, now, on
   // the whole middle band (no card border eating width), so we start from a
   // deliberately oversized base and let adjustsFontSizeToFit shrink it down to
   // whatever the screen width allows. Bigger base = bigger final digits.
-  const baseHeroFs = landscape ? (showHours ? 150 : 210) : showHours ? 56 : 72;
+  const heroHoursFs = landscape ? 150 : 56;
+  const heroNoHoursFs = landscape ? 210 : 72;
+  const baseHeroFs = showHours ? heroHoursFs : heroNoHoursFs;
   const heroGrow = landscape ? 40 : 18;
   const heroFs = cd ? lerpRound(baseHeroFs, baseHeroFs + heroGrow, u) : baseHeroFs;
-  const cardVPad = cd ? lerpRound(landscape ? 18 : 22, landscape ? 26 : 30, u) : landscape ? 18 : 22;
+  const vPadMin = landscape ? 18 : 22;
+  const vPadMax = landscape ? 26 : 30;
+  const cardVPad = cd ? lerpRound(vPadMin, vPadMax, u) : vPadMin;
 
   // Pulsing dot for crit state.
   const pulse = useRef(new Animated.Value(1)).current;
