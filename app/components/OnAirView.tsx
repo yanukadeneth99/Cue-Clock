@@ -95,10 +95,12 @@ export function OnAirView({ blocks, zone1, zone2, is24Hour, showSeconds, now, on
   const u = cd ? urgencyFactor(cd.total) : 0;
   const accent = cd?.crit ? colors.danger : colors.countdown;
   const showHours = cd ? cd.h !== "00" : false;
-  // Landscape pumps the hero up substantially - it owns most of the screen
-  // width, so it can be far larger than the portrait column allows.
-  const baseHeroFs = landscape ? (showHours ? 88 : 116) : showHours ? 56 : 72;
-  const heroGrow = landscape ? 28 : 18;
+  // Landscape pumps the hero up substantially - it is a bare number filling
+  // the whole middle band (no card border eating width), so we start from a
+  // deliberately oversized base and let adjustsFontSizeToFit shrink it down to
+  // whatever the screen width allows. Bigger base = bigger final digits.
+  const baseHeroFs = landscape ? (showHours ? 150 : 210) : showHours ? 56 : 72;
+  const heroGrow = landscape ? 40 : 18;
   const heroFs = cd ? lerpRound(baseHeroFs, baseHeroFs + heroGrow, u) : baseHeroFs;
   const cardVPad = cd ? lerpRound(landscape ? 18 : 22, landscape ? 26 : 30, u) : landscape ? 18 : 22;
 
@@ -238,6 +240,57 @@ export function OnAirView({ blocks, zone1, zone2, is24Hour, showSeconds, now, on
       </View>
     );
 
+  // Landscape hero: the bare giant countdown, no card chrome. A small cue name
+  // sits above and the target-zone label below; the number itself owns the
+  // middle band and grows as large as the screen width allows. Used ONLY by the
+  // landscape corner layout - portrait still uses the bordered `heroCard`.
+  const landscapeHero =
+    primary && cd ? (
+      <View style={{ alignItems: "center", width: "100%" }}>
+        <Text
+          style={[textStyles.cueName, { color: colors.text, fontSize: 22 }]}
+          numberOfLines={1}
+        >
+          {primary.name}
+        </Text>
+        <Text
+          // Shrink-to-fit guards the oversized base against overflow on narrower
+          // phones; on wide tablets it stays near the full base size.
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[
+            textStyles.countdownHero,
+            {
+              color: accent,
+              fontSize: heroFs,
+              lineHeight: Math.round(heroFs * 0.92),
+              marginTop: 6,
+              letterSpacing: -heroFs * 0.06,
+            },
+          ]}
+        >
+          {showHours ? `${cd.h}:${cd.m}:${cd.s}` : `${cd.m}:${cd.s}`}
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+          <Text style={[textStyles.bodySmall, { color: colors.textMuted }]}>Target:</Text>
+          <View
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 3.5,
+              backgroundColor: primary.targetZone === "zone1" ? colors.zone1 : colors.zone2,
+            }}
+          />
+          <Text style={[textStyles.bodySmall, { color: colors.textMuted }]}>
+            {shortCity(primary.targetZone === "zone1" ? zone1 : zone2)} (
+            {zoneAbbr(now, primary.targetZone === "zone1" ? zone1 : zone2)})
+          </Text>
+        </View>
+      </View>
+    ) : (
+      <Text style={[textStyles.body, { color: colors.textMuted }]}>No cues queued</Text>
+    );
+
   // The "Exit full screen" pill - identical in both orientations.
   const exitPill = (
     <Animated.View style={{ alignItems: "center", marginTop: 12, opacity: exitOpacity }}>
@@ -272,7 +325,11 @@ export function OnAirView({ blocks, zone1, zone2, is24Hour, showSeconds, now, on
     </Animated.View>
   );
 
-  // ─── Landscape: hero dominates, slim right rail ────────────────────────
+  // ─── Landscape: corner layout, giant countdown owns the middle ─────────
+  // Zone clocks in the two top corners, the bare hero countdown centred and
+  // maximised, exit bottom-left, and the single next cue (name + countdown)
+  // bottom-right. The middle band takes all leftover height (flex: 1) so the
+  // number is as large as the screen allows.
   if (landscape) {
     return (
       <Pressable
@@ -280,39 +337,47 @@ export function OnAirView({ blocks, zone1, zone2, is24Hour, showSeconds, now, on
         style={{
           flex: 1,
           backgroundColor: colors.background,
-          flexDirection: "row",
-          alignItems: "stretch",
-          gap: 20,
-          // In landscape the notch / cutout sits on a side edge, so honour the
-          // left/right insets and keep the top/bottom padding tight.
+          // In landscape the notch / cutout AND the nav bar sit on the side
+          // edges, so honour the left/right insets and keep top/bottom tight.
           paddingTop: Math.max(insets.top, 12),
           paddingBottom: Math.max(insets.bottom, 12),
-          paddingLeft: Math.max(insets.left, 22),
-          paddingRight: Math.max(insets.right, 22),
+          paddingLeft: Math.max(insets.left, 24),
+          paddingRight: Math.max(insets.right, 24),
         }}
       >
         <StatusBar hidden translucent style="light" />
-        {/* Left: the primary timer, close to fullscreen */}
-        <View style={{ flex: 2, justifyContent: "center" }}>{heroCard}</View>
-        {/* Right rail: zone clocks, the single next up-next, and exit */}
-        <View style={{ flex: 1, justifyContent: "space-between" }}>
-          {zoneClocks}
+
+        {/* Top corners: the two zone clocks */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <OAZone
+            color={colors.zone1}
+            tz={zone1}
+            now={now}
+            hour12={hour12}
+            showSeconds={showSeconds}
+            align="left"
+          />
+          <OAZone
+            color={colors.zone2}
+            tz={zone2}
+            now={now}
+            hour12={hour12}
+            showSeconds={showSeconds}
+            align="right"
+          />
+        </View>
+
+        {/* Middle: the bare giant countdown, maximised */}
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>{landscapeHero}</View>
+
+        {/* Bottom corners: exit (left), next cue name + countdown (right) */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+          {exitPill}
           {nextUp ? (
-            <View>
-              <Text
-                style={[
-                  textStyles.chipWide,
-                  { color: colors.textMuted, fontSize: 11, marginBottom: 8, marginHorizontal: 2 },
-                ]}
-              >
-                After that
-              </Text>
-              <UpNextRow block={nextUp} zone1={zone1} zone2={zone2} is24Hour={is24Hour} now={now} />
-            </View>
+            <NextMini block={nextUp} zone1={zone1} zone2={zone2} now={now} />
           ) : (
             <View />
           )}
-          {exitPill}
         </View>
       </Pressable>
     );
@@ -454,6 +519,39 @@ function UpNextRow({
           {humanRemaining(rcd.total)}
         </Text>
       </View>
+    </View>
+  );
+}
+
+/** Compact landscape "next cue": just the name and the countdown to it,
+ *  right-aligned in the bottom corner. Deliberately barer than UpNextRow - the
+ *  landscape focus is the primary timer, so this is a glanceable secondary. */
+function NextMini({
+  block,
+  zone1,
+  zone2,
+  now,
+}: {
+  block: TargetBlockType;
+  zone1: string;
+  zone2: string;
+  now: Date;
+}) {
+  const rcd = computeCountdown(
+    now,
+    block.targetZone === "zone1" ? zone1 : zone2,
+    { h: block.targetHour, m: block.targetMinute },
+    block.deductMinute * 60 + block.deductSecond,
+  );
+  return (
+    // Cap the width so a long cue name can't creep across into the exit pill.
+    <View style={{ alignItems: "flex-end", maxWidth: "45%" }}>
+      <Text style={[textStyles.bodySmall, { color: colors.text }]} numberOfLines={1}>
+        {block.name}
+      </Text>
+      <Text style={[textStyles.queuedTime, { color: colors.textMuted, fontSize: 20, marginTop: 2 }]}>
+        {humanRemaining(rcd.total)}
+      </Text>
     </View>
   );
 }

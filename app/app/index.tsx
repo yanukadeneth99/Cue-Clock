@@ -2334,7 +2334,19 @@ export default function HomeScreen() {
     // AlarmManager). The threshold matches Tailwind's `md` breakpoint.
     const isMobileWeb = isWeb && screenWidth < 768;
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: safeTop }}>
+      // In landscape Android's nav bar / cutout sits on a SIDE edge, so honour
+      // the left/right safe-area insets to keep the header, cards and add
+      // button clear of it. Portrait / web report 0 here, so this is a no-op
+      // there and only opens gutters when a side bar actually exists.
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          paddingTop: safeTop,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        }}
+      >
         <Header
           onHelp={() => setHelpVisible(true)}
           onSettings={() => setSettingsVisible(true)}

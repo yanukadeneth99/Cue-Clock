@@ -275,6 +275,11 @@ export function ModalShell({
                   borderTopWidth: 1,
                   maxHeight: "88%",
                   paddingBottom: Math.max(insets.bottom, 8),
+                  // In landscape the nav bar / cutout sits on a side edge, so
+                  // inset the whole sheet's content (title, body, footer) clear
+                  // of it. Portrait reports 0, so this is a no-op there.
+                  paddingLeft: insets.left,
+                  paddingRight: insets.right,
                 }),
             borderColor: colors.surfaceBorder,
             transform: [{ translateY: sheetTranslate }],
