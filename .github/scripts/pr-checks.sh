@@ -9,7 +9,7 @@
 SELF_WORKFLOW="Claude PR AI Decider"
 
 # The builds that start a fresh review on their own when they finish. Must match the `workflows:` list under `workflow_run:` in claude-pr-decider.yml.
-BUILD_WORKFLOWS='["Android Release Verify","Website Verify"]'
+BUILD_WORKFLOWS='["Android Release Verify","Web App Verify","Website Verify"]'
 
 # How long `wait` mode will keep polling before giving up. Kept under the workflow's timeout-minutes so we exit with a clear message instead of being killed mid-step.
 MAX_WAIT_SECONDS=$((20 * 60))

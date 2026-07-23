@@ -85,8 +85,8 @@ test('computeScoreboard only counts events inside the window', () => {
   assert.equal(row.scannerIssuesOpened, 1);
   assert.equal(row.issuesClosedByAi, 1);
   assert.equal(row.medianDaysToMerge, 2);
-  // acceptance 1/1 = 1 (50 pts), independence 1/(1+2) = 1/3 (10 of 30 pts), churn: 4 runs over 2 PRs worth of work gives 1 - 4/6 = 1/3 (6.67 of 20 pts). Total 66.67 rounds to 67.
-  assert.equal(row.score, 67);
+  // acceptance 1/1 = 1 (50 pts), independence 1/(1+2) = 1/3 (10 of 30 pts), churn: 4 runs over 2 PRs worth of work gives 1 - 4/8 = 0.5 (10 of 20 pts). Total 70.
+  assert.equal(row.score, 70);
 });
 
 test('research runs are recorded but never move the score', () => {

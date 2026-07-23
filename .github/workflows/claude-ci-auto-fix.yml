@@ -12,6 +12,7 @@ on:
   workflow_run:
     workflows:
       - "Android Release Verify"
+      - "Web App Verify"
       - "Website Verify"
       - "Workflow script tests"
       - "Android Internal Testing"
@@ -170,11 +171,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ steps.ctx.outputs.pr }}
-          # Max fix attempts on any ONE pull request before a human is needed. Set to 5 rather than 3 because a single round of fixing can burn more than one attempt: if two CI workflows fail together (say Android Release Verify and React Doctor) that is two triggers, and although the concurrency group cancels the older run, it has already counted itself.
+          # Max fix attempts on any ONE pull request before a human is needed. Set well above 3 because a single round of fixing can burn more than one attempt: if two CI workflows fail together (say Android Release Verify and React Doctor) that is two triggers, and although the concurrency group cancels the older run, it has already counted itself.
+          # Raised 5 -> 6 when Web App Verify was added: app/ ships to Android AND web, so an app pull request now runs TWO build checks instead of one. A change that breaks both (a bad dependency bump is the usual culprit) burns two attempts in a single round, which left only two real rounds of fixing before a human was pulled in. The extra attempt puts that back to roughly three.
           #
-          # RAISING THIS NUMBER NEEDS ONE MANUAL STEP. The counter is stored as a label, and this workflow no longer creates labels — ai-fix-attempt-1 to ai-fix-attempt-5 were made once, by hand, to match this cap. Applying a label that does not exist fails, which stops this step dead and leaves the pull request with no comment and no human-review label to explain why. So if you raise the cap to N, first create the missing ai-fix-attempt-* labels up to N:
+          # RAISING THIS NUMBER NEEDS ONE MANUAL STEP. The counter is stored as a label, and this workflow no longer creates labels — ai-fix-attempt-1 to ai-fix-attempt-6 were made once, by hand, to match this cap. Applying a label that does not exist fails, which stops this step dead and leaves the pull request with no comment and no human-review label to explain why. So if you raise the cap to N, first create the missing ai-fix-attempt-* labels up to N:
           #   gh label create "ai-fix-attempt-N" --color ededed --description "Automated fix attempt #N on this PR"
-          PR_ATTEMPT_CAP: "5"
+          PR_ATTEMPT_CAP: "6"
           DAILY_CAP: "20" # max real Claude auto-runs per rolling 24h, across all pull requests
           THIS_RUN_ID: ${{ github.run_id }}
         run: |
@@ -215,7 +217,7 @@ jobs:
           fi
 
           # --- cleared: record this attempt so the next run counts it ---------------
-          # The ai-fix-attempt-1 ... ai-fix-attempt-5 labels already exist in the repository, so this only applies one. See the note on PR_ATTEMPT_CAP above before changing the cap.
+          # The ai-fix-attempt-1 ... ai-fix-attempt-6 labels already exist in the repository, so this only applies one. See the note on PR_ATTEMPT_CAP above before changing the cap.
           gh pr edit "$PR" --repo "$REPO" --add-label "ai-fix-attempt-${next}"
           if [ "$attempt" -gt 0 ]; then
             gh pr edit "$PR" --repo "$REPO" --remove-label "ai-fix-attempt-${attempt}" || true

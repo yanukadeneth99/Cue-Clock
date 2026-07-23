@@ -1,0 +1,62 @@
+# =============================================================================
+# Web App Verify (PR build check)
+# -----------------------------------------------------------------------------
+# Builds the APP's web export on every pull request that touches app/, so a change that breaks the web build is caught while the PR is still open - not after a release tag has already tried to ship it live via web-deploy.yml.
+#
+# Why this exists: app/ ships to Android AND web from one codebase, but until now only Android was built on a PR (android-release-verify.yml). A change that compiles for React Native but breaks the web static export sailed through review and only exploded when Coolify ran the export at release time. That is exactly how the uuid/xcode ERR_REQUIRE_ESM deploy break slipped in.
+#
+# Node version: read from app/.nvmrc (Node 24), the SAME version the web deploy must use. Pinning them together is the whole point - the deploy failure came from the deploy server running an older Node than the code needs, so this check is only trustworthy if it runs the matching Node.
+#
+# Runs on: pull requests changing anything under app/, or this file itself (so edits here are verified too). Website- or docs-only PRs skip it.
+# Uses: No secrets - the export completes without any.
+# =============================================================================
+name: Web App Verify
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - ".github/workflows/web-app-verify.yml"
+
+# If new commits land on the same PR while a check is running, cancel the old
+# check - only the newest code needs verifying.
+concurrency:
+  group: web-app-verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-web-build:
+    name: Verify Web App Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Node version comes from app/.nvmrc so it can never drift from what the
+      # deploy uses. checkout v4 to match every other workflow in this repo.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: app/.nvmrc
+          cache: "npm"
+          cache-dependency-path: app/package-lock.json
+
+      # `npm ci` installs the exact versions in the lockfile and fails outright
+      # if the lockfile and package.json disagree - a useful check by itself on
+      # a dependency-bump PR (this is the class of change that broke the deploy).
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      # The real test: the same web export web-deploy.yml runs on a release.
+      # We use build:web (not build:web:deploy) on purpose - the extra deploy
+      # step only stamps a version from the GitHub releases API, which would
+      # make this check flaky on network hiccups without testing anything the
+      # export itself does not already cover.
+      - name: Build web export
+        working-directory: app
+        run: npm run build:web

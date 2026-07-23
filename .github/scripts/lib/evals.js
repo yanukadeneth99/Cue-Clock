@@ -86,7 +86,7 @@ const SCORE_WEIGHTS = { acceptance: 50, independence: 30, lowChurn: 20 };
 // Three ingredients, each a 0 to 1 value:
 //   acceptance   - of the AI pull requests opened, how many were merged.
 //   independence - of the work that ended, how much ended without pulling in a human.
-//   lowChurn     - how few automated repair runs the month's work needed. Three repair runs per pull request (or more) counts as full churn.
+//   lowChurn     - how few automated repair runs the month's work needed. Four repair runs per pull request (or more) counts as full churn.
 // An ingredient with nothing to measure is left out and the weights are rebalanced, and a month with nothing to measure at all returns null (shown as a dash).
 function computeScore({ aiPrsOpened, aiPrsMerged, depPrsMerged, autoFixRuns, escalationsOpen, issuesClosedByAi }) {
   const parts = {};
@@ -99,7 +99,7 @@ function computeScore({ aiPrsOpened, aiPrsMerged, depPrsMerged, autoFixRuns, esc
   }
   const work = aiPrsOpened + depPrsMerged;
   if (work > 0) {
-    parts.lowChurn = 1 - Math.min(1, autoFixRuns / (3 * work));
+    parts.lowChurn = 1 - Math.min(1, autoFixRuns / (4 * work));
   } else if (autoFixRuns > 0) {
     // Repair runs with no visible work is pure churn.
     parts.lowChurn = 0;
