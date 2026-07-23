@@ -1,0 +1,31 @@
+# =============================================================================
+# Nixpacks build config for the web app (read by Coolify on deploy)
+# -----------------------------------------------------------------------------
+# Nixpacks builds the app on Coolify. It installs Node from a FROZEN snapshot of
+# the Nix package list, and the snapshot it picks by default is too old for us.
+#
+# The problem: that default snapshot only has Node 22.11.0. We need 22.12.0 or
+# newer, because that is the first Node release where a CommonJS `require()` can
+# load an ES module without a special flag. Without it the web build dies with
+# ERR_REQUIRE_ESM (our `uuid` override pulls ESM into `xcode`, which uses
+# require) - the exact failure that broke a live deploy.
+#
+# The fix: point the setup step at a newer snapshot, which provides Node 22.14.0.
+# This is the same snapshot newer Nixpacks versions use for Node 22, so we are
+# matching upstream rather than inventing a pin.
+#
+# WHY NOT JUST ASK FOR NODE 24: the Node version and this snapshot are separate
+# settings. Asking for 24 against the old snapshot fails with
+# "undefined variable 'nodejs_24'" - it simply is not in there. Node 22 is all we
+# need, so we take the smaller step.
+#
+# The Node MAJOR version still comes from app/.nvmrc (22). Keep the two in step:
+# .nvmrc chooses which Node, this file chooses where Node is fetched from.
+#
+# NOTE ON PLACEMENT: this file must sit in app/, not the repo root - Coolify
+# builds from the app/ directory, and Nixpacks only looks for the config there.
+# Also note the [phases.setup] heading is required; the same setting written at
+# the top of the file is accepted and then quietly ignored.
+# =============================================================================
+[phases.setup]
+nixpkgsArchive = 'e6f23dc08d3624daab7094b701aa3954923c6bbb'

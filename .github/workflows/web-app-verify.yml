@@ -5,7 +5,9 @@
 #
 # Why this exists: app/ ships to Android AND web from one codebase, but until now only Android was built on a PR (android-release-verify.yml). A change that compiles for React Native but breaks the web static export sailed through review and only exploded when Coolify ran the export at release time. That is exactly how the uuid/xcode ERR_REQUIRE_ESM deploy break slipped in.
 #
-# Node version: read from app/.nvmrc (Node 24), the SAME version the web deploy must use. Pinning them together is the whole point - the deploy failure came from the deploy server running an older Node than the code needs, so this check is only trustworthy if it runs the matching Node.
+# Node version: read from app/.nvmrc (Node 22), the SAME version the web deploy must use. Pinning them together is the whole point - the deploy failure came from the deploy server running an older Node than the code needs, so this check is only trustworthy if it runs the matching Node.
+#
+# Why 22 and not something newer: 22.12.0 is the first Node that lets a CommonJS `require()` load an ES module without a flag, which is what the failed deploy needed. Anything at or above that works; there is no reason to reach further. The deploy server gets a matching 22.14.0 via app/nixpacks.toml - see that file for why the version alone was not enough.
 #
 # Runs on: pull requests changing anything under app/, or this file itself (so edits here are verified too). Website- or docs-only PRs skip it.
 # Uses: No secrets - the export completes without any.
