@@ -86,6 +86,28 @@ export function shortCity(tz: string): string {
 }
 
 /**
+ * Formatters are expensive to build, so we keep one per timezone and reuse it.
+ * Only two zones are ever in play, so this map stays tiny.
+ */
+const countdownFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Get the reusable formatter for `tz`, building it the first time only. */
+function getCountdownFormatter(tz: string): Intl.DateTimeFormat {
+  let fmt = countdownFormatters.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+    countdownFormatters.set(tz, fmt);
+  }
+  return fmt;
+}
+
+/**
  * Compute time remaining until `target` (h/m in `tz`), minus `deductSeconds`.
  * Rolls forward 24h if the target is already past in the zone.
  *
@@ -102,13 +124,7 @@ export function computeCountdown(
   deductSeconds = 0,
 ): Countdown {
   // Project `now` into `tz` via Intl, then do integer second math.
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
+  const fmt = getCountdownFormatter(tz).formatToParts(now);
   const get = (t: Intl.DateTimeFormatPartTypes) =>
     parseInt(fmt.find((p) => p.type === t)?.value ?? "0", 10);
   const hour = get("hour") === 24 ? 0 : get("hour");
