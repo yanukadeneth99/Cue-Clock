@@ -891,17 +891,6 @@ export default function HomeScreen() {
     if (Platform.OS !== "web") return;
     const style = (document as any).createElement("style");
     style.textContent = `
-      select {
-        background-color: ${colors.pickerBg} !important;
-        color: ${colors.pickerText} !important;
-        border: 1px solid ${colors.border} !important;
-        border-radius: 8px !important;
-        padding: 8px 12px !important;
-      }
-      select option {
-        background-color: ${colors.pickerBg} !important;
-        color: ${colors.pickerText} !important;
-      }
       input[type="time"] {
         color-scheme: dark;
       }

@@ -5,8 +5,8 @@
  * Single accent (blue) for CTA/brand. Amber `countdown` is reserved for time-urgency +
  * alarm state ONLY. Red `danger` is reserved for <1m critical + destructive actions ONLY.
  *
- * Legacy keys (`header`, `pickerText`, `pickerBg`) are kept for back-compat with existing
- * call sites in `app/index.tsx`. New code should use `text` / `textMuted` instead.
+ * Legacy key (`header`) is kept for back-compat with existing call sites in
+ * `app/index.tsx`. New code should use `text` / `textMuted` instead.
  */
 export const colors = {
   // Surface stack
@@ -33,7 +33,5 @@ export const colors = {
 
   // ─── Legacy aliases (do not use in new code) ─────────────────────────
   header: "#e8eaed",           // alias of `text`
-  pickerText: "#e8eaed",       // alias of `text`
-  pickerBg: "#2f323a",         // legacy picker fill - slated for removal with ClockPicker
   muted: "#8b8f96",            // alias of `textMuted`
 };
