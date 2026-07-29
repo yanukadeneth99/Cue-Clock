@@ -392,6 +392,15 @@ export function CueEditModal({
     </View>
   );
 
+  // Re-mount TimeStepper when toggling between Add and Edit modes so the
+  // `autoOpen` effect inside it fires fresh for new cues. Including
+  // `autoOpenSection` in the key forces a remount when the user re-opens the
+  // modal targeting a different field on the same cue - TimeStepper's
+  // `autoOpen` is a mount-only effect, so without the remount a second "tap on
+  // the countdown" wouldn't re-pop the native picker.
+  const timeStepperIdPart = existing ? `edit-${existing.id}` : "add";
+  const timeStepperKey = `${timeStepperIdPart}-${autoOpenSection ?? "none"}`;
+
   return (
     <ModalShell
       visible={visible}
@@ -483,14 +492,8 @@ export function CueEditModal({
         }}
       >
         <TimeStepper
-          // Re-mount when toggling between Add and Edit modes so the
-          // `autoOpen` effect inside TimeStepper fires fresh for new cues.
-          // Including `autoOpenSection` in the key forces a remount when the
-          // user re-opens the modal targeting a different field on the same
-          // cue - TimeStepper's `autoOpen` is a mount-only effect, so without
-          // the remount a second "tap on the countdown" wouldn't re-pop the
-          // native picker.
-          key={`${existing ? `edit-${existing.id}` : "add"}-${autoOpenSection ?? "none"}`}
+          // Key built above so the outer string only interpolates plain values.
+          key={timeStepperKey}
           h={form.targetHour}
           m={form.targetMinute}
           onChange={(th, tm) => setForm((f) => ({ ...f, targetHour: th, targetMinute: tm }))}
