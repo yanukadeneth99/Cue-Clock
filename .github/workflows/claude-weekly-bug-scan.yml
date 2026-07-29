@@ -39,17 +39,20 @@ jobs:
         run: echo "at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude bug scan
+        # Named so the reporting step below can read this step's execution file and see how the run really went.
+        id: claude
         # Pinned to an exact commit, not the movable @v1 tag, so the action cannot change under us without a deliberate bump.
         uses: anthropics/claude-code-action@1298632ce7736903d02a1435002705aa2a594a6c # v1.0.175
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # On a scheduled run the actor is whoever last touched this file, which becomes a bot as soon as an automated commit lands. Without this list the action would refuse to run.
           allowed_bots: "claude,github-actions"
+          # `gh issue edit` is allowed on purpose. Without it, a long issue body that fails to send in one go leaves Claude with no way to fix the issue it just made, so it files a second one instead. That is what produced the duplicate pair #130 and #131 in the sibling minimizer workflow on 2026-07-28.
           # WebSearch is allowed for one narrow job only: checking published vulnerability advisories against the versions in package.json, which is knowledge that lives outside this repo and goes stale. The prompt below forbids using it to decide whether code is buggy. WebFetch stays blocked, so Claude cannot follow an arbitrary link. Still no editing, no pushing, no package commands.
           claude_args: >-
             --model opus
             --max-turns 60
-            --allowed-tools "Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(git log:*),Bash(git blame:*),Read,Glob,Grep,WebSearch"
+            --allowed-tools "Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(gh issue edit:*),Bash(git log:*),Bash(git blame:*),Read,Glob,Grep,WebSearch"
             --disallowed-tools "Write,Edit,MultiEdit,NotebookEdit,WebFetch,Bash(git push:*),Bash(git commit:*),Bash(gh api:*),Bash(gh pr:*),Bash(npm:*),Bash(npx:*),Bash(pnpm:*)"
           prompt: |
             You are a security and correctness reviewer for the Cue Clock project. You read code and file at most one issue. You never change code.
@@ -99,6 +102,8 @@ jobs:
           REPO: ${{ github.repository }}
           SINCE: ${{ steps.started.outputs.at }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          # Claude's own record of the run. Read through an env var, never pasted into the script text.
+          EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
           filed=$(gh issue list --repo "$REPO" --label claude-bugs --state open \
                     --limit 20 --json number,title,createdAt \
@@ -110,4 +115,24 @@ jobs:
           else
             echo "### Weekly bug scan: ${count} issue(s) filed" >> "$GITHUB_STEP_SUMMARY"
             echo "$filed" | jq -r --arg u "$REPO_URL" '.[] | "- [#\(.number)](\($u)/issues/\(.number)) \(.title)"' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # How many tool calls the sandbox refused. Any refusal at all means the prompt asked for something the allowed-tools list forbids, which is a configuration bug every time. This number used to be invisible, so a run that filed a duplicate issue still looked perfectly green.
+          # `jq -s` reads the file whether it holds one JSON array or one JSON object per line. Every lookup has a fallback, so a missing or odd file reports 0 instead of failing the step.
+          denials=0
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then
+            denials=$(jq -s '[flatten[] | select(type == "object" and .type == "result")] | last.permission_denials_count // 0' "$EXEC_FILE" 2>/dev/null || echo 0)
+          fi
+          if [ "$denials" -gt 0 ]; then
+            echo "::warning::Claude was refused $denials tool call(s). The prompt is asking for something allowed-tools forbids."
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "⚠️ **${denials} tool call(s) refused.** Claude tried to do something the \`--allowed-tools\` list does not permit. Check the prompt against the tool list." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # The prompt says "File exactly one issue and stop." Nothing used to check that. Two issues in one run means Claude got stuck and retried, so a human needs to close the spare.
+          if [ "$count" -gt 1 ]; then
+            echo "::error::This scan filed $count issues. The prompt allows exactly one. Close the duplicates."
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "❌ **${count} issues filed, but only one is allowed.** Claude most likely retried after a failure. Close the spare issues by hand." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
