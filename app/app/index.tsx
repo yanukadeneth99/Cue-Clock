@@ -2089,17 +2089,19 @@ export default function HomeScreen() {
     // Only filter out passed cues when the user wants them minimized. With
     // the toggle off, passed cues stay in the queue and tick toward the
     // next-day rollover (the documented past-midnight use case).
+    // Compute each cue's seconds-remaining once, then sort on that number.
+    // Doing the time-zone conversion inside the comparator would rerun it many
+    // times per cue (sort compares pairs), so we decorate first, then map back.
     const onAirActiveBlocks = targetBlocks
       .filter((b) => !autoMinimizePassed || passedAt[b.id] == null)
-      .slice()
-      .sort((a, b) => {
-        const totalFor = (block: TargetBlockType) => {
-          const tz = block.targetZone === "zone1" ? zone1 : zone2;
-          const ds = block.deductMinute * 60 + block.deductSecond;
-          return computeCountdown(now, tz, { h: block.targetHour, m: block.targetMinute }, ds).total;
-        };
-        return totalFor(a) - totalFor(b);
-      });
+      .map((block) => {
+        const tz = block.targetZone === "zone1" ? zone1 : zone2;
+        const ds = block.deductMinute * 60 + block.deductSecond;
+        const total = computeCountdown(now, tz, { h: block.targetHour, m: block.targetMinute }, ds).total;
+        return { block, total };
+      })
+      .sort((a, b) => a.total - b.total)
+      .map((x) => x.block);
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <OnAirView
@@ -2139,15 +2141,19 @@ export default function HomeScreen() {
     // Auto-sort active cues by seconds-remaining (ascending). Zones drop out
     // of the ordering because `computeCountdown` already projects the target
     // into the cue's own zone - total is in real wall-clock seconds-from-now.
-    const totalFor = (b: TargetBlockType) => {
-      const tz = b.targetZone === "zone1" ? zone1 : zone2;
-      const ds = b.deductMinute * 60 + b.deductSecond;
-      return computeCountdown(now, tz, { h: b.targetHour, m: b.targetMinute }, ds).total;
-    };
+    // Compute each cue's seconds-remaining once, sort on that number, then map
+    // back — same reason as the OnAir path above: keep the time-zone conversion
+    // out of the comparator so it runs once per cue, not once per comparison.
     const activeBlocks = targetBlocks
       .filter((b) => passedIds[b.id] == null)
-      .slice()
-      .sort((a, b) => totalFor(a) - totalFor(b));
+      .map((block) => {
+        const tz = block.targetZone === "zone1" ? zone1 : zone2;
+        const ds = block.deductMinute * 60 + block.deductSecond;
+        const total = computeCountdown(now, tz, { h: block.targetHour, m: block.targetMinute }, ds).total;
+        return { block, total };
+      })
+      .sort((a, b) => a.total - b.total)
+      .map((x) => x.block);
     const primary = activeBlocks[0];
     const rest = activeBlocks.slice(1);
     const editingBlock =
