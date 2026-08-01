@@ -84,13 +84,12 @@ flowchart LR
 ```
 
 <!-- AI-SCOREBOARD:START -->
+The Score column is a 0 to 100 health mark made of three parts: how much of the AI's opened work was merged (50%), how much finished work needed no human rescue (30%), and how little automated repair churn the month took (20%). Higher is better, and a dash means the period was too quiet to score. A finished year collapses into a single summary row. Updated monthly by `.github/workflows/ai-evals.yml`.
 
-**📊 AI Evals.** The automation is measured, not just trusted. Score is a 0-100 health mark: work merged (50%), work that needed no human rescue (30%), and low repair churn (20%). A dash means too quiet to score. Updated monthly by `.github/workflows/ai-evals.yml`.
-
-| Period  | AI PRs opened | AI PRs merged | Auto-fix runs | Waiting on a human | Score /100 |
-| ------- | ------------- | ------------- | ------------- | ------------------ | ---------- |
-| 2026-07 | 7             | 4             | 17            | 2                  | 58         |
-
+| Period | AI PRs opened | AI PRs merged | Auto-fix runs | Waiting on a human | Score /100 | Research runs |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-07 | 7 | 4 | 17 | 2 | 58 | - |
+| 2026-08 | 16 | 13 | 34 | 0 | 83 | 10 |
 <!-- AI-SCOREBOARD:END -->
 
 ---
