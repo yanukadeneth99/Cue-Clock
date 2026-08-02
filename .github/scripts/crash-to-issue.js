@@ -1,7 +1,7 @@
 // Reads new crashes from the Crashlytics BigQuery export and opens a GitHub issue for each one.
 // This is the only file that talks to BigQuery or creates issues. All the rules live in lib/crashes.js.
 
-const { execFileSync } = require('node:child_process');
+const { execFileSync } = require("node:child_process");
 const {
   buildIssueTitle,
   buildIssueBody,
@@ -11,7 +11,7 @@ const {
   isSafeIssueId,
   WINDOW_DAYS,
   MAX_ISSUES_PER_RUN,
-} = require('./lib/crashes.js');
+} = require("./lib/crashes.js");
 
 const token = process.env.BIGQUERY_ACCESS_TOKEN;
 const projectId = process.env.GCP_PROJECT_ID;
@@ -21,9 +21,12 @@ const table = process.env.CRASH_TABLE;
 // when nobody says, so leaving this out makes it look for the table in the wrong place and
 // report that it does not exist.
 const location = process.env.BIGQUERY_LOCATION;
-const labels = (process.env.CRASH_ISSUE_LABELS || '').split(',').map((l) => l.trim()).filter(Boolean);
+const labels = (process.env.CRASH_ISSUE_LABELS || "")
+  .split(",")
+  .map((l) => l.trim())
+  .filter(Boolean);
 // GitHub Actions sets this automatically. The fallback only matters for a manual local run.
-const repo = process.env.GITHUB_REPOSITORY || 'yanukadeneth99/Cue-Clock';
+const repo = process.env.GITHUB_REPOSITORY || "yanukadeneth99/Cue-Clock";
 
 // The _PARTITIONTIME line is what keeps this query cheap. Without it BigQuery reads the whole
 // crash history every single run, and that gets bigger every day.
@@ -54,7 +57,9 @@ function decodeRows(body) {
   const fields = ((body.schema || {}).fields || []).map((f) => f.name);
   return (body.rows || []).map((row) => {
     const out = {};
-    fields.forEach((name, i) => { out[name] = (row.f[i] || {}).v; });
+    fields.forEach((name, i) => {
+      out[name] = (row.f[i] || {}).v;
+    });
     return out;
   });
 }
@@ -87,8 +92,11 @@ async function runQuery() {
   const res = await fetch(
     `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`,
     {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       // Only send the region if we were told one, so this keeps working unchanged for the
       // United States default where BigQuery can work it out on its own.
       body: JSON.stringify({
@@ -101,25 +109,20 @@ async function runQuery() {
   );
 
   if (!res.ok) {
-    // A 404 whose reason is "notFound" means the Crashlytics export table does not exist yet.
-    // Firebase only creates that table the first time a crash is exported, so before the very
-    // first crash this is the normal quiet state, not a failure. Return null so the run ends
-    // cleanly instead of turning red every day until the first crash lands. We read ONLY the
-    // fixed reason code here, never the free-text message, so no table name or URL is logged.
-    // Any other 404 (wrong project), plus 403/500/etc, still fails loudly just below.
-    if (res.status === 404) {
-      const detail = await res.json().catch(() => null);
-      const reason = detail && detail.error && Array.isArray(detail.error.errors)
+    // Getting the reason for the error.
+    const detail = await res.json().catch(() => null);
+    // Fetching only the reason since the object can contain the whole BigQuery request with access tokens - this is an opensource project.
+    const reason =
+      detail && detail.error && Array.isArray(detail.error.errors)
         ? (detail.error.errors[0] || {}).reason
         : undefined;
-      if (reason === 'notFound') return null;
-    }
-    // Never print the response body or the message. The message on a fetch error can carry
-    // the whole request URL, token included, and this repo is public. The status code is
-    // just a number, so it is safe to put in the error name and that name is what gets
-    // logged, giving 404 vs 403 vs 500 without ever touching the message.
+
+    // 404 with reason "notFound" means the export table does not exist, so ignoring that. Firebase only creates the table on the first crash.
+    if (res.status === 404 && reason === "notFound") return null;
+
+    // For all other errors, printing the reason
     const err = new Error(`BigQuery returned ${res.status}`);
-    err.name = `BigQueryHttp${res.status}`;
+    err.name = `BigQueryHttp${res.status} | ${reason || "Full reason not found"}`;
     throw err;
   }
   const body = await res.json();
@@ -129,8 +132,8 @@ async function runQuery() {
   // "zero crashes this week" and exit quietly, hiding a real failure. A genuinely empty
   // result still has jobComplete true, so this only catches the not-finished case.
   if (body.jobComplete !== true) {
-    const err = new Error('BigQuery query did not finish before the timeout.');
-    err.name = 'BigQueryQueryTimeout';
+    const err = new Error("BigQuery query did not finish before the timeout.");
+    err.name = "BigQueryQueryTimeout";
     throw err;
   }
   return body;
@@ -138,27 +141,51 @@ async function runQuery() {
 
 // Ask GitHub whether we already reported this crash. The crash id sits in the issue body.
 function findExistingIssues(issueId) {
-  const raw = execFileSync('gh', [
-    'issue', 'list',
-    '--repo', repo,
-    '--search', `${issueId} in:body`,
-    '--state', 'all',
-    '--limit', '50',
-    '--json', 'number,state,closedAt',
-  ], { encoding: 'utf8' });
+  const raw = execFileSync(
+    "gh",
+    [
+      "issue",
+      "list",
+      "--repo",
+      repo,
+      "--search",
+      `${issueId} in:body`,
+      "--state",
+      "all",
+      "--limit",
+      "50",
+      "--json",
+      "number,state,closedAt",
+    ],
+    { encoding: "utf8" },
+  );
   return JSON.parse(raw);
 }
 
 function createIssue(title, body) {
-  const args = ['issue', 'create', '--repo', repo, '--title', title, '--body', body];
-  for (const label of labels) args.push('--label', label);
+  const args = [
+    "issue",
+    "create",
+    "--repo",
+    repo,
+    "--title",
+    title,
+    "--body",
+    body,
+  ];
+  for (const label of labels) args.push("--label", label);
   // The title and body go straight to gh as arguments, never through a shell, so crash text
   // cannot turn into a command.
-  return execFileSync('gh', args, { encoding: 'utf8' }).trim();
+  return execFileSync("gh", args, { encoding: "utf8" }).trim();
 }
 
 async function main() {
-  for (const [name, value] of Object.entries({ BIGQUERY_ACCESS_TOKEN: token, GCP_PROJECT_ID: projectId, FIREBASE_APP_ID: appId, CRASH_TABLE: table })) {
+  for (const [name, value] of Object.entries({
+    BIGQUERY_ACCESS_TOKEN: token,
+    GCP_PROJECT_ID: projectId,
+    FIREBASE_APP_ID: appId,
+    CRASH_TABLE: table,
+  })) {
     if (!value) {
       console.error(`${name} is not set. Cannot continue.`);
       process.exit(1);
@@ -169,11 +196,15 @@ async function main() {
   // runQuery returns null when the export table does not exist yet (no crash has ever been
   // exported). Treat that as a genuine quiet day and stop, rather than failing the run.
   if (body === null) {
-    console.log('No Crashlytics export table yet, so no crashes have been exported. Nothing to file.');
+    console.log(
+      "No Crashlytics export table yet, so no crashes have been exported. Nothing to file.",
+    );
     return;
   }
   const clusters = decodeRows(body).map(toCluster);
-  console.log(`Crash clusters in the last ${WINDOW_DAYS} days: ${clusters.length}`);
+  console.log(
+    `Crash clusters in the last ${WINDOW_DAYS} days: ${clusters.length}`,
+  );
 
   const candidates = [];
   let uncheckedClusters = 0;
@@ -182,7 +213,9 @@ async function main() {
     // buildIssueBody). Reject anything that is not plain hex-style text before doing
     // anything else with it, so a strange id can never break the search or the body layout.
     if (!isSafeIssueId(cluster.issueId)) {
-      console.log('Skipping a crash cluster: its issue id had an unexpected format.');
+      console.log(
+        "Skipping a crash cluster: its issue id had an unexpected format.",
+      );
       continue;
     }
 
@@ -196,11 +229,15 @@ async function main() {
     } catch (err) {
       // Also log gh's stderr. GH_TOKEN reaches gh through the environment, never through
       // argv, so gh's stderr cannot contain it, unlike a fetch error message.
-      console.error(`Could not check existing issues for ${cluster.issueId}:`, (err && err.name) || 'unknown error', String(err.stderr || '').trim());
+      console.error(
+        `Could not check existing issues for ${cluster.issueId}:`,
+        (err && err.name) || "unknown error",
+        String(err.stderr || "").trim(),
+      );
       uncheckedClusters += 1;
       continue;
     }
-    if (decision.action === 'file') {
+    if (decision.action === "file") {
       candidates.push({ cluster, priorIssue: decision.priorIssue });
     } else {
       console.log(`Skipping ${cluster.issueId}: ${decision.reason}`);
@@ -208,27 +245,42 @@ async function main() {
   }
   if (uncheckedClusters > 0) {
     // Say how many were skipped this way, so a run that silently checked nothing is visible.
-    console.log(`Could not check ${uncheckedClusters} cluster(s) against GitHub this run. They were skipped, not filed.`);
+    console.log(
+      `Could not check ${uncheckedClusters} cluster(s) against GitHub this run. They were skipped, not filed.`,
+    );
   }
 
   const { selected, dropped } = applyCap(candidates, MAX_ISSUES_PER_RUN);
   if (dropped.length > 0) {
     // Say what was left out. A silent cap looks exactly like full coverage.
-    console.log(`Capped at ${MAX_ISSUES_PER_RUN}. Not filed this run: ${dropped.map((d) => d.cluster.issueId).join(', ')}`);
+    console.log(
+      `Capped at ${MAX_ISSUES_PER_RUN}. Not filed this run: ${dropped.map((d) => d.cluster.issueId).join(", ")}`,
+    );
   }
 
   let filed = 0;
   for (const { cluster, priorIssue } of selected) {
-    const consoleUrl = crashConsoleUrl({ projectId, appId, issueId: cluster.issueId });
+    const consoleUrl = crashConsoleUrl({
+      projectId,
+      appId,
+      issueId: cluster.issueId,
+    });
     try {
       // One failure must not stop the others.
-      const url = createIssue(buildIssueTitle(cluster), buildIssueBody(cluster, { consoleUrl, priorIssue }));
+      const url = createIssue(
+        buildIssueTitle(cluster),
+        buildIssueBody(cluster, { consoleUrl, priorIssue }),
+      );
       console.log(`Filed ${cluster.issueId}: ${url}`);
       filed += 1;
     } catch (err) {
       // Also log gh's stderr. GH_TOKEN reaches gh through the environment, never through
       // argv, so gh's stderr cannot contain it, unlike a fetch error message.
-      console.error(`Could not file ${cluster.issueId}:`, (err && err.name) || 'unknown error', String(err.stderr || '').trim());
+      console.error(
+        `Could not file ${cluster.issueId}:`,
+        (err && err.name) || "unknown error",
+        String(err.stderr || "").trim(),
+      );
     }
   }
 
@@ -240,7 +292,9 @@ async function main() {
   // which makes every single gh issue create call fail. Only fail the run this way when we
   // actually tried and got nothing; a day with nothing to file is a real quiet day.
   if (filed === 0 && selected.length > 0) {
-    console.error(`Selected ${selected.length} crash(es) to file but none were created. Every issue creation attempt failed.`);
+    console.error(
+      `Selected ${selected.length} crash(es) to file but none were created. Every issue creation attempt failed.`,
+    );
     process.exit(1);
   }
 }
@@ -248,6 +302,9 @@ async function main() {
 main().catch((err) => {
   // Log the kind of error, never the message. A bad address puts the whole URL, token and all,
   // inside the message, and this repository is public.
-  console.error('Crash to issue run failed:', (err && err.name) || 'unknown error');
+  console.error(
+    "Crash to issue run failed:",
+    (err && err.name) || "unknown error",
+  );
   process.exit(1);
 });
