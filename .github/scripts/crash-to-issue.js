@@ -28,10 +28,8 @@ const labels = (process.env.CRASH_ISSUE_LABELS || "")
 // GitHub Actions sets this automatically. The fallback only matters for a manual local run.
 const repo = process.env.GITHUB_REPOSITORY || "yanukadeneth99/Cue-Clock";
 
-// The _PARTITIONTIME line is what keeps this query cheap. Without it BigQuery reads the whole
-// crash history every single run, and that gets bigger every day.
-// The nested columns come back as text so the answer is easy to read. Without this we would have
-// to unpick BigQuery's nested reply format by hand.
+// blame_frame and exceptions each hold a whole bundle of fields, and BigQuery sends bundles back in an awkward shape with the field names stripped out. TO_JSON_STRING asks BigQuery to flatten each one into ordinary text first, so this script gets a plain string it can use as-is.
+// This should be looked into if the table gets too big
 const SQL = `
   SELECT
     issue_id,
@@ -45,8 +43,7 @@ const SQL = `
     TO_JSON_STRING(ANY_VALUE(blame_frame)) AS blame_frame_json,
     ANY_VALUE(TO_JSON_STRING(exceptions)) AS exceptions_json
   FROM \`${table}\`
-  WHERE _PARTITIONTIME >= TIMESTAMP_TRUNC(TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${WINDOW_DAYS} DAY), DAY)
-    AND event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${WINDOW_DAYS} DAY)
+  WHERE event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${WINDOW_DAYS} DAY)
   GROUP BY issue_id
   ORDER BY distinct_installs DESC, event_count DESC
 `;
