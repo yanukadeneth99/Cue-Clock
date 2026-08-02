@@ -1534,6 +1534,11 @@ export default function HomeScreen() {
 
   const doReset = useCallback(async () => {
     try {
+      // Cancel every cue's scheduled OS alarm first so deleted cues can't
+      // still fire later. Fire-and-forget, same as the single-cue delete path.
+      for (const b of targetBlocksRef.current) {
+        if (b.notificationId) cancelAnyAlert(b.notificationId).catch(() => {});
+      }
       await AsyncStorage.multiRemove([
         "zone1",
         "zone2",
