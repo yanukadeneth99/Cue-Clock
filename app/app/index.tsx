@@ -269,12 +269,8 @@ function createDefaultBlock(id: number): TargetBlockType {
     deductSecond: 0,
     targetZone: "zone1",
     countdown: "00:00",
-    isTargetPickerVisible: false,
-    isDeductPickerVisible: false,
-    isCollapsed: false,
     name: `Target #${id}`,
     alertMinutesBefore: null,
-    isAlertModalVisible: false,
     alertFired: false,
   };
 }
@@ -1009,9 +1005,6 @@ export default function HomeScreen() {
               // so the first render after rehydrate doesn't see `undefined` before
               // the 1s tick recomputes it (crashed TargetBlock.split on resume).
               countdown: b.countdown ?? "00:00",
-              isTargetPickerVisible: false,
-              isDeductPickerVisible: false,
-              isAlertModalVisible: false,
             }))
           );
           const maxId = parsed.reduce((max, b) => Math.max(max, b.id), 0);
@@ -1068,7 +1061,7 @@ export default function HomeScreen() {
   const persistSignatureRef = useRef<string>("");
   useEffect(() => {
     if (!isLoadedRef.current) return;
-    const slim = targetBlocks.map(({ countdown, isTargetPickerVisible, isDeductPickerVisible, isAlertModalVisible, ...rest }) => rest);
+    const slim = targetBlocks.map(({ countdown, ...rest }) => rest);
     const serialized = JSON.stringify(slim);
     // Dedup signature MUST cover EVERY persisted value, not just the cue list.
     // WHY: this guard's job is to skip disk writes on the pure 1s countdown tick
@@ -2376,10 +2369,6 @@ export default function HomeScreen() {
                   targetZone: patch.targetZone,
                   alertMinutesBefore: patch.alertMinutesBefore,
                   countdown: "00:00:00",
-                  isTargetPickerVisible: false,
-                  isDeductPickerVisible: false,
-                  isCollapsed: true,
-                  isAlertModalVisible: false,
                   alertFired: false,
                   snoozeCount: 0,
                 },
