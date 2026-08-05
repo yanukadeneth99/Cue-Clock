@@ -268,9 +268,10 @@ export function CueEditModal({
   // picker in a single tap.
   const renderAlertRow: ListRenderItem<number> = ({ item, index }) => {
     const isNone = item === 0;
+    const suffix = item === 1 ? "" : "s";
     return (
       <AlertOptionRow
-        label={isNone ? "None" : `${item} minute${item === 1 ? "" : "s"} before`}
+        label={isNone ? "None" : `${item} minute${suffix} before`}
         active={
           isNone
             ? form.alertMinutesBefore === null
