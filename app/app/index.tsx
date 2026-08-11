@@ -150,12 +150,6 @@ function sendAlert(title: string, body: string) {
   }
 }
 
-const FULLSCREEN_CLOCK_HEIGHT = 100; // estimated height of ClockPicker in fullscreen (horizontal layout)
-const FULLSCREEN_EXIT_BTN_HEIGHT = 60; // height of exit button + margins
-const FULLSCREEN_MAX_FONT = 40;
-const FULLSCREEN_MIN_FONT = 24;
-// per-block height overhead beyond font size (marginVertical + name + target time line)
-const BLOCK_OVERHEAD = 52;
 // Stable empty-map sentinel for the "Minimize ended cues" off state. Reusing
 // one frozen reference avoids re-creating an object every render, which would
 // invalidate downstream `useMemo` / `React.memo` keyed on `passedIds`.
