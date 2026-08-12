@@ -200,7 +200,6 @@ export function CueEditModal({
     // 'time' is handled by TimeStepper's own autoOpen prop (below).
     // 'zone' has no nested picker - the toggle is already visible, so just
     // opening the sheet is sufficient.
-    return;
     // maxAlertMins recomputes on every render; we only want to act on the
     // open transition, so we deliberately exclude it from deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
