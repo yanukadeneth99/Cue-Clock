@@ -30,6 +30,34 @@ export type Countdown = {
   crit: boolean;
 };
 
+/**
+ * Formatters are expensive to build, so we keep one for each combination of
+ * options and reuse it. Only timezone, 12/24h and show-seconds change the
+ * output, and there are just a handful of those, so this map stays tiny.
+ */
+const zoneFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Get the reusable clock formatter for these options, building it once. */
+function getZoneFormatter(
+  tz: string,
+  showSeconds: boolean,
+  hour12: boolean,
+): Intl.DateTimeFormat {
+  const key = `${tz}|${hour12}|${showSeconds}`;
+  let fmt = zoneFormatters.get(key);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: showSeconds ? "2-digit" : undefined,
+      hour12,
+    });
+    zoneFormatters.set(key, fmt);
+  }
+  return fmt;
+}
+
 /** Render the current time in `tz` as parts ready for the clock rail. */
 export function formatInZone(
   date: Date,
@@ -38,13 +66,7 @@ export function formatInZone(
   hour12 = false,
 ): ZoneTime {
   try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: showSeconds ? "2-digit" : undefined,
-      hour12,
-    }).formatToParts(date);
+    const parts = getZoneFormatter(tz, showSeconds, hour12).formatToParts(date);
     const get = (t: Intl.DateTimeFormatPartTypes) =>
       parts.find((p) => p.type === t)?.value ?? "00";
     const rawH = get("hour");
