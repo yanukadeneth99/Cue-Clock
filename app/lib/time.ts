@@ -71,8 +71,9 @@ export function formatInZone(
       parts.find((p) => p.type === t)?.value ?? "00";
     const rawH = get("hour");
     // In 24-hour mode this formatter reports midnight as "24", so show "00".
+    const h24 = rawH === "24" ? "00" : rawH;
     return {
-      h: hour12 ? String(parseInt(rawH, 10)) : rawH === "24" ? "00" : rawH,
+      h: hour12 ? String(Number.parseInt(rawH, 10)) : h24,
       m: get("minute"),
       s: get("second") || "00",
       ampm: hour12 ? parts.find((p) => p.type === "dayPeriod")?.value ?? "" : "",
