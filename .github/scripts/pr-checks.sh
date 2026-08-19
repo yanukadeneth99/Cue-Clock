@@ -26,7 +26,10 @@ build_check_running() {
   raw=$(gh pr checks "$pr" --repo "$repo" --json name,workflow,bucket 2>/dev/null) || raw='[]'
   running=$(printf '%s' "$raw" | jq -r --argjson builds "$BUILD_WORKFLOWS" '
     [ .[] | select(.bucket == "pending" and (.workflow as $w | $builds | index($w) != null)) ] | length')
-  [ "$running" -gt 0 ]
+  if [ "$running" -gt 0 ]; then
+    return 0
+  fi
+  return 1
 }
 
 # check_others <pr> <repo> [wait]
@@ -86,5 +89,8 @@ sonar_failing() {
   raw=$(gh pr checks "$pr" --repo "$repo" --json name,bucket 2>/dev/null) || raw='[]'
   hit=$(printf '%s' "$raw" | jq -r '
     [ .[] | select(.bucket == "fail" and (.name | test("SonarCloud"; "i"))) ] | length')
-  [ "$hit" -gt 0 ]
+  if [ "$hit" -gt 0 ]; then
+    return 0
+  fi
+  return 1
 }
