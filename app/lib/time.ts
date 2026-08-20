@@ -90,13 +90,30 @@ export function fmtHM(h: number, m: number, hour12 = false): string {
   return `${h12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
 
+/**
+ * Formatters are expensive to build, so we keep one per timezone and reuse it.
+ * Only the abbreviation ("BST", "EDT") changes, and just two zones are ever in
+ * play, so this map stays tiny.
+ */
+const zoneAbbrFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Get the reusable abbreviation formatter for `tz`, building it once. */
+function getZoneAbbrFormatter(tz: string): Intl.DateTimeFormat {
+  let fmt = zoneAbbrFormatters.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      timeZoneName: "short",
+    });
+    zoneAbbrFormatters.set(tz, fmt);
+  }
+  return fmt;
+}
+
 /** Short timezone abbreviation ("BST", "EDT"). Falls back to the IANA suffix. */
 export function zoneAbbr(date: Date, tz: string): string {
   try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      timeZoneName: "short",
-    }).formatToParts(date);
+    const parts = getZoneAbbrFormatter(tz).formatToParts(date);
     return parts.find((p) => p.type === "timeZoneName")?.value ?? tz.split("/").pop() ?? tz;
   } catch {
     return tz.split("/").pop() ?? tz;
