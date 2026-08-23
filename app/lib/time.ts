@@ -158,7 +158,9 @@ export function computeCountdown(
   const nowSec = hour * 3600 + minute * 60 + second;
   const tgtSec = target.h * 3600 + target.m * 60 - deductSeconds;
   let diff = tgtSec - nowSec;
-  if (diff <= 0) diff += 86400;
+  // A large buffer can push the target below the start of the day, so a single
+  // day may not be enough - keep adding days until we land on a real time left.
+  while (diff <= 0) diff += 86400;
 
   const hh = Math.floor(diff / 3600);
   const mm = Math.floor((diff % 3600) / 60);
