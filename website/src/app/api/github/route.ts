@@ -83,12 +83,12 @@ export async function GET() {
   // rare search rate-limit), fall back to the repo's open_issues_count so the
   // tile still shows a number rather than zero - it may be slightly high, but
   // never blank.
+  const fallbackOpenIssues =
+    typeof repo?.open_issues_count === "number" ? repo.open_issues_count : 0;
   const openIssues =
     typeof issueSearch?.total_count === "number"
       ? issueSearch.total_count
-      : typeof repo?.open_issues_count === "number"
-        ? repo.open_issues_count
-        : 0;
+      : fallbackOpenIssues;
 
   let lastCommit: string | null = null;
   if (commit?.commit && typeof commit.commit === "object") {
