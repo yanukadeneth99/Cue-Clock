@@ -501,6 +501,9 @@ export default function HomeScreen() {
   // lets the silent clip play to completion, leaving the player in a fully
   // idle state. Then we restore volume and seekTo(0) for the real beep.
   useEffect(() => {
+    // Native-only feature: the web browser must never play this beep. Skip the
+    // whole pre-warm on web so no audio player is ever primed there.
+    if (Platform.OS === "web") return;
     // Beep clip is 130ms, go clip is 420ms. Settle to 500ms covers both with
     // generous margin for decode jitter on mid-range Android.
     const SETTLE_MS = 500;
@@ -563,6 +566,8 @@ export default function HomeScreen() {
   // Cancel pending beeps on unmount.
   useEffect(() => clearPendingBeeps, [clearPendingBeeps]);
   useEffect(() => {
+    // Native-only feature: never schedule or play the beep on web.
+    if (Platform.OS === "web") return;
     if (!finalBeep) {
       // Toggling off mid-countdown should silence any already-scheduled beep.
       clearPendingBeeps();
