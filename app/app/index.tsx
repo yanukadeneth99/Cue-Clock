@@ -408,9 +408,8 @@ export default function HomeScreen() {
     "time" | "zone" | "alert" | "name" | null
   >(null);
   const [zonePickerFor, setZonePickerFor] = useState<"zone1" | "zone2" | null>(null);
-  // Wall-clock-aligned 1s tick - fuels the new design's ClockRail / PrimaryCard /
-  // QueuedRow render path. The legacy TargetBlock still pulls its `countdown`
-  // string from the existing setInterval below; both run independently.
+  // Wall-clock-aligned 1s tick - the single clock source that drives every
+  // countdown display (ClockRail, PrimaryCard, QueuedRow, PassedStrip).
   const now = useNow();
   const nextIdRef = useRef(2);
   const scrollViewRef = useRef<ScrollView | null>(null);
@@ -2110,15 +2109,10 @@ export default function HomeScreen() {
     );
   }
 
-  // ─── New-design mobile path (non-fullscreen) ─────────────────────────
-  // The visual shell of the redesign lives here; editing still routes back
-  // through the legacy TargetBlock for now, rendered below the new cards when
-  // a cue is selected (replaced by CueEditModal in step 5).
-  // Web now uses the new design too (legacy render below is dead code that
-  // we keep around until a follow-up cleanup commit). The `!fullScreen` gate
-  // means web-fullscreen falls through to OnAirView via the branch above on
-  // native and to legacy on web - but web has no fullscreen entry-point in
-  // the new Header, so this never executes.
+  // ─── Home path (non-fullscreen) ──────────────────────────────────────
+  // The main home screen, shared by both native and web. Editing a cue
+  // opens CueEditModal (the one and only editing surface). Fullscreen is
+  // handled by the branch above, so this only runs when not fullscreen.
   if (!fullScreen) {
     // Split blocks into passed (compressed strips) and active (primary + queue).
     // Active list preserves the user's drag order; passed list is sorted by
