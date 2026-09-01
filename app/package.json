@@ -28,7 +28,7 @@
     "@react-native-firebase/perf": "^23.8.8",
     "@react-navigation/native": "^7.1.33",
     "@types/react": "~19.2.18",
-    "expo": "~55.0.31",
+    "expo": "~55.0.30",
     "expo-alarm-vibrator": "file:./modules/expo-alarm-vibrator",
     "expo-asset": "~55.0.20",
     "expo-audio": "~55.0.18",
