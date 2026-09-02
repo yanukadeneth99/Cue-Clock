@@ -27,7 +27,7 @@ const ALERT_ROW_H = 48;
 
 // Hoisted so the FlatList gets a stable key-extractor reference - recreating
 // it every render would make the list redo work it could otherwise skip.
-const alertKeyExtractor = (item: number) => String(item);
+const alertKeyExtractor = String;
 
 /**
  * Which field on the cue the user "aimed at" when opening the modal.
