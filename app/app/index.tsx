@@ -1748,15 +1748,6 @@ export default function HomeScreen() {
     Linking.openSettings().catch(() => {});
   }, []);
 
-  const openBatterySettings = useCallback(() => {
-    if (Platform.OS !== "android") return;
-    Linking.sendIntent("android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS").catch(() => {
-      Linking.sendIntent("android.settings.SETTINGS").catch(() => {
-        Linking.openSettings().catch(() => {});
-      });
-    });
-  }, []);
-
   const openExactAlarmSettings = useCallback(() => {
     if (Platform.OS !== "android") return;
     Linking.sendIntent("android.settings.REQUEST_SCHEDULE_EXACT_ALARM").catch(() => {
