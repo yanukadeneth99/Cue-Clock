@@ -258,6 +258,11 @@ export default function PipelineDiagram() {
   }
 
   const canPan = zoom > MIN_ZOOM;
+  // Which mouse cursor to show over the diagram.
+  let cursorClass = "cursor-default";
+  if (canPan) {
+    cursorClass = dragging ? "cursor-grabbing touch-none" : "cursor-grab touch-none";
+  }
 
   return (
     <div>
@@ -295,9 +300,7 @@ export default function PipelineDiagram() {
         onPointerMove={onPointerMove}
         onPointerUp={stopDragging}
         onPointerLeave={stopDragging}
-        className={`relative h-[300px] md:h-[380px] overflow-hidden rounded-[10px] bg-page/40 flex items-center justify-center ${
-          canPan ? (dragging ? "cursor-grabbing touch-none" : "cursor-grab touch-none") : "cursor-default"
-        }`}
+        className={`relative h-[300px] md:h-[380px] overflow-hidden rounded-[10px] bg-page/40 flex items-center justify-center ${cursorClass}`}
       >
         {/* Safe use of dangerouslySetInnerHTML: the SVG is produced by mermaid from the hardcoded DIAGRAM constant above, with mermaid's default "strict" security level sanitizing labels. No user or network input reaches it. */}
         <div
