@@ -16,6 +16,15 @@ type Props = {
 };
 
 /**
+ * Builds the "ago" text: counts seconds for the first minute, then minutes.
+ * Shared by the component and the memo comparator so the two can't drift.
+ */
+function agoLabelFor(nowMs: number, passedAt: number): string {
+  const ago = Math.max(0, Math.floor((nowMs - passedAt) / 1000));
+  return ago < 60 ? `${ago}s ago` : `${Math.floor(ago / 60)}m ago`;
+}
+
+/**
  * Compressed one-line strip shown above the primary card for cues whose
  * target time just passed. Auto-expires from the parent after PASSED_TTL_MS.
  *
@@ -26,8 +35,7 @@ type Props = {
  * fully isolated.
  */
 function PassedStripImpl({ block, now, passedAt, is24Hour, onTap, onRequestDelete }: Props) {
-  const ago = Math.max(0, Math.floor((now.getTime() - passedAt) / 1000));
-  const agoLabel = ago < 60 ? `${ago}s ago` : `${Math.floor(ago / 60)}m ago`;
+  const agoLabel = agoLabelFor(now.getTime(), passedAt);
   const dotColor = block.targetZone === "zone1" ? colors.zone1 : colors.zone2;
   return (
     <View
@@ -104,4 +112,15 @@ function PassedStripImpl({ block, now, passedAt, is24Hour, onTap, onRequestDelet
   );
 }
 
-export const PassedStrip = memo(PassedStripImpl);
+export const PassedStrip = memo(PassedStripImpl, (prev, next) => {
+  // Skip the every-second parent tick and only re-render when the visible
+  // text can change: the "ago" label, the cue itself, or the 12/24h setting.
+  // onTap/onRequestDelete are new closures each tick but always target the
+  // same cue, so we deliberately don't compare them.
+  return (
+    agoLabelFor(next.now.getTime(), next.passedAt) ===
+      agoLabelFor(prev.now.getTime(), prev.passedAt) &&
+    prev.block === next.block &&
+    prev.is24Hour === next.is24Hour
+  );
+});
