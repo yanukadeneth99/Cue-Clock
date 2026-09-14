@@ -184,6 +184,8 @@ export default function PipelineDiagram() {
       } catch {
         // A render failure only means the placeholder stays; the page must never break over decoration.
       }
+    }).catch(() => {
+      // Mermaid failing to load (old browser, network hiccup) only means the placeholder stays.
     });
     return () => {
       cancelled = true;
