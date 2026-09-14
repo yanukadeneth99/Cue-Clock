@@ -135,6 +135,11 @@ export default function PipelineDiagram() {
       mermaid.initialize({
         startOnLoad: false,
         theme: "base",
+        // Lock in the old layout style and plain node look so the diagram
+        // keeps its current spacing and flat colours after upgrading the
+        // mermaid library, which changed both of these defaults.
+        layout: "dagre",
+        look: "classic",
         fontFamily: "var(--font-inter), ui-sans-serif, system-ui, sans-serif",
         // Roomier layout and gently curved edges instead of the default tight elbows: this diagram is decoration as much as documentation.
         flowchart: {
