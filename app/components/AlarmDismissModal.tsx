@@ -1,7 +1,6 @@
 import { colors } from "@/constants/colors";
 import { text as textStyles } from "@/constants/typography";
 import { dlog } from "@/lib/debugLog";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useAudioPlayer } from "expo-audio";
 import AlarmVibrator from "expo-alarm-vibrator";
 import { useEffect, useRef, useState } from "react";
