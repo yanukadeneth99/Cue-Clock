@@ -883,8 +883,8 @@ export default function Home() {
               </h2>
             </div>
             <div className="space-y-3">
-              {FAQS.map((f, i) => (
-                <FaqItem key={i} {...f} />
+              {FAQS.map((f) => (
+                <FaqItem key={f.question} {...f} />
               ))}
             </div>
           </div>
