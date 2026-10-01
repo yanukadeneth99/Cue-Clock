@@ -91,6 +91,7 @@ The Score column is a 0 to 100 health mark made of three parts: how much of the 
 | 2026-07 | 7 | 4 | 17 | 2 | 58 | - |
 | 2026-08 | 16 | 13 | 34 | 0 | 83 | 10 |
 | 2026-09 | 13 | 9 | 32 | 7 | 67 | 14 |
+| 2026-10 | 11 | 6 | 25 | 16 | 50 | 11 |
 <!-- AI-SCOREBOARD:END -->
 
 ---
