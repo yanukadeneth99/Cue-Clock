@@ -1162,14 +1162,14 @@ export default function HomeScreen() {
             (diff.hours ?? 0) * 60 + (diff.minutes ?? 0)
           );
           const seconds = Math.floor(diff.seconds ?? 0);
-          const newCountdown = `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
-          let changed = block.countdown !== newCountdown;
+          // Nothing on screen reads block.countdown any more (the live cards
+          // compute the digits straight from the clock), so we don't rebuild
+          // or re-save it here. This leaves the block object untouched on a
+          // plain tick, so the updater below can return the same array and
+          // skip a re-render. Only an alert edge flips `changed` to true.
+          let changed = false;
           let updates: Partial<TargetBlockType> = {};
-
-          if (changed) {
-            updates.countdown = newCountdown;
-          }
 
           // Alert detection - exact-second match on native, range-based on
           // web. Native MUST be exact-second because snooze reschedules the
