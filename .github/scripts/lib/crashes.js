@@ -86,9 +86,11 @@ function formatStackTrace(cluster) {
   const frames = (first && first.frames) || [];
   if (frames.length === 0) return 'No stack trace was exported for this crash.';
 
-  const head = first.type
-    ? `${first.type}${first.exception_message ? `: ${first.exception_message}` : ''}`
-    : 'Stack trace';
+  let head = 'Stack trace';
+  if (first.type) {
+    const message = first.exception_message ? `: ${first.exception_message}` : '';
+    head = `${first.type}${message}`;
+  }
   const shown = frames.slice(0, MAX_STACK_FRAMES).map(frameLine);
   if (frames.length > MAX_STACK_FRAMES) {
     shown.push(`  ... ${frames.length - MAX_STACK_FRAMES} more frames not shown`);
