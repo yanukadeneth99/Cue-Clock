@@ -31,6 +31,13 @@ type Props = {
   blockName: string;
   /** The alertMinutesBefore value that triggered the alarm. 0 = at-target. */
   minutes: number;
+  /**
+   * Absolute time of the cue's target (ms since epoch). The big countdown
+   * counts down to this, so it stays correct across any number of snoozes.
+   * Undefined when we don't know the real target (e.g. the cue was deleted,
+   * or the in-app Test Alarm) - then we just count up from when it fired.
+   */
+  targetMs?: number;
   /** How many times this alarm has been snoozed already. Displayed as a count-up. */
   snoozeCount: number;
   /** Target wall-clock time as "HH:MM" (or "H:MM AM/PM" in 12h mode). */
@@ -58,6 +65,7 @@ export default function AlarmDismissModal({
   visible,
   blockName,
   minutes,
+  targetMs,
   snoozeCount,
   targetTime,
   onDismiss,
@@ -66,14 +74,24 @@ export default function AlarmDismissModal({
   const insets = useSafeAreaInsets();
   const player = useAudioPlayer(ALARM_SOURCE);
 
-  // Ticking elapsed counter - for the 96sp mono display in the centre of the card.
+  // Two counters that both tick once a second while the alarm is up:
+  //  - `elapsed`: seconds since this screen opened (how long it's been ringing).
+  //  - `nowMs`: the current wall-clock time, used to work out the real time
+  //    left until the cue's target. Reading the clock each second keeps the
+  //    countdown accurate no matter how many times the alarm was snoozed.
   const [elapsed, setElapsed] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
     if (!visible) {
       setElapsed(0);
+      setNowMs(Date.now());
       return;
     }
-    const t = setInterval(() => setElapsed((x) => x + 1), 1000);
+    setNowMs(Date.now());
+    const t = setInterval(() => {
+      setElapsed((x) => x + 1);
+      setNowMs(Date.now());
+    }, 1000);
     return () => clearInterval(t);
   }, [visible]);
 
@@ -152,18 +170,24 @@ export default function AlarmDismissModal({
     };
   }, [visible, player, blockName, minutes, snoozeCount]);
 
-  // The alert fires exactly `minutes` minutes before the cue's target, so at
-  // mount we have `minutes * 60` seconds remaining until target. Each tick
-  // decrements the countdown; once it reaches 0 the cue is "now or past" and
-  // we flip the main display to count-up.
-  const totalAlertSeconds = minutes * 60;
-  const remaining = Math.max(0, totalAlertSeconds - elapsed);
-  const countdownActive = remaining > 0;
+  // Seconds left until the cue's real target (rounded). We work this out from
+  // the actual target time every tick, so a snoozed alarm - which fires closer
+  // and closer to the target - shows the true shrinking time, not the full
+  // alert window over and over. Positive = still counting down; zero or below =
+  // the target has arrived, so we flip the big number to a count-up.
+  const secondsToTarget =
+    targetMs != null ? Math.round((targetMs - nowMs) / 1000) : 0;
+  const countdownActive = targetMs != null && secondsToTarget > 0;
+  const remaining = Math.max(0, secondsToTarget);
   const rMm = String(Math.floor(remaining / 60)).padStart(2, "0");
   const rSs = String(remaining % 60).padStart(2, "0");
-  // `eMm:eSs` covers both the main display when we're past target AND the
-  // small "elapsed since alarm" line shown while the countdown is still
-  // running - same maths, different visual weight.
+  // The count-up number shown once the target has passed: how far past target
+  // we now are. Without a known target (deleted cue / Test Alarm) we fall back
+  // to how long the alarm has been ringing.
+  const countUp = targetMs != null ? Math.max(0, -secondsToTarget) : elapsed;
+  const uMm = String(Math.floor(countUp / 60)).padStart(2, "0");
+  const uSs = String(countUp % 60).padStart(2, "0");
+  // The small "elapsed since alarm" line shown while the countdown is running.
   const eMm = String(Math.floor(elapsed / 60)).padStart(2, "0");
   const eSs = String(elapsed % 60).padStart(2, "0");
 
@@ -242,12 +266,12 @@ export default function AlarmDismissModal({
           </Text>
 
           {/* Center display.
-              - countdownActive: big number is time-until-target, small line
-                below shows "+MM:SS Elapsed" (how long the alarm has been
-                going since it fired)
-              - !countdownActive: target has passed → big number flips to
-                "+MM:SS" elapsed time; no secondary line, since at this
-                point the countdown number would be meaningless */}
+              - countdownActive: big number is the real time left until target,
+                small line below shows "+MM:SS Elapsed" (how long the alarm has
+                been going since it fired)
+              - !countdownActive: the target has arrived → big number flips to
+                "+MM:SS" past target (how late we now are); no secondary line,
+                since the time-left number would just be zero */}
           <View
             style={{
               flex: 1,
@@ -262,7 +286,7 @@ export default function AlarmDismissModal({
                 { color: colors.countdown, fontSize: 96, lineHeight: 96 },
               ]}
             >
-              {countdownActive ? `${rMm}:${rSs}` : `+${eMm}:${eSs}`}
+              {countdownActive ? `${rMm}:${rSs}` : `+${uMm}:${uSs}`}
             </Text>
             {countdownActive ? (
               <View
