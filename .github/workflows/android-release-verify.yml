@@ -8,7 +8,8 @@
 #
 # Runs on:  pull requests that change anything under app/, or that edit the beta /
 #           promote release workflows (so a broken release path is caught before
-#           merge). Website- or docs-only PRs skip this build.
+#           merge), or that edit this file itself. Website- or docs-only PRs
+#           skip this build.
 #
 # Uses:     NO real secrets. A dummy version number (0.0.24), a fake Firebase
 #           config, and a signing key generated on the spot and discarded.
@@ -22,6 +23,8 @@ on:
       - 'app/**'
       - '.github/workflows/android-beta.yml'
       - '.github/workflows/android-promote.yml'
+      # This file too, so a change to this check is tested by its own PR.
+      - '.github/workflows/android-release-verify.yml'
 
 # If new commits land on the same PR while a check is running, cancel the old
 # check — only the newest code needs verifying.
@@ -54,8 +57,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: app/package-lock.json
 
+      # v4.0.2 and later no longer ask for the old "tools" package that Google removed, which made v3 fail on every run.
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
 
       - name: Install Android SDK packages
         run: |
