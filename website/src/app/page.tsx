@@ -807,7 +807,7 @@ export default function Home() {
                     ) : null}
                   </div>
                   {typeof repoStats?.aiScore === "number" ? (
-                    // Monthly health mark of the repo's AI pipeline, computed by the AI Evals workflow and read from data/ai-scoreboard.json on master. Links to the full scoreboard in the README.
+                    // Final health mark of the retired AI pipeline (retired 2026-10-09), read from data/ai-scoreboard.json on master, which is now frozen. Kept so a future eval can reuse this card. Links to the final scoreboard in the README.
                     // Spans the full combined width of the stable/beta row above it
                     // (rather than sitting narrower like a third badge) since it's a
                     // single wide metric, not a third release tag. The description
@@ -816,20 +816,20 @@ export default function Home() {
                     // stack, keeping this tile's height matched to theirs without a
                     // hardcoded height that would drift out of sync on other screens.
                     <a
-                      href="https://github.com/yanukadeneth99/Cue-Clock#-ai-evals"
+                      href="https://github.com/yanukadeneth99/Cue-Clock#-how-work-gets-done"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-4 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-violet/60 transition-colors group text-left"
-                      aria-label={`AI pipeline health score ${repoStats.aiScore} out of 100 - see the full scoreboard on GitHub`}
-                      title="This repository is maintained by an AI pipeline. Its work is scored monthly: merged work, no human rescues needed, and low repair churn raise the score."
+                      aria-label={`Final AI pipeline score ${repoStats.aiScore} out of 100. The pipeline was retired in October 2026. See the final scoreboard on GitHub`}
+                      title="This repository was maintained by an AI pipeline until it was retired in October 2026. This is its final score, made from merged work, human rescues avoided, and low repair churn."
                     >
                       <Icon name="monitoring" className="text-violet text-[20px]" />
                       <div className="flex flex-col leading-tight min-w-0">
                         <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
-                          AI health
+                          Final AI pipeline score
                         </span>
                         <span className="font-sans text-[11px] text-fg-muted mt-0.5 max-w-[220px]">
-                          Scored monthly on merged work, human rescues avoided, and low repair churn
+                          Last score of the AI pipeline, retired in October 2026
                         </span>
                       </div>
                       <span className="font-mono tabular-nums text-xl md:text-2xl font-bold text-violet ml-auto shrink-0">
