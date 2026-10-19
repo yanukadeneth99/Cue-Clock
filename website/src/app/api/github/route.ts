@@ -30,7 +30,7 @@ type RepoStats = {
   latestBetaTag: string | null;
   latestBetaUrl: string | null;
   latestBetaDate: string | null;
-  // Latest AI pipeline health score (0-100), written to data/ai-scoreboard.json on master by the monthly AI Evals workflow. Null until that file exists.
+  // Final AI pipeline score (0-100) from data/ai-scoreboard.json on master. The pipeline was retired on 2026-10-09, so the file is frozen; the field stays for a future eval. Null if the file is missing.
   aiScore: number | null;
   aiScorePeriod: string | null;
 };
@@ -141,7 +141,7 @@ export async function GET() {
     }
   }
 
-  // The monthly evals workflow writes { period, score } to master; a missing or malformed file simply leaves the score card off the page.
+  // data/ai-scoreboard.json holds { period, score } and is frozen since the pipeline was retired; a missing or malformed file simply leaves the score card off the page.
   let aiScore: number | null = null;
   let aiScorePeriod: string | null = null;
   const scoreJson = (scoreData as Record<string, unknown> | null) ?? null;
