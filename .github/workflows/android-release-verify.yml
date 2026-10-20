@@ -13,7 +13,7 @@
 #
 # Uses:     NO real secrets. A dummy version number (0.0.24), a fake Firebase
 #           config, and a signing key generated on the spot and discarded.
-#           Nothing is ever uploaded to Google Play — pass/fail is the point.
+#           Nothing goes to Google Play. A test APK, locked so only Sunny can open it, is kept for 1 day.
 # =============================================================================
 name: Android Release Verify
 
@@ -173,3 +173,80 @@ jobs:
             -Pandroid.injected.signing.store.password=android \
             -Pandroid.injected.signing.key.alias=androidreleasekey \
             -Pandroid.injected.signing.key.password=android
+
+      # The Play-style build above must keep Firebase reporting on, so prove the "off" switches are not in it.
+      - name: Check Play-style build has reporting on
+        working-directory: app/android
+        run: |
+          if grep -qE 'firebase_(crashlytics|analytics|performance)_collection_(enabled|deactivated)"[^>]*android:value="(false|true)"' app/src/main/AndroidManifest.xml; then
+            echo "Test-only reporting switches leaked into the Play-style build"; exit 1
+          fi
+
+      # ---- Test APK for Sunny's test phone (locked so only Sunny can open it) ----
+      - name: Read test phone public key
+        id: recipient
+        run: |
+          key=$(grep -vE '^\s*(#|$)' .github/test-apk-recipient.txt | head -1)
+          case "$key" in age1*) echo "key=$key" >> "$GITHUB_OUTPUT" ;; *) echo "No key, skipping test APK" ;; esac
+
+      - name: Install age (file locking tool)
+        if: steps.recipient.outputs.key != ''
+        run: sudo apt-get install -y age
+
+      # Rebuild the native project from scratch with the test switch on, so nothing from the Play-style build is reused.
+      - name: Generate test native project
+        if: steps.recipient.outputs.key != ''
+        working-directory: app
+        env:
+          EXPO_PUBLIC_CUE_TEST_BUILD: '1'
+          VERSION: 0.0.24
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          npx expo prebuild --platform android --clean
+          node scripts/prepare-android-release.js --sync-native
+
+      # Stop if any reporting switch is missing, or if a Clarity key slipped in.
+      - name: Check test build has reporting off
+        if: steps.recipient.outputs.key != ''
+        working-directory: app
+        run: |
+          m=android/app/src/main/AndroidManifest.xml
+          for f in crashlytics_collection_enabled analytics_collection_enabled performance_collection_enabled; do
+            grep -q "firebase_$f\" android:value=\"false\"" $m || { echo "missing $f=false"; exit 1; }
+          done
+          for f in analytics_collection_deactivated performance_collection_deactivated; do
+            grep -q "firebase_$f\" android:value=\"true\"" $m || { echo "missing $f=true"; exit 1; }
+          done
+          grep -qE '^EXPO_PUBLIC_CLARITY_KEY=$' .env || { echo "Clarity key must be empty"; exit 1; }
+
+      - name: Build test APK
+        if: steps.recipient.outputs.key != ''
+        working-directory: app/android
+        env:
+          EXPO_PUBLIC_CUE_TEST_BUILD: '1'
+        run: |
+          keytool -genkeypair -alias androidreleasekey -keyalg RSA -keysize 2048 -validity 10000 -storetype JKS \
+            -keystore release.keystore -storepass android -keypass android -dname "CN=Cue Clock Test, OU=CI, O=Cue Clock, C=LK"
+          ./gradlew assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a \
+            -Pandroid.injected.signing.store.file=$(pwd)/release.keystore \
+            -Pandroid.injected.signing.store.password=android \
+            -Pandroid.injected.signing.key.alias=androidreleasekey \
+            -Pandroid.injected.signing.key.password=android
+
+      # Lock the APK with the public key, then delete the unlocked copy before anything is uploaded.
+      - name: Lock test APK
+        if: steps.recipient.outputs.key != ''
+        working-directory: app/android/app/build/outputs/apk/release
+        run: |
+          age -r "${{ steps.recipient.outputs.key }}" -o cue-clock-test.apk.age app-release.apk
+          rm -f app-release.apk
+
+      - name: Upload locked test APK
+        if: steps.recipient.outputs.key != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cue-clock-test-apk
+          path: app/android/app/build/outputs/apk/release/cue-clock-test.apk.age
+          retention-days: 1
+          if-no-files-found: error

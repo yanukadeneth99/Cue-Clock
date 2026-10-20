@@ -20,6 +20,10 @@ export async function applyAnalyticsCollection(enabled: boolean): Promise<void> 
     // In React Native, Firebase auto-initializes from google-services.json at native module load.
     // If no apps exist, Firebase isn't available, so skip analytics setup.
     if (getApps().length === 0) return;
+
+    // Test builds never report, even if the tester taps "Allow".
+    if (process.env.EXPO_PUBLIC_CUE_TEST_BUILD === "1") enabled = false;
+
     await analytics().setAnalyticsCollectionEnabled(enabled);
     await crashlytics().setCrashlyticsCollectionEnabled(enabled);
     await perf().setPerformanceCollectionEnabled(enabled);
