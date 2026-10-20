@@ -175,6 +175,7 @@ export default function AndroidBackgroundHelpModal({
       {/* Primary action - lives inline at the end of the scroll content so
           reaching it means the user has read past every step. */}
       <Pressable
+        testID="setup-continue"
         onPress={onClose}
         style={({ pressed }) => ({
           paddingVertical: 16,

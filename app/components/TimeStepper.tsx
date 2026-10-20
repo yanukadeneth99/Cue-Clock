@@ -42,6 +42,8 @@ type Props = {
    * re-trigger it, remount the component (e.g. via a different `key`).
    */
   autoOpen?: boolean;
+  /** Test name prefix for the hour and minute columns and their arrows. */
+  testID?: string;
 };
 
 /**
@@ -67,6 +69,7 @@ export function TimeStepper({
   mode = "hm",
   hour12,
   autoOpen,
+  testID,
 }: Props) {
   const fs = large ? 38 : 28;
   const color = accent ? colors.accent : colors.text;
@@ -124,6 +127,7 @@ export function TimeStepper({
       }}
     >
       <StepperCol
+        testID={testID ? `${testID}-hour` : undefined}
         value={displayedHour}
         fs={fs}
         color={color}
@@ -158,6 +162,7 @@ export function TimeStepper({
         :
       </Text>
       <StepperCol
+        testID={testID ? `${testID}-minute` : undefined}
         value={m}
         fs={fs}
         color={color}
@@ -233,10 +238,13 @@ function StepperCol({
   onPressValue,
   onCommitTyped,
   max,
+  testID,
 }: {
   value: number;
   fs: number;
   color: string;
+  /** Test name prefix for the up and down arrows. */
+  testID?: string;
   onUp: () => void;
   onDown: () => void;
   onPressValue: () => void;
@@ -253,6 +261,7 @@ function StepperCol({
     return (
       <View style={{ alignItems: "center", gap: 2, width: colWidth }}>
         <Pressable
+          testID={testID ? `${testID}-up` : undefined}
           onPress={onUp}
           hitSlop={8}
           focusable={false}
@@ -276,6 +285,7 @@ function StepperCol({
           onCommitTyped={onCommitTyped}
         />
         <Pressable
+          testID={testID ? `${testID}-down` : undefined}
           onPress={onDown}
           hitSlop={8}
           focusable={false}
@@ -297,6 +307,7 @@ function StepperCol({
   return (
     <View style={{ alignItems: "center", gap: 4 }}>
       <Pressable
+        testID={testID ? `${testID}-up` : undefined}
         onPress={onUp}
         hitSlop={8}
         style={({ pressed }) => ({
@@ -327,6 +338,7 @@ function StepperCol({
         </Text>
       </Pressable>
       <Pressable
+        testID={testID ? `${testID}-down` : undefined}
         onPress={onDown}
         hitSlop={8}
         style={({ pressed }) => ({

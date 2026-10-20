@@ -9,36 +9,43 @@ name: Add a cue
     timeout: 20000
 # Continue sits at the bottom of the sheet, so scroll down to it.
 - scrollUntilVisible:
-    element: "Continue"
+    element:
+      id: "setup-continue"
     speed: 90
     timeout: 60000
-- tapOn: "Continue"
+- tapOn:
+    id: "setup-continue"
 # Analytics question only shows on a fresh install.
 - tapOn:
-    text: "No thanks"
+    id: "consent-decline"
     optional: true
 # Declining asks once more, so confirm.
 - tapOn:
-    text: "Opt Out Anyway"
+    id: "optout-confirm"
     optional: true
 - extendedWaitUntil:
-    visible: "Add a cue"
+    visible:
+      id: "add-cue-button"
     timeout: 10000
-- tapOn: "Add a cue"
+- tapOn:
+    id: "add-cue-button"
 # The phone time picker opens by itself for a new cue, accept its time.
 - tapOn:
     text: "OK"
     optional: true
-# Hour up arrow has no label, so tap it by screen position to change the target time.
+# Move the target hour up by one, so the cue is not at the default time.
 - tapOn:
-    point: "39%,28%"
+    id: "target-time-hour-up"
 - scrollUntilVisible:
-    element: "e.g. Show open"
+    element:
+      id: "cue-name-input"
     speed: 90
     timeout: 60000
-- tapOn: "e.g. Show open"
+- tapOn:
+    id: "cue-name-input"
 - inputText: "Maestro Test Cue"
 - hideKeyboard
-- tapOn: "Add cue"
+- tapOn:
+    id: "cue-save"
 - assertVisible: "Maestro Test Cue"
 - takeScreenshot: add-cue-done
