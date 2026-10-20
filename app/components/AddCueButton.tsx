@@ -23,6 +23,7 @@ export function AddCueButton({ onPress }: Props) {
   return (
     <View style={{ paddingTop: 4, paddingHorizontal: 20, paddingBottom: bottomPad }}>
       <Pressable
+        testID="add-cue-button"
         onPress={onPress}
         style={({ pressed }) => ({
           width: "100%",

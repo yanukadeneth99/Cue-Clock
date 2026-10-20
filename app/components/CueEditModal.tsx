@@ -431,6 +431,7 @@ export function CueEditModal({
             </Pressable>
           ) : null}
           <Pressable
+            testID="cue-save"
             disabled={!canSave}
             onPress={() => {
               // Empty / whitespace-only names are passed through as empty.
@@ -499,6 +500,7 @@ export function CueEditModal({
           // desktop pixels.
           large={!isWeb}
           mode="hm"
+          testID="target-time"
           hour12={!is24Hour}
           // autoOpen pops the native picker which doesn't exist on web; web
           // has the inline TextInput in TimeStepper instead.
@@ -624,6 +626,7 @@ export function CueEditModal({
       <Label>Name (optional)</Label>
       <TextInput
         ref={nameInputRef}
+        testID="cue-name-input"
         value={form.name}
         onChangeText={(name) => setForm((f) => ({ ...f, name }))}
         placeholder="e.g. Show open"

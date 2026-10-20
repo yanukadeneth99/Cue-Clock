@@ -71,6 +71,7 @@ export default function AnalyticsConsentModal({ visible, onAccept, onDecline }: 
             </Text>
           </Pressable>
           <Pressable
+            testID="consent-decline"
             onPress={onDecline}
             style={({ pressed }) => ({
               paddingVertical: 13,

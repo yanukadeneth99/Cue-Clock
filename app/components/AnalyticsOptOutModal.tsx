@@ -63,6 +63,7 @@ export default function AnalyticsOptOutModal({
             </Text>
           </Pressable>
           <Pressable
+            testID="optout-confirm"
             onPress={onConfirmOptOut}
             style={({ pressed }) => ({
               paddingVertical: 13,
