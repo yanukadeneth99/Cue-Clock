@@ -1,0 +1,2 @@
+# Public key of Sunny's test machine. Test APKs are locked to it. Safe to publish: it can only lock, not unlock.
+age12cmhlw529xvug068ak5ju6fvrp2ruqpp47gr7ar4md7jh59nndsqpu3qav
