@@ -12,13 +12,17 @@ const OFF_FLAGS = {
 
 module.exports = function withTestBuildNoTelemetry(config) {
   return withAndroidManifest(config, (cfg) => {
+    // The Firebase libraries set these same values to "on". "tools:replace" tells
+    // Android to keep our "off" value instead of failing on the clash.
+    cfg.modResults.manifest.$["xmlns:tools"] = "http://schemas.android.com/tools";
     const app = cfg.modResults.manifest.application?.[0];
     if (!app) return cfg;
     app["meta-data"] = app["meta-data"] || [];
     for (const [name, value] of Object.entries(OFF_FLAGS)) {
       const existing = app["meta-data"].find((m) => m.$["android:name"] === name);
-      if (existing) existing.$["android:value"] = value;
-      else app["meta-data"].push({ $: { "android:name": name, "android:value": value } });
+      const attrs = { "android:name": name, "android:value": value, "tools:replace": "android:value" };
+      if (existing) Object.assign(existing.$, attrs);
+      else app["meta-data"].push({ $: attrs });
     }
     return cfg;
   });
