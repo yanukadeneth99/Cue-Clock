@@ -16,15 +16,15 @@ type Props = {
 };
 
 /**
- * Compact cue row for everything below "Up Next". Tap opens the edit sheet.
- *
- * Memoised on (id, alert, targetHour/Minute, deduct, name, now-second-bucket)
- * so the 1-Hz home tick only re-renders rows whose visible string actually
- * changed. The parent passes the same `now` reference to every row, so
- * children that re-format to the same string can skip reconciliation via the
- * shallow prop comparison `React.memo` provides.
+ * Builds the "X left" text for a cue. Shared by the component and the memo
+ * comparator so the two can't drift on when a re-render is needed.
  */
-function QueuedRowImpl({ block, now, zone1, zone2, is24Hour, onTap }: Props) {
+function remainingLabelFor(
+  now: Date,
+  block: TargetBlockType,
+  zone1: string,
+  zone2: string,
+): string {
   const tz = block.targetZone === "zone1" ? zone1 : zone2;
   const deductSec = block.deductMinute * 60 + block.deductSecond;
   const cd = computeCountdown(
@@ -33,6 +33,21 @@ function QueuedRowImpl({ block, now, zone1, zone2, is24Hour, onTap }: Props) {
     { h: block.targetHour, m: block.targetMinute },
     deductSec,
   );
+  return humanRemaining(cd.total);
+}
+
+/**
+ * Compact cue row for everything below "Up Next". Tap opens the edit sheet.
+ *
+ * Memoised on the visible "X left" label (plus cue/zone/format) so the 1-Hz
+ * home tick only re-renders rows whose displayed string actually changed - a
+ * "12m left" row is otherwise torn down ~60 times per visible change. The
+ * parent passes the same `now` reference to every row, so rows that re-format
+ * to the same string skip reconciliation.
+ */
+function QueuedRowImpl({ block, now, zone1, zone2, is24Hour, onTap }: Props) {
+  const tz = block.targetZone === "zone1" ? zone1 : zone2;
+  const remaining = remainingLabelFor(now, block, zone1, zone2);
   const dotColor = block.targetZone === "zone1" ? colors.zone1 : colors.zone2;
   const cueTime = fmtHM(block.targetHour, block.targetMinute, !is24Hour);
 
@@ -87,7 +102,7 @@ function QueuedRowImpl({ block, now, zone1, zone2, is24Hour, onTap }: Props) {
       <View style={{ alignItems: "flex-end" }}>
         <Text style={[text.queuedTime, { color: colors.text }]}>{cueTime}</Text>
         <Text style={[text.footnote, { color: colors.textMuted, marginTop: 2 }]}>
-          {humanRemaining(cd.total)}
+          {remaining}
         </Text>
       </View>
     </Pressable>
@@ -95,16 +110,16 @@ function QueuedRowImpl({ block, now, zone1, zone2, is24Hour, onTap }: Props) {
 }
 
 export const QueuedRow = memo(QueuedRowImpl, (prev, next) => {
-  // Re-render when the displayed second-bucket changes (covers minutes too).
-  // Anything more granular wastes work; anything coarser drops "Xs left" jitter.
-  if (Math.floor(prev.now.getTime() / 1000) !== Math.floor(next.now.getTime() / 1000)) {
-    return false;
-  }
+  // Skip the every-second parent tick and only re-render when the visible
+  // text can change: the "X left" label, the cue itself, or the format/zone.
+  // onTap is a new closure each tick but always targets the same cue, so we
+  // deliberately don't compare it.
   return (
+    remainingLabelFor(next.now, next.block, next.zone1, next.zone2) ===
+      remainingLabelFor(prev.now, prev.block, prev.zone1, prev.zone2) &&
     prev.block === next.block &&
     prev.zone1 === next.zone1 &&
     prev.zone2 === next.zone2 &&
-    prev.is24Hour === next.is24Hour &&
-    prev.onTap === next.onTap
+    prev.is24Hour === next.is24Hour
   );
 });
