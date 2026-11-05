@@ -184,6 +184,30 @@ function computeAlertFireDate(block: TargetBlockType, zone: string): Date | null
   return result;
 }
 
+/**
+ * Absolute time (ms since epoch) of a cue's target - the moment its countdown
+ * should reach zero. Uses the SAME target basis as the alert scheduler
+ * (HH:MM:00 in the cue's zone, minus its buffer). Unlike the live countdown it
+ * picks the occurrence NEAREST to now, so a target we've just snoozed past
+ * reads as "past" instead of a full day away. The alarm screen counts down to
+ * this so it shows the real, shrinking time left across any number of snoozes.
+ */
+function alarmTargetMs(now: Date, zone: string, block: TargetBlockType): number {
+  const nowInZone = DateTime.fromJSDate(now).setZone(zone);
+  let targetDT = nowInZone.set({
+    hour: block.targetHour,
+    minute: block.targetMinute,
+    second: 0,
+    millisecond: 0,
+  });
+  // Snap to the closest occurrence (within 12 hours either side of now).
+  const hoursAway = targetDT.diff(nowInZone, "hours").hours;
+  if (hoursAway > 12) targetDT = targetDT.minus({ days: 1 });
+  else if (hoursAway < -12) targetDT = targetDT.plus({ days: 1 });
+  const deductionMs = (block.deductMinute * 60 + block.deductSecond) * 1000;
+  return targetDT.minus({ milliseconds: deductionMs }).toMillis();
+}
+
 /** Schedule a native push notification for a block's alert. Returns the notification ID or null. */
 async function scheduleBlockNotification(block: TargetBlockType, zone: string): Promise<string | null> {
   if (Platform.OS === "web" || block.alertMinutesBefore === null) return null;
@@ -391,6 +415,8 @@ export default function HomeScreen() {
     snoozeCount: number;
     /** Pre-formatted target HH:MM string for the modal's Target column. */
     targetTime: string;
+    /** Absolute cue target (ms) so the modal counts down to the real time. */
+    targetMs?: number;
   } | null>(null);
   // Start empty — hydration overwrites this from AsyncStorage on every resumed
   // session. A placeholder cue saves zero clicks (user still taps to fill it in)
@@ -415,7 +441,7 @@ export default function HomeScreen() {
   const nextIdRef = useRef(2);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const isLoadedRef = useRef(false);
-  const alertQueueRef = useRef<{ id: number; name: string; minutes: number; snoozeCount: number; targetTime: string }[]>([]);
+  const alertQueueRef = useRef<{ id: number; name: string; minutes: number; snoozeCount: number; targetTime: string; targetMs?: number }[]>([]);
   // Holds notificationIds that must be cancelled before the in-app alert fires.
   // We queue them here because the setTargetBlocks updater is a pure function and
   // cannot perform async work (cancelBlockNotification) directly.
@@ -425,7 +451,7 @@ export default function HomeScreen() {
   // didn't elevate to MainActivity (vendor downgrade) or the operator returned
   // to the app via the launcher rather than tapping the heads-up.
   const pendingBackgroundFiresRef = useRef<
-    { id: number; name: string; minutes: number; snoozeCount: number; targetTime: string }[]
+    { id: number; name: string; minutes: number; snoozeCount: number; targetTime: string; targetMs?: number }[]
   >([]);
   const exitButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirror of targetBlocks for use in async callbacks without stale closure issues.
@@ -762,6 +788,7 @@ export default function HomeScreen() {
                 minutes: block.alertMinutesBefore,
                 snoozeCount: block.snoozeCount ?? 0,
                 targetTime: `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`,
+                targetMs: alarmTargetMs(new Date(), zone, block),
               });
             }
             anyChanged = true;
@@ -1030,12 +1057,16 @@ export default function HomeScreen() {
               const targetTime = block
                 ? `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`
                 : "--:--";
+              const zone = block
+                ? (block.targetZone === "zone1" ? zone1 : zone2)
+                : null;
               setAlarmDismissData({
                 blockId,
                 name: block?.name ?? `Target #${blockId}`,
                 minutes,
                 snoozeCount,
                 targetTime,
+                targetMs: block && zone ? alarmTargetMs(new Date(), zone, block) : undefined,
               });
             }
           }
@@ -1114,6 +1145,7 @@ export default function HomeScreen() {
           // Defensive: if the OS race-fired multiple DELIVERED events, only
           // mount the modal once. `setAlarmDismissData` is no-op when `prev`
           // is already set for this block.
+          const zone = block.targetZone === "zone1" ? zone1 : zone2;
           setAlarmDismissData((prev) =>
             prev ?? {
               blockId: block.id,
@@ -1121,6 +1153,7 @@ export default function HomeScreen() {
               minutes: block.alertMinutesBefore ?? 0,
               snoozeCount: block.snoozeCount ?? 0,
               targetTime: `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`,
+              targetMs: alarmTargetMs(now.toJSDate(), zone, block),
             },
           );
           // Cancel the OS-side displayed notification so the heads-up
@@ -1217,6 +1250,7 @@ export default function HomeScreen() {
                   minutes: block.alertMinutesBefore,
                   snoozeCount: block.snoozeCount ?? 0,
                   targetTime: `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`,
+                  targetMs: alarmTargetMs(now.toJSDate(), block.targetZone === "zone1" ? zone1 : zone2, block),
                 });
                 updates.alertFired = true;
                 updates.alertMinutesBefore = null;
@@ -1233,6 +1267,7 @@ export default function HomeScreen() {
                   minutes: block.alertMinutesBefore,
                   snoozeCount: block.snoozeCount ?? 0,
                   targetTime: `${String(block.targetHour).padStart(2, "0")}:${String(block.targetMinute).padStart(2, "0")}`,
+                  targetMs: alarmTargetMs(now.toJSDate(), block.targetZone === "zone1" ? zone1 : zone2, block),
                 });
                 dlog("alert:bgFireRecorded", { blockId: block.id });
               }
@@ -1280,6 +1315,7 @@ export default function HomeScreen() {
               minutes: a.minutes,
               snoozeCount: a.snoozeCount,
               targetTime: a.targetTime,
+              targetMs: a.targetMs,
             }
           );
         } else {
@@ -2049,6 +2085,7 @@ export default function HomeScreen() {
           visible
           blockName={alarmDismissData.name}
           minutes={alarmDismissData.minutes}
+          targetMs={alarmDismissData.targetMs}
           snoozeCount={alarmDismissData.snoozeCount}
           targetTime={alarmDismissData.targetTime}
           onDismiss={handleAlarmDismiss}
