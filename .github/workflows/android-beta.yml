@@ -26,8 +26,8 @@ name: Android Beta (Open Testing)
 on:
   # We listen to "published" and check the pre-release flag in the job below.
   # We do NOT use "prereleased": GitHub never fires it when a pre-release is
-  # published from a DRAFT, which is exactly how the beta drafter creates them,
-  # so this workflow would silently never run. Verified by experiment.
+  # published from a DRAFT, which is a common way to create them by hand,
+  # so this workflow could silently never run. Verified by experiment.
   release:
     types: [published]
 

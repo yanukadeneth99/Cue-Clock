@@ -5,7 +5,6 @@ import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import PipelineDiagram from "./pipeline-diagram";
 import Icon, { type IconName } from "@/components/Icon";
 
 if (typeof window !== "undefined") {
@@ -52,8 +51,6 @@ export default function Home() {
     latestBetaTag: string | null;
     latestBetaUrl: string | null;
     latestBetaDate: string | null;
-    aiScore: number | null;
-    aiScorePeriod: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -806,61 +803,8 @@ export default function Home() {
                       </a>
                     ) : null}
                   </div>
-                  {typeof repoStats?.aiScore === "number" ? (
-                    // Final health mark of the retired AI pipeline (retired 2026-10-09), read from data/ai-scoreboard.json on master, which is now frozen. Kept so a future eval can reuse this card. Links to the final scoreboard in the README.
-                    // Spans the full combined width of the stable/beta row above it
-                    // (rather than sitting narrower like a third badge) since it's a
-                    // single wide metric, not a third release tag. The description
-                    // wraps across two lines (max-w below) so the left column has
-                    // the same label+line+line shape as Stable/Beta's label/value/date
-                    // stack, keeping this tile's height matched to theirs without a
-                    // hardcoded height that would drift out of sync on other screens.
-                    <a
-                      href="https://github.com/yanukadeneth99/Cue-Clock#-how-work-gets-done"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-4 px-4 py-3 rounded-[14px] bg-card border border-card-border hover:border-violet/60 transition-colors group text-left"
-                      aria-label={`Final AI pipeline score ${repoStats.aiScore} out of 100. The pipeline was retired in October 2026. See the final scoreboard on GitHub`}
-                      title="This repository was maintained by an AI pipeline until it was retired in October 2026. This is its final score, made from merged work, human rescues avoided, and low repair churn."
-                    >
-                      <Icon name="monitoring" className="text-violet text-[20px]" />
-                      <div className="flex flex-col leading-tight min-w-0">
-                        <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-fg-muted">
-                          Final AI pipeline score
-                        </span>
-                        <span className="font-sans text-[11px] text-fg-muted mt-0.5 max-w-[220px]">
-                          Last score of the AI pipeline, retired in October 2026
-                        </span>
-                      </div>
-                      <span className="font-mono tabular-nums text-xl md:text-2xl font-bold text-violet ml-auto shrink-0">
-                        {repoStats.aiScore}/100
-                      </span>
-                      <Icon
-                        name="open_in_new"
-                        className="text-fg-muted text-[16px] group-hover:text-violet transition-colors shrink-0"
-                      />
-                    </a>
-                  ) : null}
                 </div>
               ) : null}
-            </div>
-          </div>
-        </section>
-
-        {/* ─── Automation pipeline diagram ───────────────────────── */}
-        {/* Sits right below the open-source section: after "every line is public" comes the proof of HOW the project runs itself. The diagram mirrors the one in the repository README. */}
-        <section className="py-20 md:py-28 px-4 md:px-6 border-t border-card-border">
-          <div className="max-w-screen-xl mx-auto">
-            <div className="mb-12 text-center">
-              <h2 className="font-sans text-3xl md:text-4xl font-semibold tracking-[-0.02em] text-fg mb-4">
-                Maintained by an AI pipeline
-              </h2>
-              <p className="text-fg-muted text-base md:text-lg leading-relaxed max-w-4xl mx-auto">
-                Issues, crash reports, and dependency updates flow through automated triage, implementation, adversarial review, and release drafting - and a human presses every Publish button. This is the actual pipeline, straight from the repository.
-              </p>
-            </div>
-            <div className="rounded-[14px] bg-card border border-card-border p-4 md:p-8">
-              <PipelineDiagram />
             </div>
           </div>
         </section>

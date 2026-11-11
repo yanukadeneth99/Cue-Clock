@@ -38,66 +38,24 @@ A minimal, distraction-free clock built for **broadcast professionals** who watc
 
 ---
 
-### 🤖 How work gets done
+### 🚀 How releases work
 
-This repo used to be a working demo of an **autonomous software pipeline**, where separate AI workflows sorted issues, researched them, wrote the code, fixed failed builds and reviewed pull requests. That pipeline was retired on 2026-10-09 (the results and lessons are below). Now one assistant agent, **Sunny**, runs the whole loop once a day with Claude Code: it sorts new issues, plans each change, opens pull requests and fixes failed builds. It then sends the maintainer one daily message to approve its plans and its merges. Sunny keeps notes on what worked, so it gets better over time. Crash reports, Dependabot updates, CodeQL security scans, the build checks and the release workflows still run on their own, as before.
-
-[![Crash to Issue](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/crash-to-issue.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/crash-to-issue.yml)
-
-```mermaid
-flowchart LR
-    A["You or a user reports a bug or idea as an issue"] --> S
-    X["Crashlytics detects a crash in the live app"] --> X2["Each morning, new crashes are filed as issues automatically"]
-    X2 --> S["Once a day, Sunny sorts new issues and plans each change"]
-    S --> P{"Daily message: does the maintainer approve the plan?"}
-    P -- "No, or needs changes" --> S
-    P -- "Yes" --> D["Sunny writes the code with Claude Code and opens a pull request"]
-    E["Dependabot suggests a library update"] --> F
-    D --> F["The app is built and tested automatically, and CodeQL scans for security problems"]
-    F -- "Build fails" --> G["Sunny fixes it on its next daily run"]
-    G --> F
-    F -- "Build passes" --> H{"Daily message: does the maintainer approve the merge?"}
-    H -- "Yes" --> I["Merged"]
-    I --> J["A private test build goes to Google Play"]
-    I --> K["AI drafts the beta release notes"]
-    K --> L["Maintainer presses Publish: beta goes to public testers"]
-    L --> M["AI drafts the production release notes"]
-    M --> N["Maintainer presses Publish: the exact tested build reaches real users, and the web app updates"]
-    K -- "draft ready to review" --> TG["Telegram message to the maintainer"]
-    M -- "draft ready to review" --> TG
-```
-
-<!-- AI-SCOREBOARD:START -->
-**Final record.** This table is frozen and will not be updated again. The pipeline ran from 2026-06-15 (first logged pull request) to 2026-10-09 (last logged pull request). Its last score was 50 out of 100 for 2026-10, scored on 2026-10-01. The Score column is a 0 to 100 health mark made of three parts: how much of the AI's opened work was merged (50%), how much finished work needed no human rescue (30%), and how little automated repair churn the month took (20%). Higher is better, and a dash means the period was too quiet to score.
-
-| Period | AI PRs opened | AI PRs merged | Auto-fix runs | Waiting on a human | Score /100 | Research runs |
-| --- | --- | --- | --- | --- | --- | --- |
-| 2026-07 | 7 | 4 | 17 | 2 | 58 | - |
-| 2026-08 | 16 | 13 | 34 | 0 | 83 | 10 |
-| 2026-09 | 13 | 9 | 32 | 7 | 67 | 14 |
-| 2026-10 | 11 | 6 | 25 | 16 | 50 | 11 |
-
-**In total**, the logs in `data/ai-log/` record 43 AI-written pull requests: 29 merged, 11 still open and 3 closed without merging. They also record 71 Dependabot pull requests: 36 merged, 28 closed without merging (mostly replaced by newer updates) and 7 still open.
-
-**What we learned.** These problems were found on 2026-10-09 and are why the pipeline was retired:
-
-- **A broken build step went unnoticed for weeks.** From mid-September, one CI step (`android-actions/setup-android@v3`) asked Google for an SDK package that no longer exists, so the Android check failed on every app pull request. It was fixed in #262 by moving to `setup-android` v4.0.4.
-- **The auto-fixer failed silently.** It found the right fix but could not push it, and it did not report that, so stuck pull requests never reached a human.
-- **Two AI workflows followed rules that contradicted each other.** The fixer and the reviewer had opposite rules for Expo package updates, so 5 pull requests from August got stuck, each one waiting on the other.
-- **Some issues were never sorted.** A timing problem in the issue decider meant some issues made by bots were never triaged.
-- **The workflows could not learn.** Each workflow ran alone, could not see what the others were doing, and could not learn from past runs.
-<!-- AI-SCOREBOARD:END -->
-
----
-
-### 🚀 Release pipeline
-
-Once a change is merged, shipping is automated too. These build and deploy the app to Google Play and the web:
+- **Internal:** every merge to `master` builds the app and sends it to the Google Play Internal Testing track.
+- **Beta:** publishing a GitHub pre-release by hand (tag `vX.Y.Z-beta.N`) sends a build to Open Testing.
+- **Production:** turning that pre-release into a full release promotes the same tested build to Production, and the web app updates.
 
 [![Android Internal](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-internal.yml)
 [![Android Beta](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-beta.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-beta.yml)
 [![Android Promote](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-promote.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/android-promote.yml)
 [![Web App Deploy](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/web-deploy.yml/badge.svg)](https://github.com/yanukadeneth99/Cue-Clock/actions/workflows/web-deploy.yml)
+
+Release notes are written by hand.
+
+---
+
+### 🧪 Testing
+
+Cue Clock is tested with [Maestro](https://maestro.mobile.dev) on a real Android phone. See [tests/maestro](./tests/maestro).
 
 ---
 
@@ -110,14 +68,11 @@ Once a change is merged, shipping is automated too. These build and deploy the a
   <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/Tailwind-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind" />
   <img src="https://img.shields.io/badge/GSAP-88CE02?style=for-the-badge&logo=greensock&logoColor=white" alt="GSAP" />
-  <img src="https://img.shields.io/badge/Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Playwright" />
-  <img src="https://img.shields.io/badge/Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Gemini" />
-  <img src="https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=claude&logoColor=white" alt="Claude" />
 </p>
 
-One monorepo, three products: the **app** (`app/`), the marketing **site** (`website/`), and an AI-driven **E2E test harness** (`tests/`).
+One repo, two products: the **app** (`app/`) and the marketing **site** (`website/`). Tests live in `tests/`.
 
-> 🧑‍💻 **Want to run or self-host it?** Every setup step (install, platform builds, the test suite) lives in **[DEVELOPMENT.md](./DEVELOPMENT.md)**.
+> 🧑‍💻 **Want to run or self-host it?** Every setup step (install and platform builds) lives in **[DEVELOPMENT.md](./DEVELOPMENT.md)**.
 
 ---
 
@@ -135,7 +90,8 @@ Cue Clock is **free, open-source, and ad-free**, and it will stay that way. I wi
 
 **License** · [AGPL-3.0](./LICENSE) · commercial licensing: [hello@yashura.io](mailto:hello@yashura.io)  
 **Contributing** · [CONTRIBUTING.md](./CONTRIBUTING.md) · [Code of Conduct](./CODE_OF_CONDUCT.md)  
-**Security** · found a vulnerability? [SECURITY.md](./SECURITY.md)
+**Security** · found a vulnerability? [SECURITY.md](./SECURITY.md)  
+**History** · [the retired AI pipeline experiment](./docs/ai-evals.md)
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=60A5FA&height=80&section=footer" width="100%" alt="" />
 

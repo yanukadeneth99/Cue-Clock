@@ -30,9 +30,6 @@ type RepoStats = {
   latestBetaTag: string | null;
   latestBetaUrl: string | null;
   latestBetaDate: string | null;
-  // Final AI pipeline score (0-100) from data/ai-scoreboard.json on master. The pipeline was retired on 2026-10-09, so the file is frozen; the field stays for a future eval. Null if the file is missing.
-  aiScore: number | null;
-  aiScorePeriod: string | null;
 };
 
 async function ghFetch(path: string): Promise<unknown> {
@@ -44,15 +41,8 @@ async function ghFetch(path: string): Promise<unknown> {
   return res.json();
 }
 
-// For files served straight from the repository (raw.githubusercontent.com), which the GitHub REST helper above cannot reach.
-async function rawFetch(url: string): Promise<unknown> {
-  const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
-  if (!res.ok) return null;
-  return res.json();
-}
-
 export async function GET() {
-  const [repoData, commitData, runsData, releaseData, releasesListData, contributorsData, scoreData, issueSearchData] =
+  const [repoData, commitData, runsData, releaseData, releasesListData, contributorsData, issueSearchData] =
     await Promise.all([
       ghFetch(`/repos/${REPO}`),
       ghFetch(`/repos/${REPO}/commits/master`),
@@ -63,7 +53,6 @@ export async function GET() {
       // recent pre-release will be in here.
       ghFetch(`/repos/${REPO}/releases?per_page=10`),
       ghFetch(`/repos/${REPO}/contributors`),
-      rawFetch(`https://raw.githubusercontent.com/${REPO}/master/data/ai-scoreboard.json`),
       // Count of OPEN ISSUES only. The repo object's open_issues_count lumps in
       // open pull requests (GitHub treats a PR as a kind of issue), so it
       // over-counts. The Search API with `type:issue` returns a total_count of
@@ -141,15 +130,6 @@ export async function GET() {
     }
   }
 
-  // data/ai-scoreboard.json holds { period, score } and is frozen since the pipeline was retired; a missing or malformed file simply leaves the score card off the page.
-  let aiScore: number | null = null;
-  let aiScorePeriod: string | null = null;
-  const scoreJson = (scoreData as Record<string, unknown> | null) ?? null;
-  if (scoreJson) {
-    if (typeof scoreJson.score === "number") aiScore = scoreJson.score;
-    if (typeof scoreJson.period === "string") aiScorePeriod = scoreJson.period;
-  }
-
   const repoStats: RepoStats = {
     stars: typeof repo?.stargazers_count === "number" ? repo.stargazers_count : 0,
     forks: typeof repo?.forks_count === "number" ? repo.forks_count : 0,
@@ -163,8 +143,6 @@ export async function GET() {
     latestBetaTag,
     latestBetaUrl,
     latestBetaDate,
-    aiScore,
-    aiScorePeriod,
   };
 
   const contributors: Contributor[] = Array.isArray(contributorsData)

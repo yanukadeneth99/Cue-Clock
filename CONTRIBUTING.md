@@ -1,6 +1,6 @@
 # Contributing to Cue Clock
 
-Thank you for your interest in contributing to Cue Clock! This project is a monorepo containing both the mobile application and its landing page.
+Thanks for helping with Cue Clock. This repo holds the app and its landing page.
 
 ## Code of Conduct
 
@@ -25,7 +25,7 @@ Open a [GitHub Issue](https://github.com/yanukadeneth99/Cue-Clock/issues) for:
 ### 2. Development Setup
 
 1. **Fork** and **Clone** the repository.
-2. **No environment variables required**; all optional features gracefully skip initialization. See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed setup instructions.
+2. No environment variables are needed. See [DEVELOPMENT.md](./DEVELOPMENT.md) for setup.
 3. Choose the project you want to work on:
 
 #### Working on the Mobile App (`app/`)
@@ -37,10 +37,6 @@ npx expo start
 npx expo run:android  # or run:ios, or press 'w' for web
 ```
 
-_Note: We prioritize **inline styles** for layout to ensure reliability on Android native._
-
-**No setup needed.** Skip analytics, Firebase, and signing credentials; they're all optional. The app just works.
-
 #### Working on the Website (`website/`)
 
 ```bash
@@ -48,8 +44,6 @@ cd website
 npm ci
 npm run dev
 ```
-
-_Note: Built with Next.js 16.2.1 and Tailwind CSS 4._
 
 ### 3. Submitting Code
 

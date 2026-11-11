@@ -54,7 +54,6 @@ const jsonLd = {
         "Persistent local state via AsyncStorage",
         "Works offline, no account required",
         "Open-source under AGPL-3.0",
-        "Publicly documented AI-maintained development pipeline with a monthly health scoreboard",
       ],
       keywords:
         "stage timer, countdown clock, church countdown timer, conference timer, broadcast clock, studio clock, countdown timer, on-air timer, production timer, master clock, multi-timezone clock",
@@ -216,14 +215,6 @@ const jsonLd = {
           acceptedAnswer: {
             "@type": "Answer",
             text: "Yes. Cue Clock is open-source under AGPL-3.0 and the web app is a static export, so you can clone the repository from GitHub and host it anywhere that serves static files. The full source, including build instructions, is public at github.com/yanukadeneth99/Cue-Clock.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Is Cue Clock maintained by AI?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Largely, yes, under human review. Issues, crash reports, and dependency updates flow through automated triage, implementation, and adversarial code review, but it's a human that presses the final Publish button for every release after testing it on Internal Release track. The project publishes a monthly AI health scoreboard, tracking merge rate, human rescues, and repair churn, in its GitHub README. This is an experiment to measure how good AI really is in a loop.",
           },
         },
       ],

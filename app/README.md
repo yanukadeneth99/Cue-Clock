@@ -9,7 +9,7 @@ The React Native (Expo) application powering Cue Clock. Dual live clocks, infini
 
 ## Quick Start
 
-**Zero setup required.** All optional features (analytics, Firebase, signing) gracefully skip initialization when their env vars are missing.
+No setup needed. Analytics, Firebase and signing are skipped when their settings are missing.
 
 ```bash
 cd app
@@ -23,7 +23,7 @@ Then press:
 - `i`: run on iOS simulator (macOS only)
 - `w`: run in web browser
 
-For a deeper setup guide (optional env vars, native builds, signing), see [`../DEVELOPMENT.md`](../DEVELOPMENT.md).
+More setup details are in [`../DEVELOPMENT.md`](../DEVELOPMENT.md).
 
 ---
 
@@ -35,6 +35,7 @@ For a deeper setup guide (optional env vars, native builds, signing), see [`../D
 | `npx expo run:android` | Build + launch on connected Android |
 | `npx expo run:ios`     | Build + launch on iOS simulator     |
 | `npm run lint`         | Run ESLint                          |
+| `npx tsc --noEmit`     | Type check                          |
 
 ---
 
@@ -70,17 +71,7 @@ app/
 └── scripts/        # Maintenance utilities
 ```
 
-For the full architecture walkthrough (state model, countdown algorithm, alert queue, platform branches), see [`../CLAUDE.md`](../CLAUDE.md).
-
----
-
-## 💛 Support
-
-Cue Clock is free, open-source, and **will never have ads**. If it saves you time in the studio, consider supporting its development:
-
-<a href="https://ko-fi.com/yanukadeneth99" target="_blank">
-  <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" height="36" />
-</a>
+For how the app works inside, see [`../CLAUDE.md`](../CLAUDE.md).
 
 ---
 
