@@ -38,4 +38,4 @@ Each row was counted over the 30 days before it was scored, so the counts do not
 
 ## Verdict
 
-Retired on 2026-10-09. It was unreliable for a small app. It is replaced by a minimal flow that a human approves: a person writes release notes and publishes releases by hand.
+Retired on 2026-10-09. It was unreliable for a small app. It is replaced by one weekly job run by an assistant agent. The job reviews open pull requests and merges only safe ones, and it turns real crashes into fix pull requests. Anything risky waits for the maintainer. Release notes and releases are done by hand.

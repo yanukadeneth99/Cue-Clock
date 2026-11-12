@@ -7,8 +7,8 @@
 #
 # This matters most for Dependabot: it opens PRs that bump Next.js, React,
 # Tailwind and GSAP, and without an actual build there would be nothing proving
-# those bumps are safe. It is also the check a person looks at before
-# merging a website PR.
+# those bumps are safe. It is also the check the weekly review looks at
+# before merging a website PR.
 #
 # Runs on:  pull requests changing anything under website/, or this file itself
 #           (so edits here are verified too). App- or docs-only PRs skip it.

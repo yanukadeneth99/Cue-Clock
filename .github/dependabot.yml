@@ -7,7 +7,8 @@
 # It does NOT merge anything. Each PR it opens is built and checked first:
 #   - app/     -> android-release-verify.yml builds a real release AAB
 #   - website/ -> website-verify.yml runs the linter and a production build
-# and then a person reviews and merges it. Every entry below sets the
+# and then a weekly maintenance job reviews it. The job merges safe green
+# updates and leaves the rest for the maintainer. Every entry below sets the
 # "dependencies" label so these PRs are easy to find.
 #
 # Only app/ and website/ are watched. The GitHub Actions workflows are

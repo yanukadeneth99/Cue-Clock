@@ -1,11 +1,11 @@
 # Crash to issue
 # -------------
 # Reads new crashes from the Crashlytics export in BigQuery and opens one GitHub issue per crash. It files nothing when there are no new crashes.
-# It has no schedule of its own. A weekly job outside GitHub starts it, and you can also run it by hand.
+# It has no schedule of its own. A weekly maintenance job starts it, and you can also run it by hand.
 name: Crash to Issue
 
 on:
-  # Started by the weekly outside job, or by hand.
+  # Started by the weekly maintenance job, or by hand.
   workflow_dispatch:
 
 # One run at a time, and never cancel one that is already creating issues.
