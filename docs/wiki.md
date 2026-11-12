@@ -4,28 +4,6 @@
 
 ---
 
-## Table of Contents
-
-- [Cue Clock: User Guide](#cue-clock-user-guide)
-  - [Table of Contents](#table-of-contents)
-  - [Getting Started](#getting-started)
-  - [Live Clocks](#live-clocks)
-  - [Countdown Timers](#countdown-timers)
-    - [Adding a timer](#adding-a-timer)
-    - [Configuring a timer](#configuring-a-timer)
-  - [Deduction Offsets](#deduction-offsets)
-  - [Passed Cues](#passed-cues)
-  - [Alerts](#alerts)
-  - [Final 3-Second Beep](#final-3-second-beep)
-  - [On-Air (Full-Screen) Mode](#on-air-full-screen-mode)
-  - [Settings](#settings)
-  - [Resetting the App](#resetting-the-app)
-  - [Analytics](#analytics)
-  - [Supported Timezones](#supported-timezones)
-  - [Platform Notes](#platform-notes)
-
----
-
 ## Getting Started
 
 Download Cue Clock from the [Google Play Store](https://play.google.com/store/apps/details?id=com.yanukadeneth99.cueclock) or visit [cueclock.app](https://cueclock.app) to use it in your browser.

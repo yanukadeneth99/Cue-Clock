@@ -9,12 +9,7 @@
     "web": "expo start --web",
     "build:web": "expo export --platform web && node scripts/inject-seo-meta.js",
     "build:web:deploy": "node scripts/derive-web-version.js && npm run build:web",
-    "lint": "expo lint",
-    "test": "bash ../tests/ai/scripts/test-all.sh web && bash ../tests/ai/scripts/test-all.sh device",
-    "test:web": "bash ../tests/ai/scripts/test-all.sh web",
-    "test:android": "bash ../tests/ai/scripts/test-all.sh device",
-    "test:modern": "bash ../tests/ai/scripts/test-all.sh modern",
-    "test:old": "bash ../tests/ai/scripts/test-all.sh old"
+    "lint": "expo lint"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
@@ -28,7 +23,7 @@
     "@react-native-firebase/perf": "^23.8.8",
     "@react-navigation/native": "^7.1.33",
     "@types/react": "~19.2.18",
-    "expo": "~55.0.31",
+    "expo": "~55.0.32",
     "expo-alarm-vibrator": "file:./modules/expo-alarm-vibrator",
     "expo-asset": "~55.0.20",
     "expo-audio": "~55.0.18",

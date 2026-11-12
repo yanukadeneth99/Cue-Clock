@@ -22,7 +22,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 // router root, evaluated before any route module — so a module-level call here
 // is guaranteed to win the race that index.tsx's call could lose. These are
 // cosmetic, never appear in release builds, and the badge floats above real
-// buttons (blocking both manual use and the AI E2E agent's taps):
+// buttons (blocking taps during manual use and phone tests):
 //   - SafeAreaView deprecation: from expo-router internals, not our code.
 //   - React Native Firebase namespaced-API deprecation: every Firebase call
 //     logs this until we migrate to the v22 modular API (tracked separately).

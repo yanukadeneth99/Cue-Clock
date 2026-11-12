@@ -1,13 +1,11 @@
 # Crash to issue
 # -------------
-# Once a day this reads new crashes from the Crashlytics export in BigQuery and opens one GitHub issue per crash, so the usual issue workflows can pick them up. It files nothing on a day with no new crashes.
+# Reads new crashes from the Crashlytics export in BigQuery and opens one GitHub issue per crash. It files nothing when there are no new crashes.
+# It has no schedule of its own. A weekly maintenance job starts it, and you can also run it by hand.
 name: Crash to Issue
 
 on:
-  schedule:
-    # 06:00 Sri Lanka time. GitHub cron only understands UTC, and Sri Lanka is always UTC+5:30, so that is 00:30 UTC. Early enough that the daily export from Firebase has landed.
-    - cron: "30 0 * * *"
-  # Manual button, so you can test it without waiting for tomorrow.
+  # Started by the weekly maintenance job, or by hand.
   workflow_dispatch:
 
 # One run at a time, and never cancel one that is already creating issues.
@@ -76,7 +74,7 @@ jobs:
           CRASH_ISSUE_LABELS: firebase-crash
           # A personal token, not the built in one, on purpose. GitHub refuses to start a new
           # workflow from anything the built in token did, so an issue filed with it would sit
-          # there and the decider would never wake up. The personal token does not have that block.
+          # there and no other workflow would ever start from it. The personal token does not have that block.
           GH_TOKEN: ${{ secrets.MERGE_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: node .github/scripts/crash-to-issue.js

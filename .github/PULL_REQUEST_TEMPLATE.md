@@ -1,8 +1,3 @@
-<!--
-Thanks for contributing to Cue Clock!
-Please fill this out so reviewers can understand the change quickly.
--->
-
 ## Summary
 
 <!-- What does this PR do? One or two sentences. -->
@@ -16,13 +11,6 @@ Please fill this out so reviewers can understand the change quickly.
 - [ ] CI / build
 - [ ] Other:
 
-## Scope
-
-- [ ] `app/` (mobile)
-- [ ] `website/`
-- [ ] `.github/` / CI
-- [ ] Root docs
-
 ## Related issues
 
 <!-- Closes #123, Refs #456 -->
@@ -32,7 +20,6 @@ Please fill this out so reviewers can understand the change quickly.
 <!-- Platforms tested (Android / iOS / Web) and steps followed. -->
 
 - [ ] Ran `npm run lint` in the affected package
-- [ ] Verified on at least one target platform
 - [ ] Updated docs if behavior changed
 
 ## Screenshots / recordings
@@ -41,6 +28,6 @@ Please fill this out so reviewers can understand the change quickly.
 
 ## Checklist
 
-- [ ] My change follows the project's [Development Principles](../CONTRIBUTING.md#development-principles) (speed, intuitive UX, zero friction, TypeScript strict)
+- [ ] My change follows the project's [Development Principles](../CONTRIBUTING.md#development-principles) 
 - [ ] I did not add new runtime dependencies unless strictly required
 - [ ] I did not commit any secrets, keystores, or `.env` files

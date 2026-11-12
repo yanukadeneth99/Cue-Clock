@@ -4,14 +4,15 @@
 # Every Monday, Dependabot checks whether the libraries this project depends on
 # have newer versions, and opens a pull request when they do.
 #
-# It does NOT merge anything. Each PR it opens is built and reviewed first:
+# It does NOT merge anything. Each PR it opens is built and checked first:
 #   - app/     -> android-release-verify.yml builds a real release AAB
 #   - website/ -> website-verify.yml runs the linter and a production build
-# and then claude-pr-decider.yml reviews it. That decider only auto-reviews PRs
-# carrying the "dependencies" label, which is why every entry below sets it.
+# and then a weekly maintenance job reviews it. The job merges safe green
+# updates and leaves the rest for the maintainer. Every entry below sets the
+# "dependencies" label so these PRs are easy to find.
 #
-# Only app/ and website/ are watched. The test harness (tests/ai) and the
-# GitHub Actions workflows are updated by hand.
+# Only app/ and website/ are watched. The GitHub Actions workflows are
+# updated by hand.
 # =============================================================================
 version: 2
 

@@ -1,6 +1,6 @@
 # Cue Clock: Website
 
-The Next.js landing page for [cueclock.app](https://cueclock.app). A fully animated, SEO-optimized marketing site for the Cue Clock broadcast tool.
+The Next.js landing page for [cueclock.app](https://cueclock.app). The marketing site for Cue Clock.
 
 > Looking for the mobile app? See [`../app/`](../app/README.md).
 > Looking for the project overview? See the [root README](../README.md).
@@ -77,16 +77,6 @@ website/
 │       └── page.tsx    # Privacy policy page
 └── public/             # Static assets (SVGs, logo)
 ```
-
----
-
-## 💛 Support
-
-Cue Clock is free, open-source, and **will never have ads**. If you find it useful, consider supporting its development:
-
-<a href="https://ko-fi.com/yanukadeneth99" target="_blank">
-  <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" height="36" />
-</a>
 
 ---
 
