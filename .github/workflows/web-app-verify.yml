@@ -82,23 +82,27 @@ jobs:
 
       - name: Install web test dependencies
         working-directory: tests/web
-        run: npm ci
+        # The Playwright packages need no install scripts; the browser is installed in the next step.
+        run: npm ci --ignore-scripts
 
       - name: Install Chromium for Playwright
         working-directory: tests/web
-        run: npx playwright install --with-deps chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
 
       - name: Run web tests
         working-directory: tests/web
         env:
           CUE_WEB_URL: http://127.0.0.1:8081
-        run: npx playwright test
+        run: ./node_modules/.bin/playwright test
 
       # Gemini looks at each screenshot and flags anything that looks wrong. Advisory only: this step never fails the check.
       # Fork and Dependabot PRs get no key, so the script just prints a notice there. See tests/ai-review/README.md.
       # It runs before the upload below, so its review.json goes into the same artifact.
       - name: AI screenshot review
         if: always()
+        # The review is advisory, so a slow or stuck review never fails the check.
+        timeout-minutes: 20
+        continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}

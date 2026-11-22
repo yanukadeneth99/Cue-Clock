@@ -5,10 +5,10 @@ const DEFAULT_MODEL = 'gemini-3.8-flash';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 // Pause between screenshots, so the free plan's per-minute limit is not hit.
 const DELAY_MS = 6000;
-// Pause before the one retry after a "too many requests" or server error.
+// Pause before the one retry after a "too many requests", a server error or a timeout.
 const RETRY_DELAY_MS = 15000;
 // Give up on one screenshot if Gemini has not answered in this time.
-const REQUEST_TIMEOUT_MS = 60000;
+const REQUEST_TIMEOUT_MS = 120000;
 // Most screenshots checked in one run, so a surprise cannot run up a long bill or a long job.
 const MAX_SCREENSHOTS = 40;
 // Bigger images are skipped. Gemini refuses requests over 20 MB, and test screenshots are far smaller.
@@ -161,6 +161,11 @@ async function reviewScreenshot({ fetchFn, sleep, apiKey, model, expectations, p
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (err) {
+      // A slow answer is worth one more try, like a server error.
+      if (attempt === 1 && err && err.name === 'TimeoutError') {
+        await sleep(RETRY_DELAY_MS);
+        continue;
+      }
       // Only the kind of error is kept. The message could repeat request details.
       return { verdict: 'error', issues: [], error: `request failed (${(err && err.name) || 'unknown error'})` };
     }

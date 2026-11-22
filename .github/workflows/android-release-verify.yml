@@ -260,7 +260,14 @@ jobs:
         env:
           MAESTRO_VERSION: 2.12.1
         run: |
-          curl -fsSL -o "$RUNNER_TEMP/maestro.zip" "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip"
+          base="https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION"
+          curl -fsSL --proto '=https' --tlsv1.2 -o "$RUNNER_TEMP/maestro.zip" "$base/maestro.zip"
+          curl -fsSL --proto '=https' --tlsv1.2 -o "$RUNNER_TEMP/checksums_sha256.txt" "$base/checksums_sha256.txt"
+          # Stop if the zip does not match the checksum published with the same release.
+          cd "$RUNNER_TEMP"
+          grep -E '[ *]maestro\.zip$' checksums_sha256.txt > maestro.zip.sha256
+          [ -s maestro.zip.sha256 ] || { echo "No maestro.zip line in checksums_sha256.txt"; exit 1; }
+          sha256sum -c maestro.zip.sha256
           unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME"
           echo "$HOME/maestro/bin" >> "$GITHUB_PATH"
 
@@ -268,6 +275,7 @@ jobs:
       # SoLoaderDSONotFoundError, see the build step above). GitHub's runners are x86_64, and from API 30
       # the google_apis x86_64 images can run ARM apps by translating them. So the APK stays ARM-only.
       # Each script line runs as its own shell command, so every command stays on one line.
+      # run-ci.sh runs one flow at a time and retries a flow once if the emulator connection drops.
       - name: Run Maestro flows on emulator
         if: steps.recipient.outputs.key != ''
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
@@ -280,7 +288,7 @@ jobs:
           script: |
             adb install app/android/app/build/outputs/apk/release/app-release.apk
             ADB=adb bash tests/maestro/grant-permissions.sh
-            maestro test --test-output-dir maestro-output tests/maestro/flows/
+            bash tests/maestro/run-ci.sh maestro-output
 
       # Screenshots and logs from the flows, kept for a week. The plain APK is never uploaded.
       - name: Upload Maestro results
@@ -296,6 +304,9 @@ jobs:
       # Fork and Dependabot PRs get no key, so the script just prints a notice there. See tests/ai-review/README.md.
       - name: AI screenshot review
         if: always() && steps.recipient.outputs.key != ''
+        # The review is advisory, so a slow or stuck review never fails the check.
+        timeout-minutes: 20
+        continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}

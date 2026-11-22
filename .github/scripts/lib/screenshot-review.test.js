@@ -174,6 +174,32 @@ test('reviewScreenshot reports a network failure without its message', async () 
   assert.match(review.error, /TypeError/);
 });
 
+// AbortSignal.timeout() fails the request with an error named TimeoutError.
+function timeoutError() {
+  const err = new Error('The operation was aborted due to timeout');
+  err.name = 'TimeoutError';
+  return err;
+}
+
+test('reviewScreenshot retries once after a timeout and then succeeds', async () => {
+  const waits = [];
+  const { fn, calls } = fakeFetch([
+    timeoutError(),
+    { status: 200, body: geminiBody({ verdict: 'ok', issues: [] }) },
+  ]);
+  const review = await reviewScreenshot(args({ fetchFn: fn, sleep: async (ms) => waits.push(ms) }));
+  assert.strictEqual(calls.length, 2);
+  assert.deepStrictEqual(waits, [RETRY_DELAY_MS]);
+  assert.deepStrictEqual(review, { verdict: 'ok', issues: [] });
+});
+
+test('reviewScreenshot gives up after a second timeout', async () => {
+  const { fn, calls } = fakeFetch([timeoutError(), timeoutError()]);
+  const review = await reviewScreenshot(args({ fetchFn: fn }));
+  assert.strictEqual(calls.length, 2);
+  assert.deepStrictEqual(review, { verdict: 'error', issues: [], error: 'request failed (TimeoutError)' });
+});
+
 test('reviewScreenshot reports a reply with the wrong shape', async () => {
   const { fn } = fakeFetch([{ status: 200, body: geminiBody({ verdict: 'maybe' }) }]);
   const review = await reviewScreenshot(args({ fetchFn: fn }));

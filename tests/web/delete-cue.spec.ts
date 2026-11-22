@@ -13,5 +13,7 @@ test("delete a cue", async ({ page }) => {
 
   await page.getByTestId("confirm-ok").click();
   await expect(page.getByText("Cue To Delete", { exact: true })).toHaveCount(0);
+  // Wait for the dialog to finish closing, so the screenshot shows the home screen.
+  await expect(page.getByText("Delete cue?", { exact: true })).toBeHidden();
   await shot(page, "delete-cue-03-done");
 });

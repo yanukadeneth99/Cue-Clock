@@ -6,7 +6,7 @@ Cue Clock is a clock app for broadcast staff. It shows two time zone clocks at t
 
 - Dark theme only. The page is near black (#0a0b0e), panels are dark grey (#1a1d23), cards on top are a slightly lighter grey (#252830).
 - Blue (#60a5fa) is for main buttons and the brand dot.
-- Amber (#fbbf24) appears only on a countdown that is getting close, an alert bell, or an alarm. Amber anywhere else is an issue.
+- Amber (#fbbf24) is always used on the "Up Next" card, however far away the cue is: its small dot, the "Up Next" label, the large countdown and the thin progress bar along the bottom are amber (they turn red in the last minute). In the last 5 minutes the card border also gets an amber tint. Amber is also fine on an alert bell (the "5m" bell badge on the card, the bell in the cue form when an alert is set), the Alarm mode row in Settings when it is on, warning boxes in the Android setup and Help sheets, and the alarm screen. Amber anywhere else is an issue, for example on the clock cards or on the times in the smaller cue rows.
 - Red (#ef4444) appears only on a countdown in its last minute and on delete or reset buttons. Red anywhere else is an issue. The small red dot on the second clock and green dot on the first clock are fine.
 - All numbers (clocks, countdowns, times) are in a monospace font (Space Mono) with even digit widths. Other text is in Inter.
 - The countdown on the main card is the largest, most visible thing on screen.

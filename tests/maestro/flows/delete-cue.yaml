@@ -19,4 +19,8 @@ name: Delete a cue
 - tapOn:
     id: "confirm-ok"
 - assertNotVisible: "Cue To Delete"
+# Wait for the dialog to finish closing, so the screenshot shows the home screen.
+- extendedWaitUntil:
+    notVisible: "Delete cue?"
+    timeout: 10000
 - takeScreenshot: delete-cue-03-done

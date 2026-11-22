@@ -31,7 +31,8 @@ function findPngs(dir) {
     }
   };
   walk(dir);
-  return found.sort();
+  // Plain byte order, so the order is the same on every machine.
+  return found.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 async function main() {

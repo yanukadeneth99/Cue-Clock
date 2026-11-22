@@ -53,7 +53,7 @@ Run in `app/`: `npm ci`, `npx expo start`, `npm run lint`, `npx tsc --noEmit`. R
 
 ## Design System
 
-Surface stack: `page` (#0a0b0e) → `background` (#1a1d23) → `surface` (#252830). Blue `accent` (#60a5fa) for CTA + brand. Amber `countdown` (#fbbf24) ONLY for time-urgency and alarm state. Red `danger` (#ef4444) ONLY for <1m critical and destructive actions. Zone dots: `zone1` green / `zone2` red.
+Surface stack: `page` (#0a0b0e) → `background` (#1a1d23) → `surface` (#252830). Blue `accent` (#60a5fa) for CTA + brand. Amber `countdown` (#fbbf24) ONLY for the Up Next countdown (its dot, label, digits and progress bar are always amber, red in the last minute, and the border tints amber in the last 5 minutes), alert bells, the alarm state and warning boxes. Red `danger` (#ef4444) ONLY for <1m critical and destructive actions. Zone dots: `zone1` green / `zone2` red.
 
 Inter for UI, Space Mono for all numerics, always with `fontVariantNumeric: 'tabular-nums'` (already in the `text.*` presets).
 
