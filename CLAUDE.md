@@ -23,7 +23,10 @@ These cannot be overridden even by the author/owner:
 
 - **`app/`** — the Cue Clock app: Expo (SDK 55) / React Native for Android, iOS and web from one codebase. The web build is a Metro static export. Versions live in `app/package.json` and `app/app.json`. Package: `com.yanukadeneth99.cueclock`.
 - **`website/`** — the marketing site (Next.js 16, Tailwind 4, GSAP) at cueclock.app. Colours mirror `app/constants/colors.ts`. It does not import from `app/`.
-- **`tests/maestro/`** — Maestro flows run on a real Android phone. See its README.
+- **`tests/maestro/`** — Maestro flows. CI runs them on an Android emulator on every app PR (`android-release-verify.yml`); a real phone is still used before a release. See its README.
+- **`tests/web/`** — Playwright tests of the web build, run by `web-app-verify.yml` on every app PR. See its README.
+- **`tests/ai-review/`** — advisory Gemini review of the CI screenshots from both test folders (`.github/scripts/review-screenshots.js`); never fails a check. See its README.
+- **Screen changes:** when a change alters what a screen shows (layout, text, colours, a new screen or flow step), update `tests/ai-review/expectations.md` in the same PR, or the AI review will flag the new look as an issue.
 - **`docs/`** — `wiki.md` is the user guide, copied to the GitHub Wiki by `wiki-sync.yml`. `ai-evals.md` is history of a retired experiment.
 - **`.github/`** — workflows, plus `scripts/` for crash-to-issue and the Play promote step (tests in `scripts/lib/*.test.js`).
 
@@ -50,7 +53,7 @@ Run in `app/`: `npm ci`, `npx expo start`, `npm run lint`, `npx tsc --noEmit`. R
 
 ## Design System
 
-Surface stack: `page` (#0a0b0e) → `background` (#1a1d23) → `surface` (#252830). Blue `accent` (#60a5fa) for CTA + brand. Amber `countdown` (#fbbf24) ONLY for time-urgency and alarm state. Red `danger` (#ef4444) ONLY for <1m critical and destructive actions. Zone dots: `zone1` green / `zone2` red.
+Surface stack: `page` (#0a0b0e) → `background` (#1a1d23) → `surface` (#252830). Blue `accent` (#60a5fa) for CTA + brand. Amber `countdown` (#fbbf24) ONLY for the Up Next countdown (its dot, label, digits and progress bar are always amber, red in the last minute, and the border tints amber in the last 5 minutes), alert bells, the alarm state and warning boxes. Red `danger` (#ef4444) ONLY for <1m critical and destructive actions. Zone dots: `zone1` green / `zone2` red.
 
 Inter for UI, Space Mono for all numerics, always with `fontVariantNumeric: 'tabular-nums'` (already in the `text.*` presets).
 

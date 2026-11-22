@@ -60,6 +60,7 @@ export function ZonePickerModal({ visible, title, current, onPick, onClose }: Pr
       >
         <MaterialIcons name="search" size={16} color={colors.textMuted} />
         <TextInput
+          testID="zone-search"
           value={q}
           onChangeText={setQ}
           placeholder="Search city or zone"

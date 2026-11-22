@@ -1,0 +1,25 @@
+# Shared steps: add a cue one hour after the default time, with the name in CUE_NAME.
+appId: com.yanukadeneth99.cueclock
+---
+- tapOn:
+    id: "add-cue-button"
+# The phone time picker opens by itself for a new cue, accept its time.
+- tapOn:
+    text: "OK"
+    optional: true
+- tapOn:
+    id: "target-time-hour-up"
+- scrollUntilVisible:
+    element:
+      id: "cue-name-input"
+    speed: 90
+    timeout: 60000
+- tapOn:
+    id: "cue-name-input"
+- inputText: ${CUE_NAME}
+- hideKeyboard
+- tapOn:
+    id: "cue-save"
+- extendedWaitUntil:
+    visible: ${CUE_NAME}
+    timeout: 10000

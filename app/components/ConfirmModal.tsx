@@ -95,6 +95,7 @@ export default function ConfirmModal({
               </Text>
             </Pressable>
             <Pressable
+              testID="confirm-ok"
               onPress={onConfirm}
               style={({ pressed }) => ({
                 flex: 1,

@@ -1,0 +1,26 @@
+appId: com.yanukadeneth99.cueclock
+name: Delete a cue
+---
+- runFlow:
+    file: common/first-run.yaml
+    env:
+      SHOT: delete-cue-01-first-run
+- runFlow:
+    file: common/add-named-cue.yaml
+    env:
+      CUE_NAME: "Cue To Delete"
+- tapOn:
+    id: "cue-delete"
+# The app asks before deleting.
+- extendedWaitUntil:
+    visible: "Delete cue?"
+    timeout: 10000
+- takeScreenshot: delete-cue-02-confirm
+- tapOn:
+    id: "confirm-ok"
+- assertNotVisible: "Cue To Delete"
+# Wait for the dialog to finish closing, so the screenshot shows the home screen.
+- extendedWaitUntil:
+    notVisible: "Delete cue?"
+    timeout: 10000
+- takeScreenshot: delete-cue-03-done

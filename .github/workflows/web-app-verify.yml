@@ -9,8 +9,10 @@
 #
 # Why 22 and not something newer: 22.12.0 is the first Node that lets a CommonJS `require()` load an ES module without a flag, which is what the failed deploy needed. Anything at or above that works; there is no reason to reach further. The deploy server gets a matching 22.14.0 via app/nixpacks.toml - see that file for why the version alone was not enough.
 #
-# Runs on: pull requests changing anything under app/, or this file itself (so edits here are verified too). Website- or docs-only PRs skip it.
-# Uses: No secrets - the export completes without any.
+# Web flow: after the build, the export is served on a local port and the Playwright tests in tests/web/ open it in Chrome and run through the app like a user would (add, edit and delete cues, settings, zones). Gemini then reviews the screenshots and leaves advisory warnings. The report is kept for 7 days.
+#
+# Runs on: pull requests changing anything under app/ or tests/web/, the AI screenshot review, or this file itself (so edits here are verified too). Website- or docs-only PRs skip it.
+# Uses: No secrets are needed. The optional GEMINI_API_KEY only turns on the advisory screenshot review.
 # =============================================================================
 name: Web App Verify
 
@@ -19,6 +21,12 @@ on:
     paths:
       - "app/**"
       - ".github/workflows/web-app-verify.yml"
+      # The web tests run here, so a test change is tested by its own PR.
+      - "tests/web/**"
+      # The AI screenshot review runs here too, so a change to it is tested by its own PR.
+      - ".github/scripts/review-screenshots.js"
+      - ".github/scripts/lib/screenshot-review.js"
+      - "tests/ai-review/**"
 
 # If new commits land on the same PR while a check is running, cancel the old
 # check - only the newest code needs verifying.
@@ -45,7 +53,9 @@ jobs:
         with:
           node-version-file: app/.nvmrc
           cache: "npm"
-          cache-dependency-path: app/package-lock.json
+          cache-dependency-path: |
+            app/package-lock.json
+            tests/web/package-lock.json
 
       # `npm ci` installs the exact versions in the lockfile and fails outright
       # if the lockfile and package.json disagree - a useful check by itself on
@@ -62,3 +72,50 @@ jobs:
       - name: Build web export
         working-directory: app
         run: npm run build:web
+
+      # ---- Web flow: open the built app in Chrome and add a cue ----
+      # A plain static server is enough: the export is ready-made files. It keeps running in the background for the next steps.
+      - name: Serve web export
+        run: |
+          nohup python3 -m http.server 8081 --bind 127.0.0.1 --directory app/dist > "$RUNNER_TEMP/web-server.log" 2>&1 &
+          curl -fsS --retry 10 --retry-delay 1 --retry-connrefused -o /dev/null http://127.0.0.1:8081/
+
+      - name: Install web test dependencies
+        working-directory: tests/web
+        # The Playwright packages need no install scripts; the browser is installed in the next step.
+        run: npm ci --ignore-scripts
+
+      - name: Install Chromium for Playwright
+        working-directory: tests/web
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Run web tests
+        working-directory: tests/web
+        env:
+          CUE_WEB_URL: http://127.0.0.1:8081
+        run: ./node_modules/.bin/playwright test
+
+      # Gemini looks at each screenshot and flags anything that looks wrong. Advisory only: this step never fails the check.
+      # Fork and Dependabot PRs get no key, so the script just prints a notice there. See tests/ai-review/README.md.
+      # It runs before the upload below, so its review.json goes into the same artifact.
+      - name: AI screenshot review
+        if: always()
+        # The review is advisory, so a slow or stuck review never fails the check.
+        timeout-minutes: 20
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+        run: node .github/scripts/review-screenshots.js tests/web/test-results web
+
+      # The report (with screenshots and a trace when a test fails) is kept for a week.
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: |
+            tests/web/playwright-report/
+            tests/web/test-results/
+          retention-days: 7
+          if-no-files-found: warn

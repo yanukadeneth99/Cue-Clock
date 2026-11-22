@@ -561,6 +561,7 @@ export function CueEditModal({
           onChange={(dm, ds) => setForm((f) => ({ ...f, deductMinute: dm, deductSecond: ds }))}
           accent
           mode="ms"
+          testID="buffer-time"
         />
       </View>
 

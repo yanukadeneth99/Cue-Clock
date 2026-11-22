@@ -1,0 +1,31 @@
+# Shared start for every flow: open a fresh app and close the first-run dialogs the way a user does.
+# The calling flow passes SHOT, the name of the screenshot taken once the home screen shows.
+appId: com.yanukadeneth99.cueclock
+---
+- clearState
+- launchApp
+# Close the Android setup sheet. The emulator is slow, so the first screen gets a long wait.
+- extendedWaitUntil:
+    visible: "Android setup"
+    timeout: 30000
+# Continue sits at the bottom of the sheet, so scroll down to it.
+- scrollUntilVisible:
+    element:
+      id: "setup-continue"
+    speed: 90
+    timeout: 60000
+- tapOn:
+    id: "setup-continue"
+# Analytics question only shows on a fresh install.
+- tapOn:
+    id: "consent-decline"
+    optional: true
+# Declining asks once more, so confirm.
+- tapOn:
+    id: "optout-confirm"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "add-cue-button"
+    timeout: 30000
+- takeScreenshot: ${SHOT}

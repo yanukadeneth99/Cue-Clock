@@ -1,0 +1,32 @@
+appId: com.yanukadeneth99.cueclock
+name: Edit a cue
+---
+- runFlow:
+    file: common/first-run.yaml
+    env:
+      SHOT: edit-cue-01-first-run
+- runFlow:
+    file: common/add-named-cue.yaml
+    env:
+      CUE_NAME: "First Name Cue"
+# Tapping the name on the card opens the cue with the name field ready.
+- tapOn: "First Name Cue"
+- extendedWaitUntil:
+    visible: "Edit cue"
+    timeout: 10000
+- takeScreenshot: edit-cue-02-modal-open
+- scrollUntilVisible:
+    element:
+      id: "cue-name-input"
+    speed: 90
+    timeout: 60000
+- tapOn:
+    id: "cue-name-input"
+- eraseText: 40
+- inputText: "Renamed Cue"
+- hideKeyboard
+- tapOn:
+    id: "cue-save"
+- assertVisible: "Renamed Cue"
+- assertNotVisible: "First Name Cue"
+- takeScreenshot: edit-cue-03-done
