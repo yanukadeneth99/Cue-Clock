@@ -1,0 +1,11 @@
+{
+  "name": "cue-clock-web-tests",
+  "private": true,
+  "license": "AGPL-3.0",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1"
+  }
+}

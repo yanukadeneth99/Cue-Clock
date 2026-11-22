@@ -1,0 +1,55 @@
+appId: com.yanukadeneth99.cueclock
+name: A cue passes
+---
+- runFlow:
+    file: common/first-run.yaml
+    env:
+      SHOT: cue-passes-01-first-run
+- tapOn:
+    id: "add-cue-button"
+# The phone time picker opens by itself for a new cue, accept its time.
+- tapOn:
+    text: "OK"
+    optional: true
+# Set the cue about 2 minutes from now with the arrows.
+- runScript: common/plan-near-cue.js
+- runFlow:
+    when:
+      true: ${output.hourDown}
+    commands:
+      - tapOn:
+          id: "target-time-hour-down"
+- repeat:
+    while:
+      true: ${output.upTaps > 0}
+    commands:
+      - tapOn:
+          id: "target-time-minute-up"
+      - evalScript: ${output.upTaps = output.upTaps - 1}
+- repeat:
+    while:
+      true: ${output.downTaps > 0}
+    commands:
+      - tapOn:
+          id: "target-time-minute-down"
+      - evalScript: ${output.downTaps = output.downTaps - 1}
+- takeScreenshot: cue-passes-02-modal-open
+- scrollUntilVisible:
+    element:
+      id: "cue-name-input"
+    speed: 90
+    timeout: 60000
+- tapOn:
+    id: "cue-name-input"
+- inputText: "Passing Cue"
+- hideKeyboard
+- tapOn:
+    id: "cue-save"
+- assertVisible: "Passing Cue"
+- takeScreenshot: cue-passes-03-counting
+# Once the time is reached, the cue moves into a small "PASSED" strip above the cards.
+- extendedWaitUntil:
+    visible: "PASSED"
+    timeout: 180000
+- assertVisible: "Passing Cue"
+- takeScreenshot: cue-passes-04-passed

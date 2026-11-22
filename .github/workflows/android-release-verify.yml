@@ -8,12 +8,17 @@
 #
 # Runs on:  pull requests that change anything under app/, or that edit the beta /
 #           promote release workflows (so a broken release path is caught before
-#           merge), or that edit this file itself. Website- or docs-only PRs
+#           merge), or that edit this file, tests/maestro/ or the AI screenshot review. Website- or docs-only PRs
 #           skip this build.
 #
 # Uses:     NO real secrets. A dummy version number (0.0.24), a fake Firebase
 #           config, and a signing key generated on the spot and discarded.
 #           Nothing goes to Google Play. A test APK, locked so only Sunny can open it, is kept for 1 day.
+#           The optional GEMINI_API_KEY secret only turns on the advisory screenshot review.
+#
+# Tests:    the same test APK is also installed on an Android emulator and the Maestro flows in
+#           tests/maestro/flows/ are run on it. Screenshots and logs are kept for 7 days.
+#           Gemini then reviews the screenshots and leaves advisory warnings (never a failure).
 # =============================================================================
 name: Android Release Verify
 
@@ -25,6 +30,12 @@ on:
       - '.github/workflows/android-promote.yml'
       # This file too, so a change to this check is tested by its own PR.
       - '.github/workflows/android-release-verify.yml'
+      # The Maestro flows run on an emulator here, so a flow change is tested by its own PR.
+      - 'tests/maestro/**'
+      # The AI screenshot review runs here too, so a change to it is tested by its own PR.
+      - '.github/scripts/review-screenshots.js'
+      - '.github/scripts/lib/screenshot-review.js'
+      - 'tests/ai-review/**'
 
 # If new commits land on the same PR while a check is running, cancel the old
 # check — only the newest code needs verifying.
@@ -234,16 +245,83 @@ jobs:
             -Pandroid.injected.signing.key.alias=androidreleasekey \
             -Pandroid.injected.signing.key.password=android
 
-      # Lock the APK with the public key, then delete the unlocked copy before anything is uploaded.
-      - name: Lock test APK
+      # ---- Run the Maestro flows on an Android emulator, so a PR can be tested without the test phone ----
+      # The emulator needs KVM (hardware speed-up). This rule lets the runner user open it.
+      - name: Enable KVM for the emulator
         if: steps.recipient.outputs.key != ''
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Maestro is the tool that taps through the flows. Pinned so a new release cannot change a test run by surprise.
+      - name: Install Maestro
+        if: steps.recipient.outputs.key != ''
+        env:
+          MAESTRO_VERSION: 2.12.1
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/maestro.zip" "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip"
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME"
+          echo "$HOME/maestro/bin" >> "$GITHUB_PATH"
+
+      # Why API 35, google_apis, x86_64: the test APK is ARM-only on purpose (x86 builds crashed with
+      # SoLoaderDSONotFoundError, see the build step above). GitHub's runners are x86_64, and from API 30
+      # the google_apis x86_64 images can run ARM apps by translating them. So the APK stays ARM-only.
+      # Each script line runs as its own shell command, so every command stays on one line.
+      - name: Run Maestro flows on emulator
+        if: steps.recipient.outputs.key != ''
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: |
+            adb install app/android/app/build/outputs/apk/release/app-release.apk
+            ADB=adb bash tests/maestro/grant-permissions.sh
+            maestro test --test-output-dir maestro-output tests/maestro/flows/
+
+      # Screenshots and logs from the flows, kept for a week. The plain APK is never uploaded.
+      - name: Upload Maestro results
+        if: always() && steps.recipient.outputs.key != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: maestro-results
+          path: maestro-output/
+          retention-days: 7
+          if-no-files-found: warn
+
+      # Gemini looks at each screenshot and flags anything that looks wrong. Advisory only: this step never fails the check.
+      # Fork and Dependabot PRs get no key, so the script just prints a notice there. See tests/ai-review/README.md.
+      - name: AI screenshot review
+        if: always() && steps.recipient.outputs.key != ''
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+        run: node .github/scripts/review-screenshots.js maestro-output android
+
+      # The results above were already uploaded, so the review gets its own small artifact.
+      - name: Upload AI screenshot review
+        if: always() && steps.recipient.outputs.key != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: maestro-ai-review
+          path: maestro-output/review.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Lock the APK with the public key, then delete the unlocked copy before anything is uploaded.
+      # always(): a failing flow above must still leave Sunny a locked APK to try on the phone.
+      - name: Lock test APK
+        if: always() && steps.recipient.outputs.key != ''
         working-directory: app/android/app/build/outputs/apk/release
         run: |
           age -r "${{ steps.recipient.outputs.key }}" -o cue-clock-test.apk.age app-release.apk
           rm -f app-release.apk
 
       - name: Upload locked test APK
-        if: steps.recipient.outputs.key != ''
+        if: always() && steps.recipient.outputs.key != ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cue-clock-test-apk

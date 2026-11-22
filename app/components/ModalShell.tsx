@@ -316,6 +316,7 @@ export function ModalShell({
               <View style={{ width: 32, height: 32 }} />
             ) : (
               <Pressable
+                testID="modal-close"
                 onPress={onClose}
                 style={({ pressed }) => ({
                   width: 32,

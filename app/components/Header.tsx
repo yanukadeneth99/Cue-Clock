@@ -57,6 +57,7 @@ export function Header({
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         {onAddCue ? (
           <Pressable
+            testID="add-cue-button"
             onPress={onAddCue}
             style={({ pressed }) => ({
               width: 34,
@@ -78,7 +79,7 @@ export function Header({
         <HeaderButton onPress={onHelp} label="Help">
           <MaterialIcons name="help-outline" size={19} color={colors.textMuted} />
         </HeaderButton>
-        <HeaderButton onPress={onSettings} label="Settings">
+        <HeaderButton onPress={onSettings} label="Settings" testID="settings-button">
           <MaterialIcons name="settings" size={18} color={colors.textMuted} />
         </HeaderButton>
         <HeaderButton onPress={onFullscreen} label="Full screen">
@@ -92,6 +93,7 @@ export function Header({
 function HeaderButton({
   onPress,
   label,
+  testID,
   children,
 }: {
   onPress: () => void;
@@ -103,10 +105,13 @@ function HeaderButton({
   // would pick the wrong one by tree order. The label becomes the Android node's
   // contentDescription, making each control deterministically addressable.
   label: string;
+  /** Name the automated tests use to find this button. */
+  testID?: string;
   children: React.ReactNode;
 }) {
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}

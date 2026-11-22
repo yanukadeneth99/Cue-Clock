@@ -82,6 +82,7 @@ export function SettingsModal({
     >
       <SettingRow
         label="24-hour clock"
+        testID="setting-24-hour"
         description={
           is24Hour
             ? "Times shown as 14:30. Toggle off for 12-hour with AM/PM."
@@ -113,6 +114,7 @@ export function SettingsModal({
       ) : null}
       <SettingRow
         label="Show seconds"
+        testID="setting-show-seconds"
         description="Include the seconds digits on the two top clocks."
         toggle={showSeconds}
         onToggle={() => onToggleShowSeconds(!showSeconds)}
@@ -298,11 +300,14 @@ type RowProps = {
   onToggle: () => void;
   disabled?: boolean;
   tone?: string;
+  /** Name the automated tests use to find this row. */
+  testID?: string;
 };
 
-function SettingRow({ label, description, toggle, onToggle, disabled, tone }: RowProps) {
+function SettingRow({ label, description, toggle, onToggle, disabled, tone, testID }: RowProps) {
   return (
     <Pressable
+      testID={testID}
       onPress={onToggle}
       disabled={disabled}
       style={({ pressed }) => ({

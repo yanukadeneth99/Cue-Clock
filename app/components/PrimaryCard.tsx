@@ -291,6 +291,7 @@ function PrimaryCardImpl({ block, now, zone1, zone2, is24Hour, onEdit, onDelete 
             HomeScreen) is the actual destructive step - this is just the
             trigger. Hit-slop pads the tap target without enlarging the icon. */}
         <Pressable
+          testID="cue-delete"
           onPress={onDelete}
           hitSlop={10}
           accessibilityLabel="Delete cue"

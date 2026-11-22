@@ -62,3 +62,6 @@ docs/superpowers
 !.claude/skills/
 !.claude/launch.json
 CLAUDE.local.md
+# Playwright web tests (tests/web)
+tests/web/test-results/
+tests/web/playwright-report/

@@ -54,6 +54,7 @@ function ClockRailImpl({
         showSeconds={showSeconds}
         hour12={hour12}
         onPress={onTapZone1}
+        testID="zone1-card"
       />
       <ZoneCard
         color={colors.zone2}
@@ -62,6 +63,7 @@ function ClockRailImpl({
         showSeconds={showSeconds}
         hour12={hour12}
         onPress={onTapZone2}
+        testID="zone2-card"
       />
     </View>
   );
@@ -74,9 +76,11 @@ type CardProps = {
   showSeconds: boolean;
   hour12: boolean;
   onPress: () => void;
+  /** Name the automated tests use to find this card. */
+  testID?: string;
 };
 
-function ZoneCard({ color, tz, now, showSeconds, hour12, onPress }: CardProps) {
+function ZoneCard({ color, tz, now, showSeconds, hour12, onPress, testID }: CardProps) {
   const t = formatInZone(now, tz, showSeconds, hour12);
   // Web bumps the clock digit size - the rail is the centrepiece on a wide
   // browser viewport, smaller than that reads as undersized.
@@ -84,6 +88,7 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress }: CardProps) {
 
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,

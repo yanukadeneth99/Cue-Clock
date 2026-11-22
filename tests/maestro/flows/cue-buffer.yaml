@@ -1,0 +1,39 @@
+appId: com.yanukadeneth99.cueclock
+name: Add a cue with a buffer
+---
+- runFlow:
+    file: common/first-run.yaml
+    env:
+      SHOT: cue-buffer-01-first-run
+- tapOn:
+    id: "add-cue-button"
+# The phone time picker opens by itself for a new cue, accept its time.
+- tapOn:
+    text: "OK"
+    optional: true
+- tapOn:
+    id: "target-time-hour-up"
+# Buffer is how much earlier to be ready. One tap on its first arrow adds one minute.
+- scrollUntilVisible:
+    element:
+      id: "buffer-time-hour-up"
+    speed: 90
+    timeout: 60000
+- tapOn:
+    id: "buffer-time-hour-up"
+- takeScreenshot: cue-buffer-02-modal-open
+- scrollUntilVisible:
+    element:
+      id: "cue-name-input"
+    speed: 90
+    timeout: 60000
+- tapOn:
+    id: "cue-name-input"
+- inputText: "Buffer Cue"
+- hideKeyboard
+- tapOn:
+    id: "cue-save"
+- assertVisible: "Buffer Cue"
+# The card shows the buffer as minus minutes and seconds.
+- assertVisible: "−01:00"
+- takeScreenshot: cue-buffer-03-done

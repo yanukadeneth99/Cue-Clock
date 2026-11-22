@@ -1,32 +1,10 @@
 appId: com.yanukadeneth99.cueclock
 name: Add a cue
 ---
-- clearState
-- launchApp
-# Close the Android setup sheet the way a user does.
-- extendedWaitUntil:
-    visible: "Android setup"
-    timeout: 20000
-# Continue sits at the bottom of the sheet, so scroll down to it.
-- scrollUntilVisible:
-    element:
-      id: "setup-continue"
-    speed: 90
-    timeout: 60000
-- tapOn:
-    id: "setup-continue"
-# Analytics question only shows on a fresh install.
-- tapOn:
-    id: "consent-decline"
-    optional: true
-# Declining asks once more, so confirm.
-- tapOn:
-    id: "optout-confirm"
-    optional: true
-- extendedWaitUntil:
-    visible:
-      id: "add-cue-button"
-    timeout: 10000
+- runFlow:
+    file: common/first-run.yaml
+    env:
+      SHOT: add-cue-01-first-run
 - tapOn:
     id: "add-cue-button"
 # The phone time picker opens by itself for a new cue, accept its time.
@@ -36,6 +14,7 @@ name: Add a cue
 # Move the target hour up by one, so the cue is not at the default time.
 - tapOn:
     id: "target-time-hour-up"
+- takeScreenshot: add-cue-02-modal-open
 - scrollUntilVisible:
     element:
       id: "cue-name-input"
@@ -48,4 +27,4 @@ name: Add a cue
 - tapOn:
     id: "cue-save"
 - assertVisible: "Maestro Test Cue"
-- takeScreenshot: add-cue-done
+- takeScreenshot: add-cue-03-done

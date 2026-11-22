@@ -1,0 +1,27 @@
+appId: com.yanukadeneth99.cueclock
+name: Change clock settings
+---
+- runFlow:
+    file: common/first-run.yaml
+    env:
+      SHOT: settings-01-first-run
+# A fresh app shows 24-hour time with seconds, so a ":ss" part is on screen and no AM or PM.
+- assertVisible: "^:[0-9]{2}$"
+- assertNotVisible: "^(AM|PM)$"
+- tapOn:
+    id: "settings-button"
+- extendedWaitUntil:
+    visible:
+      id: "setting-24-hour"
+    timeout: 10000
+- tapOn:
+    id: "setting-24-hour"
+- tapOn:
+    id: "setting-show-seconds"
+- takeScreenshot: settings-02-modal-open
+- tapOn:
+    id: "modal-close"
+# Now the clocks show AM or PM, and the seconds are gone.
+- assertVisible: "^(AM|PM)$"
+- assertNotVisible: "^:[0-9]{2}$"
+- takeScreenshot: settings-03-done
