@@ -28,6 +28,8 @@ Each flow saves screenshots with names like `edit-cue-02-modal-open.png`.
 
 Every pull request that changes `app/` or `tests/maestro/` runs all the flows on an Android emulator in GitHub Actions (`android-release-verify.yml`), so the test phone is not needed to test a PR. CI runs the flows one at a time with `run-ci.sh`, which retries a failed flow once after reconnecting to the emulator and marks a pass on retry with a warning. Screenshots and logs are saved as the `maestro-results` artifact for 7 days. Gemini then reviews the screenshots, see [tests/ai-review](../ai-review/README.md). The emulator is slower than a phone and has no real speaker, so the phone is still used before a release to check the sounds and real speed.
 
+Android sometimes shows its own popups on the emulator, such as "Pixel Launcher isn't responding", which cover the app and fail every flow. So before the first flow, `run-ci.sh` tells Android to hide crash and "isn't responding" popups and turns off animations. Before every flow and every retry, it closes any system popup still on screen. As a backup, `first-run.yaml` taps Wait if such a popup shows. When a flow fails, a screenshot of the device is saved as `device-screen.png` next to `device-state.txt`.
+
 ## Permission note
 
 On first launch the app shows an "Android setup" sheet asking for notification, full-screen alarm, battery and exact-alarm permissions. The flow taps Continue on that sheet, which closes it without granting anything. The script `grant-permissions.sh` only applies the battery whitelist on Android 10, because the other permissions do not exist there. The flow's clearState does not undo the whitelist, so run the script once after each install.
