@@ -4,6 +4,14 @@ appId: com.yanukadeneth99.cueclock
 ---
 - clearState
 - launchApp
+# If Android shows an "isn't responding" popup over the app, tap Wait. Nothing happens when there is no popup.
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn:
+          text: "Wait"
+          optional: true
 # Close the Android setup sheet. The emulator is slow, so the first screen gets a long wait.
 - extendedWaitUntil:
     visible: "Android setup"
