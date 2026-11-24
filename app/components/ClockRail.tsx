@@ -1,8 +1,9 @@
 import { colors } from "@/constants/colors";
 import { text } from "@/constants/typography";
+import { fitClock } from "@/lib/clockFit";
 import { formatInZone, shortCity, zoneAbbr } from "@/lib/time";
-import { memo } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { memo, useCallback, useState } from "react";
+import { LayoutChangeEvent, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
 
 const isWeb = Platform.OS === "web";
 
@@ -84,7 +85,34 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress, testID }: Card
   const t = formatInZone(now, tz, showSeconds, hour12);
   // Web bumps the clock digit size - the rail is the centrepiece on a wide
   // browser viewport, smaller than that reads as undersized.
-  const clockFontSize = isWeb ? 64 : undefined;
+  const clockFontSize = isWeb ? 64 : (text.clockLarge.fontSize as number);
+  const tailFontSize = isWeb ? 24 : 13;
+  const stacked = showSeconds && hour12 && !!t.ampm;
+  const inlineAmpm = !showSeconds && hour12 && !!t.ampm;
+
+  // Shrink the time if it is too wide for the card (narrow phones, narrow browser windows). Until the row is measured, the normal sizes are used.
+  const [rowWidth, setRowWidth] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const onRowLayout = useCallback((e: LayoutChangeEvent) => {
+    setRowWidth(e.nativeEvent.layout.width);
+  }, []);
+  const fit = fitClock({
+    rowWidth,
+    fontScale,
+    hhmmSize: clockFontSize,
+    hhmmSpacing: text.clockLarge.letterSpacing as number,
+    tailSize: tailFontSize,
+    tailGap: stacked ? 4 : showSeconds ? 2 : 6,
+    showSeconds,
+    secondsSpacing: text.clockSeconds.letterSpacing as number,
+    ampm: stacked ? "stacked" : inlineAmpm ? "inline" : null,
+    stackedAmpmSize: isWeb ? 12 : 9,
+    stackedAmpmSpacing: 0.5,
+  });
+  // Names the automated tests use, e.g. "zone1-time" and "zone1-seconds".
+  const idBase = testID?.replace(/-card$/, "");
+  const timeTestID = idBase ? `${idBase}-time` : undefined;
+  const secondsTestID = idBase ? `${idBase}-seconds` : undefined;
 
   return (
     <Pressable
@@ -136,6 +164,7 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress, testID }: Card
           seconds-only branch - :SS lands at the middle of the digits
           rather than hugging their baseline. */}
       <View
+        onLayout={onRowLayout}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -143,10 +172,12 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress, testID }: Card
         }}
       >
         <Text
+          testID={timeTestID}
+          numberOfLines={1}
           style={[
             text.clockLarge,
             { color: colors.text, textAlign: "left" },
-            clockFontSize ? { fontSize: clockFontSize, lineHeight: clockFontSize } : null,
+            { fontSize: fit.hhmmSize, lineHeight: fit.hhmmSize },
           ]}
         >
           {t.h}:{t.m}
@@ -156,7 +187,7 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress, testID }: Card
             time block narrow on long hours like "12:47" instead of pushing
             the AM/PM glyph off the right edge of the card. Falls back to
             inline rendering when only one of the two is shown. */}
-        {showSeconds && hour12 && t.ampm ? (
+        {stacked ? (
           <View style={{ flexDirection: "column", marginLeft: 4, alignItems: "flex-start" }}>
             <Text
               style={[
@@ -173,12 +204,13 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress, testID }: Card
               {t.ampm}
             </Text>
             <Text
+              testID={secondsTestID}
               style={[
                 text.clockSeconds,
                 {
                   color: colors.textMuted,
-                  fontSize: isWeb ? 24 : 13,
-                  lineHeight: isWeb ? 24 : 13,
+                  fontSize: fit.tailSize,
+                  lineHeight: fit.tailSize,
                   marginTop: 1,
                 },
               ]}
@@ -188,19 +220,20 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress, testID }: Card
           </View>
         ) : showSeconds ? (
           <Text
+            testID={secondsTestID}
             style={[
               text.clockSeconds,
               {
                 color: colors.textMuted,
-                fontSize: isWeb ? 24 : 13,
-                lineHeight: isWeb ? 24 : 13,
+                fontSize: fit.tailSize,
+                lineHeight: fit.tailSize,
                 marginLeft: 2,
               },
             ]}
           >
             :{t.s}
           </Text>
-        ) : hour12 && t.ampm ? (
+        ) : inlineAmpm ? (
           // No seconds - AM/PM sits inline next to the minutes. Matches the
           // seconds fontSize/lineHeight so `alignItems: "baseline"` resolves
           // consistently against the larger HH:MM digits.
@@ -210,8 +243,8 @@ function ZoneCard({ color, tz, now, showSeconds, hour12, onPress, testID }: Card
               {
                 color: colors.textMuted,
                 marginLeft: 6,
-                fontSize: isWeb ? 24 : 13,
-                lineHeight: isWeb ? 24 : 13,
+                fontSize: fit.tailSize,
+                lineHeight: fit.tailSize,
               },
             ]}
           >

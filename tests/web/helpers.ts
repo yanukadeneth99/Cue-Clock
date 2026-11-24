@@ -2,6 +2,17 @@ import { expect, test, type Page } from "@playwright/test";
 
 // Saves a screenshot into this test's output folder, so CI keeps it with the results.
 export async function shot(page: Page, name: string) {
+  // Wait for fades (like a dialog opening) to finish, so the picture is not half see-through. Endless animations, like a spinner, are ignored. If something is still moving after 3 seconds, take the picture anyway.
+  await page
+    .waitForFunction(
+      () =>
+        document
+          .getAnimations()
+          .every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity),
+      undefined,
+      { timeout: 3000 },
+    )
+    .catch(() => console.log(`shot ${name}: an animation was still running after 3s, taking the screenshot anyway`));
   await page.screenshot({ path: test.info().outputPath(`${name}.png`) });
 }
 
