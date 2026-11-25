@@ -4,7 +4,10 @@
 name: Workflow script tests
 
 on:
+  # Only master here, so a pull request branch is tested once (by pull_request below), not twice.
   push:
+    branches:
+      - master
     paths:
       - '.github/scripts/**'
       - '.github/workflows/workflow-scripts-tests.yml'
